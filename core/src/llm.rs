@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::dice::DiceEngine;
+use super::intent::GameIntent;
 use super::oracle::{EventMeaning, MythicOracle, Odds};
 
 #[derive(Debug)]
@@ -114,6 +116,9 @@ pub struct DmResponse {
     pub chaos_factor: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub event_meaning: Option<EventMeaning>,
+    /// The structured intent the narrative model resolved to (parsed from its
+    /// constrained output). The session layer applies world effects from this.
+    pub intent: GameIntent,
     pub source: String,
 }
 
@@ -167,13 +172,23 @@ impl<B: LlmBackend> DmPipeline<B> {
         };
 
         let stub = self.backend.is_stub();
-        let narrative = if stub {
-            stub_narrative(request, &fate, event_meaning.as_ref())
+        let (narrative, intent, source) = if stub {
+            let n = stub_narrative(request, &fate, event_meaning.as_ref());
+            (n.clone(), GameIntent::Narration { text: n }, "stub".to_string())
         } else {
             let prompt = build_prompt(request, &fate, event_meaning.as_ref(), &mechanical_events);
-            self.backend
-                .complete(SYSTEM_PROMPT, &prompt, Some(200))
-                .await?
+            let raw = self
+                .backend
+                .complete(SYSTEM_PROMPT, &prompt, Some(400))
+                .await?;
+            let intent = GameIntent::from_llm_text(&raw);
+            let mut dice = match seed {
+                Some(s) => DiceEngine::with_seed(s),
+                None => DiceEngine::new(),
+            };
+            let (n, extra) = execute_intent(&intent, &mut dice, &mut oracle);
+            mechanical_events.extend(extra);
+            (n, intent, "alison".to_string())
         };
 
         Ok(DmResponse {
@@ -184,9 +199,61 @@ impl<B: LlmBackend> DmPipeline<B> {
             fate_target: fate.target,
             chaos_factor: request.chaos_factor,
             event_meaning,
-            source: if stub { "stub".to_string() } else { "llm".to_string() },
+            intent,
+            source,
         })
     }
+}
+
+/// Apply the mechanical portion of a parsed [`GameIntent`], returning the
+/// narrative prose to speak plus any new mechanical-event lines. Prose-only
+/// intents (narration / scene_delta / npc_speech / ooc) contribute their text
+/// directly; dice and fate intents are resolved against the dice engine /
+/// oracle. `RuleCheck` is surfaced for the session layer to answer from world data.
+fn execute_intent(
+    intent: &GameIntent,
+    dice: &mut DiceEngine,
+    oracle: &mut MythicOracle,
+) -> (String, Vec<String>) {
+    let mut extra = Vec::new();
+    let narrative = match intent {
+        GameIntent::Narration { text }
+        | GameIntent::SceneDelta { delta: text }
+        | GameIntent::Ooc { message: text } => text.clone(),
+        GameIntent::NpcSpeech { npc_id, line } => match npc_id {
+            Some(id) => format!("{id}: {line}"),
+            None => line.clone(),
+        },
+        GameIntent::DiceRoll {
+            skill,
+            modifier,
+            reason,
+        } => {
+            let mod_v = modifier.unwrap_or(0);
+            let detail = dice
+                .evaluate(&format!("1d20 + {mod_v}"))
+                .map(|r| r.detail)
+                .unwrap_or_else(|_| format!("1d20 + {mod_v}"));
+            let total: i64 = detail
+                .rsplit("= ")
+                .next()
+                .and_then(|s| s.trim().parse::<i64>().ok())
+                .unwrap_or(0);
+            let outcome = if total >= 10 { "Success" } else { "Failure" };
+            extra.push(format!("{skill} check: {detail} -> {outcome} (DC 10)"));
+            let why = reason.clone().unwrap_or_else(|| skill.clone());
+            format!("You attempt {why}. {detail} — {outcome}.")
+        }
+        GameIntent::RuleCheck { question } => {
+            format!("Rule query: {question}")
+        }
+        GameIntent::FateQuestion { question } => {
+            let f = oracle.ask_fate(Odds::FiftyFifty);
+            extra.push(format!("Fate Question '{question}': {}", f.interpretation()));
+            format!("The oracle is asked: {question} — {}", f.interpretation())
+        }
+    };
+    (narrative, extra)
 }
 
 /// Deterministic narrative produced when a stub backend is active.
@@ -278,6 +345,61 @@ mod tests {
         // seed 1 -> deterministic; the response must always be structurally valid.
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(!out.narrative.is_empty());
+    }
+
+    /// A backend that returns a fixed string, used to exercise the intent path
+    /// without a live model.
+    struct StaticLlmBackend(&'static str);
+
+    #[async_trait]
+    impl LlmBackend for StaticLlmBackend {
+        async fn complete(
+            &self,
+            _s: &str,
+            _p: &str,
+            _m: Option<u32>,
+        ) -> Result<String, LlmError> {
+            Ok(self.0.to_string())
+        }
+
+        fn is_stub(&self) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn pipeline_parses_dice_roll_intent_and_resolves() {
+        let pipeline = DmPipeline::new(StaticLlmBackend(
+            r#"{"type":"dice_roll","payload":{"skill":"Stealth","modifier":3}}"#,
+        ));
+        let request = DmRequest {
+            scene_summary: "A torchlit hall.".to_string(),
+            player_action: "I sneak past the guard.".to_string(),
+            chaos_factor: 5,
+        };
+        let out =
+            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        assert_eq!(out.source, "alison");
+        assert!(out.mechanical_events.iter().any(|e| e.contains("Stealth check")));
+        assert!(out.narrative.contains("attempt"));
+        assert_eq!(out.intent.label(), "dice_roll");
+    }
+
+    #[test]
+    fn pipeline_parses_narration_intent() {
+        let pipeline = DmPipeline::new(StaticLlmBackend(
+            r#"{"type":"narration","payload":{"text":"The guard nods, unseeing."}}"#,
+        ));
+        let request = DmRequest {
+            scene_summary: String::new(),
+            player_action: "I wait.".to_string(),
+            chaos_factor: 5,
+        };
+        let out =
+            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        assert_eq!(out.source, "alison");
+        assert_eq!(out.narrative, "The guard nods, unseeing.");
+        assert_eq!(out.intent.label(), "narration");
     }
 
     // Minimal executor for the async-trait futures in unit tests (no tokio dep).

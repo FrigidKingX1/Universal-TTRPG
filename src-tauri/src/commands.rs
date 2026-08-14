@@ -3,6 +3,7 @@ use auto_dm_core::dice::DiceEngine;
 use auto_dm_core::engine::{
     execute_attack, roll_initiative, Combatant, EngineOutcome, PrerequisiteCheck,
 };
+use auto_dm_core::alison::AlisonLlmBackend;
 use auto_dm_core::llm::{DmRequest, DmResponse};
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
 use auto_dm_core::oracle::{EventMeaning, MythicOracle, Odds};
@@ -518,4 +519,35 @@ pub async fn seed_defaults(state: State<'_, AppState>) -> CmdResult<()> {
 #[tauri::command]
 pub fn ping() -> String {
     "pong".to_string()
+}
+
+// ---------- A.L.I.S.O.N. integration (Phase 3) --------------------------
+
+/// Read A.L.I.S.O.N.'s current affective state (gamma + 6 drives). Returns
+/// `reachable: false` (with null gamma) when the control socket is down, so the
+/// UI can degrade gracefully to the stub experience.
+#[tauri::command]
+pub fn alison_affect() -> Value {
+    let endpoint = AlisonLlmBackend::default_endpoint();
+    match auto_dm_core::alison::query_affect(endpoint) {
+        Ok(r) => serde_json::json!({
+            "reachable": true,
+            "gamma": r.gamma,
+            "drives": r.drives,
+        }),
+        Err(_) => serde_json::json!({
+            "reachable": false,
+            "gamma": null,
+            "drives": [],
+        }),
+    }
+}
+
+/// Push a campaign event into A.L.I.S.O.N.'s memory (Phase 3 memory sync).
+#[tauri::command]
+pub fn alison_ingest(speaker: String, content: String, scene_id: Option<String>) -> CmdResult<u32> {
+    let endpoint = AlisonLlmBackend::default_endpoint();
+    let count = auto_dm_core::alison::push_ingest(endpoint, &speaker, &content, scene_id.as_deref())
+        .map_err(err)?;
+    Ok(count)
 }

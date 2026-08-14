@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 
@@ -111,6 +111,7 @@ export function OraclePanel() {
 export function DmPanel() {
   const lastDm = useStore((s) => s.lastDm);
   const resolveDmAction = useStore((s) => s.resolveDmAction);
+  const alisonLive = useStore((s) => s.alison.reachable);
   const [action, setAction] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -129,7 +130,12 @@ export function DmPanel() {
 
   return (
     <section className="panel">
-      <h2>Auto-DM <span className="muted">(stub backend)</span></h2>
+      <h2>
+        Auto-DM{" "}
+        <span className="muted">
+          ({alisonLive ? "A.L.I.S.O.N. live" : "stub backend"})
+        </span>
+      </h2>
       <form
         className="row"
         onSubmit={(e) => {
@@ -208,6 +214,39 @@ export function SessionLog() {
           Log
         </button>
       </form>
+    </section>
+  );
+}
+
+export function AlisonStatus() {
+  const alison = useStore((s) => s.alison);
+
+  useEffect(() => {
+    const poll = () => void useStore.getState().pollAlisonAffect();
+    poll();
+    const timer = window.setInterval(poll, 2000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  if (!alison.reachable) {
+    return (
+      <section className="panel">
+        <h2>A.L.I.S.O.N.</h2>
+        <p className="muted">offline — stub DM active (start A.L.I.S.O.N. to go live)</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel">
+      <h2>A.L.I.S.O.N.</h2>
+      <p>
+        connected — precision γ={alison.gamma != null ? alison.gamma.toFixed(2) : "—"} · mood:{" "}
+        <strong>{alison.mood}</strong>
+      </p>
+      <p className="muted">
+        drives: [{alison.drives.map((d) => d.toFixed(2)).join(", ")}]
+      </p>
     </section>
   );
 }

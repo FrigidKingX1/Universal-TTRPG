@@ -35,6 +35,11 @@ export interface AutoDmState {
   initiativeOrder: InitiativeEntry[];
   combatantStates: Record<string, CombatantState>;
 
+  // A.L.I.S.O.N. affective read-out (Phase 3).
+  alison: { reachable: boolean; gamma: number | null; drives: number[]; mood: string };
+  pollAlisonAffect: () => Promise<void>;
+  ingestToAlison: (speaker: string, content: string, sceneId?: string) => Promise<void>;
+
   bootstrap: () => Promise<void>;
   setError: (msg: string | null) => void;
 
@@ -99,6 +104,25 @@ export function newCharacter(name: string): CharacterProfile {
 export const entityName = (e: CharacterProfile | EncounterStatBlock): string =>
   "identity" in e ? e.identity.name : e.name;
 
+// Heuristic mapping of A.L.I.S.O.N.'s 6 drive values to a human-readable mood.
+// The exact drive semantics live in the model; this is just a UX flourish.
+const MOOD_LABELS = ["curious", "cautious", "tense", "focused", "hopeful", "wary"];
+function deriveMood(drives: number[]): string {
+  if (!drives.length) return "neutral";
+  let max = -Infinity;
+  let idx = 0;
+  let sum = 0;
+  drives.forEach((d, i) => {
+    sum += d;
+    if (d > max) {
+      max = d;
+      idx = i;
+    }
+  });
+  if (sum / drives.length < 0.2) return "dormant";
+  return MOOD_LABELS[idx % MOOD_LABELS.length];
+}
+
 export function newStatBlock(name: string): EncounterStatBlock {
   return {
     id: crypto.randomUUID(),
@@ -129,6 +153,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
   lastDm: null,
   initiativeOrder: [],
   combatantStates: {},
+  alison: { reachable: false, gamma: null, drives: [], mood: "neutral" },
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -248,8 +273,38 @@ export const useStore = create<AutoDmState>((set, get) => ({
     set({ lastDm: response });
     if (scene && response.narrative) {
       await backend.appendLog(scene.id, "Auto-DM", response.narrative);
+      // Phase 3 memory sync: feed the resolved narrative into A.L.I.S.O.N.
+      await get().ingestToAlison("Auto-DM", response.narrative, scene.id);
     }
+    // Also sync the player's action so the model remembers intent.
+    await get().ingestToAlison("Player", playerAction, scene?.id);
     await get().refreshLogs();
+  },
+
+  pollAlisonAffect: async () => {
+    try {
+      const r = await backend.alisonAffect();
+      set({
+        alison: {
+          reachable: r.reachable,
+          gamma: r.gamma ?? null,
+          drives: r.drives ?? [],
+          mood: deriveMood(r.drives ?? []),
+        },
+      });
+    } catch {
+      set((s) => ({
+        alison: { ...s.alison, reachable: false, gamma: null, drives: [] },
+      }));
+    }
+  },
+
+  ingestToAlison: async (speaker, content, sceneId) => {
+    try {
+      await backend.alisonIngest(speaker, content, sceneId);
+    } catch {
+      // Memory sync is best-effort; never block the session on it.
+    }
   },
 
   runAttack: async (attacker, target, actionId, prereq) => {
