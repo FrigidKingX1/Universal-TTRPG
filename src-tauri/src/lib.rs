@@ -50,6 +50,7 @@ pub fn run() {
             commands::combat_attack,
             commands::initiative,
             commands::dm_resolve,
+            commands::seed_defaults,
             commands::ping,
         ])
         .run(tauri::generate_context!())
