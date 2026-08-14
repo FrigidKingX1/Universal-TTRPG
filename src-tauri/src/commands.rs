@@ -8,6 +8,8 @@ use auto_dm_core::engine::{
 
 };
 
+use auto_dm_core::llm::{DmRequest, DmResponse};
+
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
 
 use auto_dm_core::oracle::{EventMeaning, MythicOracle, Odds};
@@ -659,6 +661,32 @@ pub async fn initiative(
 
 
 // ---------- Misc -------------------------------------------------------
+
+
+
+/// Run the Auto-DM loop for a player action (deterministic stub for the MVP).
+
+#[tauri::command]
+
+pub async fn dm_resolve(
+
+    state: State<'_, AppState>,
+
+    app: AppHandle,
+
+    request: DmRequest,
+
+) -> CmdResult<DmResponse> {
+
+    let response = state.dm.resolve_action(&request).await.map_err(err)?;
+
+    emit(&app, "dm:response", &response);
+
+    Ok(response)
+
+}
+
+
 
 
 

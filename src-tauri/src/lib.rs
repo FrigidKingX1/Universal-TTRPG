@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod db;
 
+use auto_dm_core::llm::{DmPipeline, LlmBackend, StubLlmBackend};
 use db::{open_pool, run_migrations, AppState, SqliteRepository};
 use tauri::Manager;
 
@@ -21,6 +22,7 @@ pub fn run() {
 
             app.manage(AppState {
                 repo: SqliteRepository::new(pool),
+                dm: DmPipeline::new(Box::new(StubLlmBackend) as Box<dyn LlmBackend>),
             });
             Ok(())
         })
@@ -47,6 +49,7 @@ pub fn run() {
             commands::random_event,
             commands::combat_attack,
             commands::initiative,
+            commands::dm_resolve,
             commands::ping,
         ])
         .run(tauri::generate_context!())
