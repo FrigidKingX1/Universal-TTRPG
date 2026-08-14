@@ -1,0 +1,23 @@
+:root {
+  color-scheme: dark;
+  --bg: #14161a;
+  --text: #e6e8eb;
+  --muted: #8a93a1;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 3rem;
+}
+
+.muted {
+  color: var(--muted);
+}
