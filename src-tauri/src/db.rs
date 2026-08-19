@@ -74,6 +74,8 @@ pub struct AppState {
     pub dm: DmPipeline<Box<dyn LlmBackend>>,
     /// In-memory ring buffer of recent campaign events for LLM context.
     pub memory: Mutex<CampaignMemory>,
+    /// Handle to the Ollama child process, if we started it.
+    pub ollama_child: Mutex<Option<std::process::Child>>,
 }
 
 /// Data access contract. Implemented over SQLite for the MVP; a SQLCipher
@@ -403,6 +405,13 @@ impl Repository for SqliteRepository {
     }
 
     async fn set_active_scene(&self, id: &str) -> Result<(), DbError> {
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM campaign_scenes WHERE id = ?)")
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await?;
+        if !exists {
+            return Err(DbError::NotFound(format!("scene `{id}`")));
+        }
         let mut tx = self.pool.begin().await?;
         sqlx::query("UPDATE campaign_scenes SET is_active = 0")
             .execute(&mut *tx)

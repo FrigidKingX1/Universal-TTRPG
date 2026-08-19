@@ -42,7 +42,8 @@ pub struct AttributeState {
 
 impl AttributeState {
     pub fn modifier(&self) -> i32 {
-        self.derived_modifier.unwrap_or((self.current_value - 10) / 2)
+        self.derived_modifier
+            .unwrap_or_else(|| (self.current_value - 10).div_euclid(2))
     }
 }
 

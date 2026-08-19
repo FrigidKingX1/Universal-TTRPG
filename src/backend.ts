@@ -3,6 +3,7 @@ import type {
   ActionDefinition,
   CharacterProfile,
   CombatantState,
+  DmRequest,
   DmResponse,
   EncounterStatBlock,
   EngineOutcome,
@@ -63,11 +64,8 @@ export const backend = {
     invoke<RollResponse>("roll_dice", { expression, seed }),
 
   // DM loop
-  dmResolve: (request: {
-    scene_summary: string;
-    player_action: string;
-    chaos_factor: number;
-  }) => invoke<DmResponse>("dm_resolve", { request }),
+  dmResolve: (request: DmRequest) =>
+    invoke<DmResponse>("dm_resolve", { request }),
 
   // Oracle
   fateCheck: (odds: OddsName, chaosFactor: number, seed?: number) =>

@@ -16,7 +16,12 @@ pub enum GameIntent {
     /// A line spoken by a non-player character.
     NpcSpeech { npc_id: Option<String>, line: String },
     /// Request to roll a skill/attribute check (resolved by the engine).
-    DiceRoll { skill: String, modifier: Option<i32>, reason: Option<String> },
+    DiceRoll {
+        skill: String,
+        modifier: Option<i32>,
+        dc: Option<i32>,
+        reason: Option<String>,
+    },
     /// A rules question the engine should answer from its data.
     RuleCheck { question: String },
     /// A Mythic Fate-question the oracle should resolve.
@@ -95,6 +100,7 @@ impl RawIntent {
             "dice_roll" => GameIntent::DiceRoll {
                 skill: get_str(p, "skill"),
                 modifier: get_i32_opt(p, "modifier"),
+                dc: get_i32_opt(p, "dc"),
                 reason: get_opt_str(p, "reason"),
             },
             "rule_check" => GameIntent::RuleCheck {
@@ -106,19 +112,49 @@ impl RawIntent {
             "ooc" => GameIntent::Ooc {
                 message: get_str(p, "message"),
             },
-            _ => GameIntent::Narration {
-                text: self.kind.clone(),
+            other => GameIntent::Narration {
+                text: format!("[unknown intent: {other}]\n{}", p),
             },
         }
     }
 }
 
 /// If `s` is wrapped in a ```json (or bare ```) fence, return the inner body.
+/// Also handles fences with leading/trailing whitespace.
 fn stripped_json(s: &str) -> Option<&str> {
     let body = s
         .strip_prefix("```json")
         .or_else(|| s.strip_prefix("```"))?;
     Some(body.trim_end_matches("```").trim())
+}
+
+#[cfg(test)]
+mod stripped_json_tests {
+    use super::*;
+
+    #[test]
+    fn strips_json_fence() {
+        let s = "```json\n{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}\n```";
+        assert_eq!(stripped_json(s), Some("{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}"));
+    }
+
+    #[test]
+    fn strips_bare_fence() {
+        let s = "```\n{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}\n```";
+        assert_eq!(stripped_json(s), Some("{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}"));
+    }
+
+    #[test]
+    fn returns_none_for_plain_json() {
+        let s = "{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}";
+        assert_eq!(stripped_json(s), None);
+    }
+
+    #[test]
+    fn handles_empty_fence() {
+        let s = "```json\n```";
+        assert_eq!(stripped_json(s), Some(""));
+    }
 }
 
 fn get_str(v: &Value, key: &str) -> String {
@@ -133,7 +169,7 @@ fn get_opt_str(v: &Value, key: &str) -> Option<String> {
 }
 
 fn get_i32_opt(v: &Value, key: &str) -> Option<i32> {
-    v.get(key).and_then(|x| x.as_i64()).map(|n| n as i32)
+    v.get(key).and_then(|x| x.as_i64()).and_then(|n| i32::try_from(n).ok())
 }
 
 /// GBNF grammar (llama.cpp / llama-cpp grammar format) that constrains the
@@ -164,7 +200,7 @@ Guidelines for the payload:
 - narration: {\"text\": \"...prose the DM speaks to the table...\"}
 - scene_delta: {\"delta\": \"...a factual change to the scene...\"}
 - npc_speech: {\"npc_id\": \"name-or-id\", \"line\": \"...what they say...\"}
-- dice_roll: {\"skill\": \"Acrobatics\", \"modifier\": 2, \"reason\": \"...why...\"}
+- dice_roll: {\"skill\": \"Acrobatics\", \"modifier\": 2, \"dc\": 15, \"reason\": \"...why...\"}
 - rule_check: {\"question\": \"Does the rule X apply here?\"}
 - fate_question: {\"question\": \"Is the stranger an ally?\"}
 - ooc: {\"message\": \"...out-of-character note to the human...\"}
@@ -228,13 +264,14 @@ mod tests {
     fn parses_dice_roll_with_modifier() {
         let g = GameIntent::from_llm_text(&sample(
             "dice_roll",
-            "{\"skill\":\"Stealth\",\"modifier\":3,\"reason\":\"sneaking\"}",
+            "{\"skill\":\"Stealth\",\"modifier\":3,\"dc\":15,\"reason\":\"sneaking\"}",
         ));
         assert_eq!(
             g,
             GameIntent::DiceRoll {
                 skill: "Stealth".to_string(),
                 modifier: Some(3),
+                dc: Some(15),
                 reason: Some("sneaking".to_string())
             }
         );

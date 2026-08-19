@@ -79,4 +79,11 @@ mod tests {
         assert!(mem.to_context(10).is_empty());
         assert!(mem.is_empty());
     }
+
+    #[test]
+    fn to_context_zero_returns_empty() {
+        let mut mem = CampaignMemory::new();
+        mem.push("Player", "I attack the goblin.");
+        assert!(mem.to_context(0).is_empty());
+    }
 }

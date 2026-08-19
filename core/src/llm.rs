@@ -186,7 +186,7 @@ impl<B: LlmBackend> DmPipeline<B> {
                 .await?;
             let intent = GameIntent::from_llm_text(&raw);
             let mut dice = match seed {
-                Some(s) => DiceEngine::with_seed(s),
+                Some(s) => DiceEngine::with_seed(s.wrapping_add(1)),
                 None => DiceEngine::new(),
             };
             let (n, extra) = execute_intent(&intent, &mut dice, &mut oracle);
@@ -230,20 +230,21 @@ fn execute_intent(
         GameIntent::DiceRoll {
             skill,
             modifier,
+            dc,
             reason,
         } => {
             let mod_v = modifier.unwrap_or(0);
+            let target_dc = dc.unwrap_or(10);
             let detail = dice
                 .evaluate(&format!("1d20 + {mod_v}"))
                 .map(|r| r.detail)
                 .unwrap_or_else(|_| format!("1d20 + {mod_v}"));
             let total: i64 = detail
-                .rsplit("= ")
-                .next()
-                .and_then(|s| s.trim().parse::<i64>().ok())
+                .rsplit_once("= ")
+                .and_then(|(_, s)| s.trim().parse::<i64>().ok())
                 .unwrap_or(0);
-            let outcome = if total >= 10 { "Success" } else { "Failure" };
-            extra.push(format!("{skill} check: {detail} -> {outcome} (DC 10)"));
+            let outcome = if total >= target_dc as i64 { "Success" } else { "Failure" };
+            extra.push(format!("{skill} check: {detail} -> {outcome} (DC {target_dc})"));
             let why = reason.clone().unwrap_or_else(|| skill.clone());
             format!("You attempt {why}. {detail} — {outcome}.")
         }
@@ -381,7 +382,7 @@ mod tests {
     #[test]
     fn pipeline_parses_dice_roll_intent_and_resolves() {
         let pipeline = DmPipeline::new(StaticLlmBackend(
-            r#"{"type":"dice_roll","payload":{"skill":"Stealth","modifier":3}}"#,
+            r#"{"type":"dice_roll","payload":{"skill":"Stealth","modifier":3,"dc":15}}"#,
         ));
         let request = DmRequest {
             scene_summary: "A torchlit hall.".to_string(),
@@ -413,6 +414,39 @@ mod tests {
         assert_eq!(out.source, "ollama");
         assert_eq!(out.narrative, "The guard nods, unseeing.");
         assert_eq!(out.intent.label(), "narration");
+    }
+
+    #[test]
+    fn pipeline_dice_roll_uses_llm_specified_dc() {
+        let pipeline = DmPipeline::new(StaticLlmBackend(
+            r#"{"type":"dice_roll","payload":{"skill":"Athletics","modifier":5,"dc":20,"reason":"cliff"}}"#,
+        ));
+        let request = DmRequest {
+            scene_summary: "A sheer cliff face.".to_string(),
+            player_action: "I climb the cliff.".to_string(),
+            chaos_factor: 5,
+            memory_context: None,
+        };
+        let out =
+            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        assert!(out.mechanical_events.iter().any(|e| e.contains("DC 20")));
+        assert!(out.mechanical_events.iter().any(|e| e.contains("Athletics check")));
+    }
+
+    #[test]
+    fn pipeline_dice_roll_defaults_dc_to_10_when_missing() {
+        let pipeline = DmPipeline::new(StaticLlmBackend(
+            r#"{"type":"dice_roll","payload":{"skill":"Perception"}}"#,
+        ));
+        let request = DmRequest {
+            scene_summary: String::new(),
+            player_action: "I look around.".to_string(),
+            chaos_factor: 5,
+            memory_context: None,
+        };
+        let out =
+            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        assert!(out.mechanical_events.iter().any(|e| e.contains("DC 10")));
     }
 
     // Minimal executor for the async-trait futures in unit tests (no tokio dep).

@@ -27,6 +27,8 @@ struct GenerateRequest {
 struct GenerateOptions {
     temperature: f64,
     num_ctx: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    num_predict: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -77,6 +79,7 @@ impl LlmBackend for OllamaLlmBackend {
             options: GenerateOptions {
                 temperature: 0.7,
                 num_ctx: 4096,
+                num_predict: _max_tokens,
             },
         };
 

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 /// Derive the standard d20-style ability modifier from a raw score.
 pub fn attribute_modifier(raw: i32) -> i32 {
-    (raw - 10) / 2
+    (raw - 10).div_euclid(2)
 }
 
 /// Unified combat participant. Converted from either a `CharacterProfile`
@@ -171,6 +171,7 @@ impl From<DiceError> for EngineError {
 
 /// Apply damage to a combatant, returning the resulting status.
 pub fn apply_damage(target: &mut Combatant, amount: i32) -> String {
+    let amount = amount.max(0);
     target.hit_points = target.hit_points.saturating_sub(amount);
     if target.hit_points <= 0 {
         target.status = Some("DEFEATED".to_string());
@@ -670,5 +671,24 @@ mod tests {
         let healed = apply_healing(&mut target, 20);
         assert_eq!(target.hit_points, 7);
         assert_eq!(healed, 5);
+    }
+
+    #[test]
+    fn negative_damage_clamped_to_zero() {
+        let mut target = Combatant::from(&goblin());
+        let status = apply_damage(&mut target, -5);
+        assert_eq!(status, "ALIVE");
+        assert_eq!(target.hit_points, 7);
+    }
+
+    #[test]
+    fn attribute_modifier_div_euclid() {
+        assert_eq!(attribute_modifier(10), 0);
+        assert_eq!(attribute_modifier(11), 0);
+        assert_eq!(attribute_modifier(12), 1);
+        assert_eq!(attribute_modifier(9), -1);
+        assert_eq!(attribute_modifier(8), -1);
+        assert_eq!(attribute_modifier(1), -5);
+        assert_eq!(attribute_modifier(30), 10);
     }
 }

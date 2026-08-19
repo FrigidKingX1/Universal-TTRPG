@@ -56,6 +56,9 @@ pub struct RollResult {
     pub detail: String,
 }
 
+/// Maximum number of dice allowed in a single expression to prevent memory exhaustion.
+const MAX_DICE_COUNT: i64 = 1000;
+
 /// Deterministic dice engine. Seeded RNG makes rolls reproducible in tests.
 #[derive(Debug)]
 pub struct DiceEngine {
@@ -188,13 +191,19 @@ impl DiceEngine {
                 });
                 detail.push(' ');
                 let right_v = self.eval_node(tokens, detail, right, resolve)?;
-                Ok(match tokens[*op_pos] {
-                    Tok::Plus => left_v + right_v,
-                    Tok::Minus => left_v - right_v,
-                    Tok::Star => left_v * right_v,
-                    Tok::Slash => left_v / right_v,
+                match tokens[*op_pos] {
+                    Tok::Plus => Ok(left_v + right_v),
+                    Tok::Minus => Ok(left_v - right_v),
+                    Tok::Star => Ok(left_v * right_v),
+                    Tok::Slash => {
+                        if right_v == 0 {
+                            Err(DiceError::Parse("division by zero".to_string()))
+                        } else {
+                            Ok(left_v / right_v)
+                        }
+                    }
                     _ => unreachable!(),
-                })
+                }
             }
             Ast::Neg { inner } => {
                 detail.push('-');
@@ -213,6 +222,11 @@ impl DiceEngine {
         if count < 0 || sides <= 0 {
             return Err(DiceError::Parse(format!(
                 "invalid dice: {count}d{sides}"
+            )));
+        }
+        if count > MAX_DICE_COUNT {
+            return Err(DiceError::Parse(format!(
+                "too many dice: {count} (max {MAX_DICE_COUNT})"
             )));
         }
         let mut rolls: Vec<i64> = (0..count).map(|_| self.rng.gen_range(1..=sides)).collect();
@@ -590,5 +604,26 @@ mod tests {
         assert!(matches!(d.evaluate("1d20 +"), Err(DiceError::Parse(_))));
         assert!(matches!(d.evaluate("(1 + 2"), Err(DiceError::Parse(_))));
         assert!(matches!(d.evaluate("x"), Err(DiceError::Parse(_))));
+    }
+
+    #[test]
+    fn division_by_zero_errors() {
+        let mut d = DiceEngine::with_seed(1);
+        let err = d.evaluate("10 / 0").unwrap_err();
+        assert!(matches!(err, DiceError::Parse(ref msg) if msg.contains("division by zero")));
+    }
+
+    #[test]
+    fn dice_count_cap() {
+        let mut d = DiceEngine::with_seed(1);
+        let err = d.evaluate("2000d6").unwrap_err();
+        assert!(matches!(err, DiceError::Parse(ref msg) if msg.contains("too many dice")));
+    }
+
+    #[test]
+    fn zero_dice_is_valid() {
+        let mut d = DiceEngine::with_seed(1);
+        let r = d.evaluate("0d6 + 5").unwrap();
+        assert_eq!(r.total, 5);
     }
 }

@@ -1,6 +1,7 @@
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 
 /// Odds ranks for a Mythic-style Fate Check (1 = Impossible .. 10 = A Sure Thing).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -232,10 +233,12 @@ pub struct MeaningTable {
 
 impl MeaningTable {
     pub fn default_table() -> Self {
-        let to_strings = |words: &[&str]| -> Vec<String> {
-            words.iter().map(|w| w.to_string()).collect()
-        };
-        Self {
+        static TABLE: OnceLock<MeaningTable> = OnceLock::new();
+        TABLE.get_or_init(|| {
+            let to_strings = |words: &[&str]| -> Vec<String> {
+                words.iter().map(|w| w.to_string()).collect()
+            };
+            Self {
             action: to_strings(&[
                 "abandon", "approach", "attack", "betray", "block", "break", "capture", "carry",
                 "cast", "close", "collapse", "complete", "conceal", "confirm", "construct",
@@ -273,7 +276,9 @@ impl MeaningTable {
                 "a priest", "a prophecy", "a river", "a road", "a scroll", "a secret", "a ship",
                 "a spell", "a spirit", "a tomb", "a village", "a weapon",
             ]),
-        }
+            }
+        })
+        .clone()
     }
 
     /// Generate two paired meanings (Action+Subject and Descriptor+Focus),

@@ -8,20 +8,41 @@ use db::{open_pool, run_migrations, AppState, SqliteRepository};
 use std::sync::Mutex;
 use tauri::Manager;
 
+/// Try to start the `ollama serve` child process. Returns the Child handle
+/// if successfully spawned, or None if Ollama was already reachable.
+fn try_start_ollama() -> Option<std::process::Child> {
+    if OllamaLlmBackend::reachable() {
+        println!("Auto-DM: Ollama already running");
+        return None;
+    }
+    println!("Auto-DM: attempting to start `ollama serve`...");
+    match std::process::Command::new("ollama")
+        .arg("serve")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(child) => {
+            println!("Auto-DM: ollama serve started (pid {})", child.id());
+            Some(child)
+        }
+        Err(e) => {
+            println!("Auto-DM: failed to start ollama serve: {e}");
+            None
+        }
+    }
+}
+
 /// Select the DM narrative backend: connect to Ollama when reachable,
 /// otherwise fall back to the deterministic stub so the app is always usable.
 fn choose_dm_backend() -> Box<dyn LlmBackend> {
     if OllamaLlmBackend::reachable() {
-        match OllamaLlmBackend::new(None) {
-            backend => {
-                println!("Auto-DM: using Ollama backend @ localhost:11434");
-                return Box::new(backend);
-            }
-        }
+        println!("Auto-DM: using Ollama backend @ localhost:11434");
+        Box::new(OllamaLlmBackend::new(None))
     } else {
         println!("Auto-DM: Ollama not reachable; using stub backend");
+        Box::new(StubLlmBackend)
     }
-    Box::new(StubLlmBackend)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -39,12 +60,27 @@ pub fn run() {
                 Ok::<_, Box<dyn std::error::Error>>(pool)
             })?;
 
+            let ollama_child = try_start_ollama();
+
             app.manage(AppState {
                 repo: SqliteRepository::new(pool),
                 dm: DmPipeline::new(choose_dm_backend()),
                 memory: Mutex::new(CampaignMemory::new()),
+                ollama_child: Mutex::new(ollama_child),
             });
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                if let Some(state) = window.try_state::<AppState>() {
+                    if let Ok(mut child) = state.ollama_child.lock() {
+                        if let Some(ref mut c) = *child {
+                            println!("Auto-DM: killing ollama serve (pid {})", c.id());
+                            let _ = c.kill();
+                        }
+                    }
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::save_character,

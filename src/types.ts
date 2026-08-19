@@ -211,7 +211,17 @@ export interface DmRequest {
   scene_summary: string;
   player_action: string;
   chaos_factor: number;
+  memory_context?: string;
 }
+
+export type GameIntent =
+  | { Narration: { text: string } }
+  | { SceneDelta: { delta: string } }
+  | { NpcSpeech: { npc_id?: string; line: string } }
+  | { DiceRoll: { skill: string; modifier?: number; dc?: number; reason?: string } }
+  | { RuleCheck: { question: string } }
+  | { FateQuestion: { question: string } }
+  | { Ooc: { message: string } };
 
 export interface DmResponse {
   narrative: string;
@@ -221,6 +231,7 @@ export interface DmResponse {
   fate_target: number;
   chaos_factor: number;
   event_meaning?: EventMeaning;
+  intent: GameIntent;
   source: string;
 }
 
