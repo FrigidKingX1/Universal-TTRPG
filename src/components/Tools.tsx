@@ -111,7 +111,7 @@ export function OraclePanel() {
 export function DmPanel() {
   const lastDm = useStore((s) => s.lastDm);
   const resolveDmAction = useStore((s) => s.resolveDmAction);
-  const alisonLive = useStore((s) => s.alison.reachable);
+  const ollamaLive = useStore((s) => s.ollama.reachable);
   const [action, setAction] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -133,7 +133,7 @@ export function DmPanel() {
       <h2>
         Auto-DM{" "}
         <span className="muted">
-          ({alisonLive ? "A.L.I.S.O.N. live" : "stub backend"})
+          ({ollamaLive ? "Ollama live" : "stub backend"})
         </span>
       </h2>
       <form
@@ -218,34 +218,35 @@ export function SessionLog() {
   );
 }
 
-export function AlisonStatus() {
-  const alison = useStore((s) => s.alison);
+export function OllamaStatus() {
+  const ollama = useStore((s) => s.ollama);
 
   useEffect(() => {
-    const poll = () => void useStore.getState().pollAlisonAffect();
+    const poll = () => void useStore.getState().pollOllamaModels();
     poll();
-    const timer = window.setInterval(poll, 2000);
+    const timer = window.setInterval(poll, 5000);
     return () => window.clearInterval(timer);
   }, []);
 
-  if (!alison.reachable) {
+  if (!ollama.reachable) {
     return (
       <section className="panel">
-        <h2>A.L.I.S.O.N.</h2>
-        <p className="muted">offline — stub DM active (start A.L.I.S.O.N. to go live)</p>
+        <h2>Ollama</h2>
+        <p className="muted">offline — stub DM active (start Ollama to go live)</p>
       </section>
     );
   }
 
   return (
     <section className="panel">
-      <h2>A.L.I.S.O.N.</h2>
+      <h2>Ollama</h2>
       <p>
-        connected — precision γ={alison.gamma != null ? alison.gamma.toFixed(2) : "—"} · mood:{" "}
-        <strong>{alison.mood}</strong>
+        connected — {ollama.models.length} model{ollama.models.length !== 1 ? "s" : ""} installed
       </p>
       <p className="muted">
-        drives: [{alison.drives.map((d) => d.toFixed(2)).join(", ")}]
+        {ollama.models.length > 0
+          ? ollama.models.join(", ")
+          : "no models found — pull one with `ollama pull llama3.2`"}
       </p>
     </section>
   );

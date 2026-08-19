@@ -4,7 +4,7 @@ import { CharacterList, ActionList } from "./components/Characters";
 import { Bestiary } from "./components/Bestiary";
 import { Scenes } from "./components/Scenes";
 import { Combat } from "./components/Combat";
-import { DiceRoller, OraclePanel, DmPanel, SessionLog, AlisonStatus } from "./components/Tools";
+import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus } from "./components/Tools";
 import "./App.css";
 
 type Tab = "scenes" | "characters" | "bestiary" | "combat" | "tools";
@@ -77,7 +77,7 @@ function App() {
       {!loading && tab === "combat" && <Combat />}
       {!loading && tab === "tools" && (
         <>
-          <AlisonStatus />
+          <OllamaStatus />
           <DmPanel />
           <DiceRoller />
           <OraclePanel />

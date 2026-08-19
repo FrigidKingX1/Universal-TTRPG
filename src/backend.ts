@@ -99,13 +99,10 @@ export const backend = {
   // Seed
   seedDefaults: () => invoke<void>("seed_defaults"),
 
-  // A.L.I.S.O.N. (Phase 3)
-  alisonAffect: () =>
-    invoke<{ reachable: boolean; gamma: number | null; drives: number[] }>(
-      "alison_affect",
-    ),
-  alisonIngest: (speaker: string, content: string, sceneId?: string) =>
-    invoke<number>("alison_ingest", { speaker, content, sceneId }),
+  // Ollama
+  ollamaModels: () => invoke<string[]>("ollama_models"),
+  ingestMemory: (speaker: string, content: string) =>
+    invoke<void>("ingest_memory", { speaker, content }),
 };
 
 export type CombatEvents = {

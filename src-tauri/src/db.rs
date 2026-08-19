@@ -1,4 +1,5 @@
 use auto_dm_core::llm::{DmPipeline, LlmBackend};
+use auto_dm_core::memory::CampaignMemory;
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -6,6 +7,7 @@ use serde_json::Value;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 use sqlx::Sqlite;
 use std::fmt;
+use std::sync::Mutex;
 use uuid::Uuid;
 
 /// Error type for the persistence layer.
@@ -70,6 +72,8 @@ pub struct AppState {
     pub repo: SqliteRepository,
     /// The DM loop. Backends are swappable; `StubLlmBackend` is used for MVP.
     pub dm: DmPipeline<Box<dyn LlmBackend>>,
+    /// In-memory ring buffer of recent campaign events for LLM context.
+    pub memory: Mutex<CampaignMemory>,
 }
 
 /// Data access contract. Implemented over SQLite for the MVP; a SQLCipher

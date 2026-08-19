@@ -103,6 +103,9 @@ pub struct DmRequest {
     pub scene_summary: String,
     pub player_action: String,
     pub chaos_factor: u32,
+    /// Recent campaign events injected as context for the LLM (Phase 3 memory).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_context: Option<String>,
 }
 
 /// Result of the DM resolving a player action.
@@ -176,7 +179,7 @@ impl<B: LlmBackend> DmPipeline<B> {
             let n = stub_narrative(request, &fate, event_meaning.as_ref());
             (n.clone(), GameIntent::Narration { text: n }, "stub".to_string())
         } else {
-            let prompt = build_prompt(request, &fate, event_meaning.as_ref(), &mechanical_events);
+            let prompt = build_prompt(request, &fate, event_meaning.as_ref(), &mechanical_events, request.memory_context.as_deref());
             let raw = self
                 .backend
                 .complete(SYSTEM_PROMPT, &prompt, Some(400))
@@ -188,7 +191,7 @@ impl<B: LlmBackend> DmPipeline<B> {
             };
             let (n, extra) = execute_intent(&intent, &mut dice, &mut oracle);
             mechanical_events.extend(extra);
-            (n, intent, "alison".to_string())
+            (n, intent, "ollama".to_string())
         };
 
         Ok(DmResponse {
@@ -284,6 +287,7 @@ fn build_prompt(
     fate: &super::oracle::FateResult,
     meaning: Option<&EventMeaning>,
     mechanical_events: &[String],
+    memory_context: Option<&str>,
 ) -> String {
     let scene = request.scene_summary.trim();
     let mut parts = vec![
@@ -291,6 +295,11 @@ fn build_prompt(
         format!("Player action: {}", request.player_action.trim()),
         format!("Fate result: {} (roll {}, target {})", fate.interpretation(), fate.roll, fate.target),
     ];
+    if let Some(mem) = memory_context {
+        if !mem.is_empty() {
+            parts.push(format!("Recent events:\n{mem}"));
+        }
+    }
     if let Some(m) = meaning {
         parts.push(format!(
             "Random event meaning: {} the {}, {}, {}.",
@@ -323,6 +332,7 @@ mod tests {
             scene_summary: "A moonlit courtyard before an iron gate.".to_string(),
             player_action: "I press the gate open.".to_string(),
             chaos_factor: 5,
+            memory_context: None,
         };
         let out =
             futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(42))).unwrap();
@@ -341,6 +351,7 @@ mod tests {
             scene_summary: String::new(),
             player_action: "I wait.".to_string(),
             chaos_factor: 5,
+            memory_context: None,
         };
         // seed 1 -> deterministic; the response must always be structurally valid.
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
@@ -376,10 +387,11 @@ mod tests {
             scene_summary: "A torchlit hall.".to_string(),
             player_action: "I sneak past the guard.".to_string(),
             chaos_factor: 5,
+            memory_context: None,
         };
         let out =
             futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
-        assert_eq!(out.source, "alison");
+        assert_eq!(out.source, "ollama");
         assert!(out.mechanical_events.iter().any(|e| e.contains("Stealth check")));
         assert!(out.narrative.contains("attempt"));
         assert_eq!(out.intent.label(), "dice_roll");
@@ -394,10 +406,11 @@ mod tests {
             scene_summary: String::new(),
             player_action: "I wait.".to_string(),
             chaos_factor: 5,
+            memory_context: None,
         };
         let out =
             futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
-        assert_eq!(out.source, "alison");
+        assert_eq!(out.source, "ollama");
         assert_eq!(out.narrative, "The guard nods, unseeing.");
         assert_eq!(out.intent.label(), "narration");
     }

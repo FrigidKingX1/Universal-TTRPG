@@ -3,7 +3,6 @@ use auto_dm_core::dice::DiceEngine;
 use auto_dm_core::engine::{
     execute_attack, roll_initiative, Combatant, EngineOutcome, PrerequisiteCheck,
 };
-use auto_dm_core::alison::AlisonLlmBackend;
 use auto_dm_core::llm::{DmRequest, DmResponse};
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
 use auto_dm_core::oracle::{EventMeaning, MythicOracle, Odds};
@@ -332,13 +331,20 @@ pub async fn initiative(
 
 // ---------- Misc -------------------------------------------------------
 
-/// Run the Auto-DM loop for a player action (deterministic stub for the MVP).
+/// Run the Auto-DM loop for a player action.
 #[tauri::command]
 pub async fn dm_resolve(
     state: State<'_, AppState>,
     app: AppHandle,
-    request: DmRequest,
+    mut request: DmRequest,
 ) -> CmdResult<DmResponse> {
+    // Inject recent campaign events as memory context for the LLM.
+    {
+        let mem = state.memory.lock().map_err(err)?;
+        if !mem.is_empty() {
+            request.memory_context = Some(mem.to_context(20));
+        }
+    }
     let response = state.dm.resolve_action(&request).await.map_err(err)?;
     emit(&app, "dm:response", &response);
     Ok(response)
@@ -521,33 +527,22 @@ pub fn ping() -> String {
     "pong".to_string()
 }
 
-// ---------- A.L.I.S.O.N. integration (Phase 3) --------------------------
+// ---------- Ollama integration ------------------------------------------
 
-/// Read A.L.I.S.O.N.'s current affective state (gamma + 6 drives). Returns
-/// `reachable: false` (with null gamma) when the control socket is down, so the
-/// UI can degrade gracefully to the stub experience.
+/// List installed Ollama model names.
 #[tauri::command]
-pub fn alison_affect() -> Value {
-    let endpoint = AlisonLlmBackend::default_endpoint();
-    match auto_dm_core::alison::query_affect(endpoint) {
-        Ok(r) => serde_json::json!({
-            "reachable": true,
-            "gamma": r.gamma,
-            "drives": r.drives,
-        }),
-        Err(_) => serde_json::json!({
-            "reachable": false,
-            "gamma": null,
-            "drives": [],
-        }),
-    }
+pub async fn ollama_models() -> CmdResult<Vec<String>> {
+    auto_dm_core::ollama::list_models().await.map_err(err)
 }
 
-/// Push a campaign event into A.L.I.S.O.N.'s memory (Phase 3 memory sync).
+/// Push a campaign event into the local memory log (best-effort).
 #[tauri::command]
-pub fn alison_ingest(speaker: String, content: String, scene_id: Option<String>) -> CmdResult<u32> {
-    let endpoint = AlisonLlmBackend::default_endpoint();
-    let count = auto_dm_core::alison::push_ingest(endpoint, &speaker, &content, scene_id.as_deref())
-        .map_err(err)?;
-    Ok(count)
+pub fn ingest_memory(
+    state: State<'_, AppState>,
+    speaker: String,
+    content: String,
+) -> CmdResult<()> {
+    let mut mem = state.memory.lock().map_err(err)?;
+    mem.push(&speaker, &content);
+    Ok(())
 }

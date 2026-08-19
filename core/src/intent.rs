@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// A single structured instruction emitted by the narrative model (A.L.I.S.O.N.)
-/// when it resolves a player action. The DM pipeline parses this and applies the
-/// effect to the world before delivering the spoken prose to the player.
+/// A single structured instruction emitted by the narrative model when it resolves
+/// a player action. The DM pipeline parses this and applies the effect to the
+/// world before delivering the spoken prose to the player.
 ///
-/// The model is constrained with [`GAME_INTENT_GBNF`] to emit exactly:
-/// `{"type": <one of the variants>, "payload": { ... }}`.
+/// The model is constrained with a JSON schema (via Ollama's `format` parameter)
+/// to emit exactly: `{"type": <one of the variants>, "payload": { ... }}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameIntent {
     /// Pure prose the DM speaks to the table.
@@ -153,7 +153,6 @@ space ::= [ ]*
 "#;
 
 /// System-prompt instructions telling the model how to shape its GameIntent.
-/// The live backend appends this to the Oracle-flavored ALISON persona.
 pub const GAME_INTENT_INSTRUCTIONS: &str = "\
 You are the narrative intelligence of Auto-DM, a tabletop role-playing game engine. \
 When you resolve a player action you MUST reply with a single JSON object and nothing else:
@@ -171,6 +170,22 @@ Guidelines for the payload:
 - ooc: {\"message\": \"...out-of-character note to the human...\"}
 
 Never invent mechanical outcomes. Ground every payload in the scene and the player's action.";
+
+/// JSON Schema for Ollama's `format` parameter. Constrains the model to emit
+/// exactly one `{"type": ..., "payload": {...}}` object matching a GameIntent.
+pub fn game_intent_json_schema() -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "type": {
+                "type": "string",
+                "enum": ["narration","scene_delta","npc_speech","dice_roll","rule_check","fate_question","ooc"]
+            },
+            "payload": { "type": "object" }
+        },
+        "required": ["type", "payload"]
+    })
+}
 
 #[cfg(test)]
 mod tests {
