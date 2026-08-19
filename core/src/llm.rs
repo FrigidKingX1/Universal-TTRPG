@@ -6,6 +6,7 @@ use super::dice::DiceEngine;
 use super::intent::GameIntent;
 use super::oracle::{EventMeaning, MythicOracle, Odds};
 
+/// Error type for the LLM backend.
 #[derive(Debug)]
 pub enum LlmError {
     Backend(String),
@@ -52,7 +53,9 @@ impl LlmBackend for StubLlmBackend {
         prompt: &str,
         _max_tokens: Option<u32>,
     ) -> Result<String, LlmError> {
-        Ok(format!("[stub-llm]\n-- system --\n{system}\n-- prompt --\n{prompt}"))
+        Ok(format!(
+            "[stub-llm]\n-- system --\n{system}\n-- prompt --\n{prompt}"
+        ))
     }
 
     fn is_stub(&self) -> bool {
@@ -177,9 +180,19 @@ impl<B: LlmBackend> DmPipeline<B> {
         let stub = self.backend.is_stub();
         let (narrative, intent, source) = if stub {
             let n = stub_narrative(request, &fate, event_meaning.as_ref());
-            (n.clone(), GameIntent::Narration { text: n }, "stub".to_string())
+            (
+                n.clone(),
+                GameIntent::Narration { text: n },
+                "stub".to_string(),
+            )
         } else {
-            let prompt = build_prompt(request, &fate, event_meaning.as_ref(), &mechanical_events, request.memory_context.as_deref());
+            let prompt = build_prompt(
+                request,
+                &fate,
+                event_meaning.as_ref(),
+                &mechanical_events,
+                request.memory_context.as_deref(),
+            );
             let raw = self
                 .backend
                 .complete(SYSTEM_PROMPT, &prompt, Some(400))
@@ -243,8 +256,14 @@ fn execute_intent(
                 .rsplit_once("= ")
                 .and_then(|(_, s)| s.trim().parse::<i64>().ok())
                 .unwrap_or(0);
-            let outcome = if total >= target_dc as i64 { "Success" } else { "Failure" };
-            extra.push(format!("{skill} check: {detail} -> {outcome} (DC {target_dc})"));
+            let outcome = if total >= target_dc as i64 {
+                "Success"
+            } else {
+                "Failure"
+            };
+            extra.push(format!(
+                "{skill} check: {detail} -> {outcome} (DC {target_dc})"
+            ));
             let why = reason.clone().unwrap_or_else(|| skill.clone());
             format!("You attempt {why}. {detail} — {outcome}.")
         }
@@ -253,7 +272,10 @@ fn execute_intent(
         }
         GameIntent::FateQuestion { question } => {
             let f = oracle.ask_fate(Odds::FiftyFifty);
-            extra.push(format!("Fate Question '{question}': {}", f.interpretation()));
+            extra.push(format!(
+                "Fate Question '{question}': {}",
+                f.interpretation()
+            ));
             format!("The oracle is asked: {question} — {}", f.interpretation())
         }
     };
@@ -261,8 +283,16 @@ fn execute_intent(
 }
 
 /// Deterministic narrative produced when a stub backend is active.
-fn stub_narrative(request: &DmRequest, fate: &super::oracle::FateResult, meaning: Option<&EventMeaning>) -> String {
-    let scene = request.scene_summary.trim().trim_end_matches('.').to_string();
+fn stub_narrative(
+    request: &DmRequest,
+    fate: &super::oracle::FateResult,
+    meaning: Option<&EventMeaning>,
+) -> String {
+    let scene = request
+        .scene_summary
+        .trim()
+        .trim_end_matches('.')
+        .to_string();
     let mut text = if scene.is_empty() {
         format!(
             "Your action resolves: the Fate Check returns {}.",
@@ -292,9 +322,17 @@ fn build_prompt(
 ) -> String {
     let scene = request.scene_summary.trim();
     let mut parts = vec![
-        format!("Scene: {}", if scene.is_empty() { "(empty)" } else { scene }),
+        format!(
+            "Scene: {}",
+            if scene.is_empty() { "(empty)" } else { scene }
+        ),
         format!("Player action: {}", request.player_action.trim()),
-        format!("Fate result: {} (roll {}, target {})", fate.interpretation(), fate.roll, fate.target),
+        format!(
+            "Fate result: {} (roll {}, target {})",
+            fate.interpretation(),
+            fate.roll,
+            fate.target
+        ),
     ];
     if let Some(mem) = memory_context {
         if !mem.is_empty() {
@@ -341,7 +379,10 @@ mod tests {
         assert!(!out.narrative.is_empty());
         assert!(out.fate_roll >= 1 && out.fate_roll <= 100);
         assert!(out.fate_target > 0);
-        assert!(out.mechanical_events.iter().any(|e| e.contains("Fate Check")));
+        assert!(out
+            .mechanical_events
+            .iter()
+            .any(|e| e.contains("Fate Check")));
         assert_eq!(out.chaos_factor, 5);
     }
 
@@ -365,12 +406,7 @@ mod tests {
 
     #[async_trait]
     impl LlmBackend for StaticLlmBackend {
-        async fn complete(
-            &self,
-            _s: &str,
-            _p: &str,
-            _m: Option<u32>,
-        ) -> Result<String, LlmError> {
+        async fn complete(&self, _s: &str, _p: &str, _m: Option<u32>) -> Result<String, LlmError> {
             Ok(self.0.to_string())
         }
 
@@ -390,10 +426,12 @@ mod tests {
             chaos_factor: 5,
             memory_context: None,
         };
-        let out =
-            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert_eq!(out.source, "ollama");
-        assert!(out.mechanical_events.iter().any(|e| e.contains("Stealth check")));
+        assert!(out
+            .mechanical_events
+            .iter()
+            .any(|e| e.contains("Stealth check")));
         assert!(out.narrative.contains("attempt"));
         assert_eq!(out.intent.label(), "dice_roll");
     }
@@ -409,8 +447,7 @@ mod tests {
             chaos_factor: 5,
             memory_context: None,
         };
-        let out =
-            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert_eq!(out.source, "ollama");
         assert_eq!(out.narrative, "The guard nods, unseeing.");
         assert_eq!(out.intent.label(), "narration");
@@ -427,10 +464,12 @@ mod tests {
             chaos_factor: 5,
             memory_context: None,
         };
-        let out =
-            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(out.mechanical_events.iter().any(|e| e.contains("DC 20")));
-        assert!(out.mechanical_events.iter().any(|e| e.contains("Athletics check")));
+        assert!(out
+            .mechanical_events
+            .iter()
+            .any(|e| e.contains("Athletics check")));
     }
 
     #[test]
@@ -444,8 +483,7 @@ mod tests {
             chaos_factor: 5,
             memory_context: None,
         };
-        let out =
-            futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(out.mechanical_events.iter().any(|e| e.contains("DC 10")));
     }
 

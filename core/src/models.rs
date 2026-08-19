@@ -15,6 +15,7 @@ pub struct CharacterProfile {
     pub abilities: Vec<String>,
 }
 
+/// Character identity block (name, ancestry, class, background).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Identity {
     pub name: String,
@@ -32,6 +33,7 @@ fn default_level() -> i32 {
     1
 }
 
+/// A single ability score and its derived modifier.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AttributeState {
     pub base_value: i32,
@@ -40,13 +42,7 @@ pub struct AttributeState {
     pub derived_modifier: Option<i32>,
 }
 
-impl AttributeState {
-    pub fn modifier(&self) -> i32 {
-        self.derived_modifier
-            .unwrap_or_else(|| (self.current_value - 10).div_euclid(2))
-    }
-}
-
+/// A tracked resource pool (HP, spell slots, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResourcePool {
     pub current: i32,
@@ -61,6 +57,7 @@ fn default_reset() -> ResetCondition {
     ResetCondition::Manual
 }
 
+/// When a resource pool resets (short rest, long rest, etc.).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ResetCondition {
@@ -71,6 +68,7 @@ pub enum ResetCondition {
     Manual,
 }
 
+/// An item in a character's inventory.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct InventoryItem {
     pub id: String,
@@ -97,6 +95,7 @@ pub struct ActionDefinition {
     pub resolution: Resolution,
 }
 
+/// Action cost (action, bonus action, reaction, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ActionCost {
     #[serde(rename = "type")]
@@ -119,6 +118,7 @@ pub enum CostType {
     Free,
 }
 
+/// Targeting parameters for an action (range, shape, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Targeting {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -150,6 +150,7 @@ pub enum Shape {
     Single,
 }
 
+/// Action resolution mechanics (how the action is resolved).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Resolution {
     #[serde(rename = "type")]
@@ -173,6 +174,7 @@ pub enum ResolutionType {
     OpposedRoll,
 }
 
+/// Outcomes for success and failure on an action resolution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Outcomes {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -181,6 +183,7 @@ pub struct Outcomes {
     pub on_failure: Option<FailureOutcome>,
 }
 
+/// Outcome when an action succeeds.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SuccessOutcome {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -191,6 +194,7 @@ pub struct SuccessOutcome {
     pub applied_status: Option<String>,
 }
 
+/// Outcome when an action fails.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FailureOutcome {
     #[serde(default, skip_serializing_if = "Option::is_none")]

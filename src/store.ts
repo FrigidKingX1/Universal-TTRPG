@@ -253,13 +253,19 @@ export const useStore = create<AutoDmState>((set, get) => ({
     });
     set({ lastDm: response });
     if (scene && response.narrative) {
-      await backend.appendLog(scene.id, "Auto-DM", response.narrative);
-      // Memory sync: feed the resolved narrative into local memory log.
+      try {
+        await backend.appendLog(scene.id, "Auto-DM", response.narrative);
+      } catch {
+        // Best-effort log write; don't block the DM flow.
+      }
       await get().ingestToMemory("Auto-DM", response.narrative);
     }
-    // Also sync the player's action so the model can reference it.
     await get().ingestToMemory("Player", playerAction);
-    await get().refreshLogs();
+    try {
+      await get().refreshLogs();
+    } catch {
+      // Best-effort refresh; the response is already in state.
+    }
   },
 
   pollOllamaModels: async () => {

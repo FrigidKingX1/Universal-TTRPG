@@ -211,12 +211,11 @@ impl Repository for SqliteRepository {
     }
 
     async fn load_character(&self, id: &str) -> Result<CharacterProfile, DbError> {
-        let row = sqlx::query_as::<Sqlite, (String,)>(
-            "SELECT profile_json FROM characters WHERE id = ?",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            sqlx::query_as::<Sqlite, (String,)>("SELECT profile_json FROM characters WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
         match row {
             Some((json,)) => Ok(serde_json::from_str(&json)?),
             None => Err(DbError::NotFound(format!("character `{id}`"))),
@@ -309,12 +308,11 @@ impl Repository for SqliteRepository {
     }
 
     async fn load_stat_block(&self, id: &str) -> Result<Option<EncounterStatBlock>, DbError> {
-        let row = sqlx::query_as::<Sqlite, (String,)>(
-            "SELECT block_json FROM stat_blocks WHERE id = ?",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            sqlx::query_as::<Sqlite, (String,)>("SELECT block_json FROM stat_blocks WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
         match row {
             Some((json,)) => Ok(Some(serde_json::from_str(&json)?)),
             None => Ok(None),
@@ -341,9 +339,10 @@ impl Repository for SqliteRepository {
 
     async fn create_scene(&self, title: &str, chaos_factor: i32) -> Result<Scene, DbError> {
         let id = Uuid::new_v4().to_string();
-        let scene_number: i32 = sqlx::query_scalar("SELECT COALESCE(MAX(scene_number), 0) + 1 FROM campaign_scenes")
-            .fetch_one(&self.pool)
-            .await?;
+        let scene_number: i32 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(scene_number), 0) + 1 FROM campaign_scenes")
+                .fetch_one(&self.pool)
+                .await?;
         sqlx::query(
             "INSERT INTO campaign_scenes (id, scene_number, title, chaos_factor, summary_text, is_active)
              VALUES (?, ?, ?, ?, NULL, ?)",
@@ -394,21 +393,24 @@ impl Repository for SqliteRepository {
         )
         .fetch_optional(&self.pool)
         .await?;
-        Ok(row.map(|(id, scene_number, title, chaos_factor, summary_text)| Scene {
-            id,
-            scene_number,
-            title,
-            chaos_factor,
-            summary_text,
-            is_active: true,
-        }))
+        Ok(row.map(
+            |(id, scene_number, title, chaos_factor, summary_text)| Scene {
+                id,
+                scene_number,
+                title,
+                chaos_factor,
+                summary_text,
+                is_active: true,
+            },
+        ))
     }
 
     async fn set_active_scene(&self, id: &str) -> Result<(), DbError> {
-        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM campaign_scenes WHERE id = ?)")
-            .bind(id)
-            .fetch_one(&self.pool)
-            .await?;
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM campaign_scenes WHERE id = ?)")
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await?;
         if !exists {
             return Err(DbError::NotFound(format!("scene `{id}`")));
         }
@@ -474,22 +476,20 @@ impl Repository for SqliteRepository {
         .fetch_all(&self.pool)
         .await?;
         rows.into_iter()
-            .map(
-                |(id, speaker, content, payload_json, timestamp)| {
-                    let payload = match payload_json {
-                        Some(j) => Some(serde_json::from_str(&j).map_err(DbError::Json)?),
-                        None => None,
-                    };
-                    Ok(LogEntry {
-                        id,
-                        scene_id: Some(scene_id.to_string()),
-                        speaker,
-                        content,
-                        payload,
-                        timestamp,
-                    })
-                },
-            )
+            .map(|(id, speaker, content, payload_json, timestamp)| {
+                let payload = match payload_json {
+                    Some(j) => Some(serde_json::from_str(&j).map_err(DbError::Json)?),
+                    None => None,
+                };
+                Ok(LogEntry {
+                    id,
+                    scene_id: Some(scene_id.to_string()),
+                    speaker,
+                    content,
+                    payload,
+                    timestamp,
+                })
+            })
             .collect()
     }
 }

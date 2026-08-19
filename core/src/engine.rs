@@ -1,7 +1,5 @@
 use super::dice::{DiceEngine, DiceError, RollResult};
-use super::models::{
-    ActionDefinition, CharacterProfile, EncounterStatBlock, ResolutionType,
-};
+use super::models::{ActionDefinition, CharacterProfile, EncounterStatBlock, ResolutionType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -61,11 +59,7 @@ impl From<&CharacterProfile> for Combatant {
             .iter()
             .map(|(k, v)| (k.clone(), v.current_value))
             .collect();
-        let hp = p
-            .resource_pools
-            .get("hp")
-            .map(|r| r.current)
-            .unwrap_or(10);
+        let hp = p.resource_pools.get("hp").map(|r| r.current).unwrap_or(10);
         let ac = p
             .attributes
             .get("DEX")
@@ -75,11 +69,7 @@ impl From<&CharacterProfile> for Combatant {
             id: p.id.clone(),
             name: p.identity.name.clone(),
             hit_points: hp,
-            max_hit_points: p
-                .resource_pools
-                .get("hp")
-                .map(|r| r.maximum)
-                .unwrap_or(hp),
+            max_hit_points: p.resource_pools.get("hp").map(|r| r.maximum).unwrap_or(hp),
             armor_class: ac,
             attributes,
             bonuses: HashMap::new(),
@@ -142,6 +132,7 @@ pub struct EngineOutcome {
     pub applied_status: Option<String>,
 }
 
+/// Error type for the combat engine.
 #[derive(Debug)]
 pub enum EngineError {
     Dice(DiceError),
@@ -295,8 +286,7 @@ pub fn execute_attack(
             attack_detail = Some(roll.detail.clone());
 
             let target_value = if resolution.resolution_type == ResolutionType::OpposedRoll {
-                let t_formula =
-                    "1d20 + @attributes.DEX.derived_modifier".to_string();
+                let t_formula = "1d20 + @attributes.DEX.derived_modifier".to_string();
                 roll_for(dice, target, &t_formula)?.total as i32
             } else {
                 resolve_defense(action, target)?
@@ -308,7 +298,8 @@ pub fn execute_attack(
                     if let Some(s) = &out.on_success {
                         if let Some(f) = &s.formula {
                             let dmg = roll_for(dice, attacker, f)?;
-                            attack_detail = Some(format!("{} | {}", attack_detail.unwrap(), dmg.detail));
+                            let prev = attack_detail.as_deref().unwrap_or("");
+                            attack_detail = Some(format!("{prev} | {}", dmg.detail));
                             damage_dealt = dmg.total as i32;
                         }
                         applied_status = s.applied_status.clone();
@@ -351,8 +342,8 @@ pub fn execute_attack(
                     if let Some(s) = &out.on_success {
                         if let Some(f) = &s.formula {
                             let dmg = roll_for(dice, attacker, f)?;
-                            attack_detail =
-                                Some(format!("{} | {}", attack_detail.unwrap(), dmg.detail));
+                            let prev = attack_detail.as_deref().unwrap_or("");
+                            attack_detail = Some(format!("{prev} | {}", dmg.detail));
                             damage_dealt = dmg.total as i32;
                         }
                         applied_status = s.applied_status.clone();
@@ -397,6 +388,7 @@ fn current_status(target: &Combatant) -> String {
     }
 }
 
+/// A single initiative roll entry for the combat round.
 #[derive(Debug, Clone, Serialize)]
 pub struct InitiativeEntry {
     pub combatant_id: String,
@@ -440,8 +432,8 @@ pub fn roll_initiative(
 mod tests {
     use super::*;
     use crate::models::{
-        ActionCost, CostType, HitPoints, Outcomes, Resolution, SuccessOutcome, Targeting,
-        TargetType, Identity, ResourcePool,
+        ActionCost, CostType, HitPoints, Identity, Outcomes, Resolution, ResourcePool,
+        SuccessOutcome, TargetType, Targeting,
     };
 
     fn profile_with_str(name: &str, str: i32, dex: i32, hp: i32) -> CharacterProfile {
@@ -611,8 +603,8 @@ mod tests {
             dc: 30,
             reason: "Jump across a 10-foot chasm".to_string(),
         };
-        let outcome = execute_attack(&mut dice, &attacker, &mut target, &action, Some(&prereq))
-            .unwrap();
+        let outcome =
+            execute_attack(&mut dice, &attacker, &mut target, &action, Some(&prereq)).unwrap();
         assert_eq!(outcome.check_result.as_deref(), Some("FAILURE"));
         assert_eq!(outcome.attack_result, "BLOCKED");
         assert_eq!(outcome.damage_dealt, 0);

@@ -112,5 +112,5 @@ pub fn run() {
             commands::ingest_memory,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("fatal: Tauri runtime failed to start");
 }

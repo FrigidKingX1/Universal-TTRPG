@@ -57,7 +57,11 @@ impl OllamaLlmBackend {
 
     /// Fast TCP reachability probe — does not load a model.
     pub fn reachable() -> bool {
-        std::net::TcpStream::connect("127.0.0.1:11434").is_ok()
+        let addr = OLLAMA_URL
+            .strip_prefix("http://")
+            .or_else(|| OLLAMA_URL.strip_prefix("https://"))
+            .unwrap_or("127.0.0.1:11434");
+        std::net::TcpStream::connect(addr).is_ok()
     }
 }
 

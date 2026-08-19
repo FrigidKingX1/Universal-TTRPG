@@ -32,6 +32,7 @@ struct Keep {
     n: i64,
 }
 
+/// Error type for dice expression parsing and evaluation.
 #[derive(Debug)]
 pub enum DiceError {
     Parse(String),
@@ -152,11 +153,7 @@ impl DiceEngine {
             }
             Ast::Dice(tok_pos) => {
                 let (count, sides, keep) = match &tokens[*tok_pos] {
-                    Tok::Dice {
-                        count,
-                        sides,
-                        keep,
-                    } => (*count, *sides, *keep),
+                    Tok::Dice { count, sides, keep } => (*count, *sides, *keep),
                     other => {
                         return Err(DiceError::Parse(format!(
                             "expected dice, found {:?}",
@@ -220,9 +217,7 @@ impl DiceEngine {
         detail: &mut String,
     ) -> Result<i64, DiceError> {
         if count < 0 || sides <= 0 {
-            return Err(DiceError::Parse(format!(
-                "invalid dice: {count}d{sides}"
-            )));
+            return Err(DiceError::Parse(format!("invalid dice: {count}d{sides}")));
         }
         if count > MAX_DICE_COUNT {
             return Err(DiceError::Parse(format!(
@@ -511,10 +506,7 @@ impl Parser {
                     _ => Err(DiceError::Parse("expected `)`".to_string())),
                 }
             }
-            other => Err(DiceError::Parse(format!(
-                "unexpected token {:?}",
-                other
-            ))),
+            other => Err(DiceError::Parse(format!("unexpected token {:?}", other))),
         }
     }
 }
@@ -565,7 +557,10 @@ mod tests {
         // With seeded RNG, verify determinism.
         let mut d1 = DiceEngine::with_seed(99);
         let mut d2 = DiceEngine::with_seed(99);
-        assert_eq!(d1.evaluate("2d20kh1").unwrap(), d2.evaluate("2d20kh1").unwrap());
+        assert_eq!(
+            d1.evaluate("2d20kh1").unwrap(),
+            d2.evaluate("2d20kh1").unwrap()
+        );
     }
 
     #[test]
@@ -581,12 +576,13 @@ mod tests {
     fn refs_resolve() {
         let mut d = DiceEngine::with_seed(1);
         let r = d
-            .evaluate_with("1d20 + @attributes.STR.derived_modifier", &|path| {
-                match path {
+            .evaluate_with(
+                "1d20 + @attributes.STR.derived_modifier",
+                &|path| match path {
                     "attributes.STR.derived_modifier" => Some(3),
                     _ => None,
-                }
-            })
+                },
+            )
             .unwrap();
         assert!((4..=23).contains(&r.total));
     }

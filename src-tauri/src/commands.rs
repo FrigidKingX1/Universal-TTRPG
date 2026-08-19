@@ -175,6 +175,7 @@ pub async fn list_logs(
 
 // ---------- Dice -------------------------------------------------------
 
+/// Dice roll response for the frontend.
 #[derive(Debug, Clone, Serialize)]
 pub struct RollResponse {
     pub expression: String,
@@ -183,11 +184,7 @@ pub struct RollResponse {
 }
 
 #[tauri::command]
-pub fn roll_dice(
-    app: AppHandle,
-    expression: String,
-    seed: Option<u64>,
-) -> CmdResult<RollResponse> {
+pub fn roll_dice(app: AppHandle, expression: String, seed: Option<u64>) -> CmdResult<RollResponse> {
     let mut dice = match seed {
         Some(s) => DiceEngine::with_seed(s),
         None => DiceEngine::new(),
@@ -204,6 +201,7 @@ pub fn roll_dice(
 
 // ---------- Oracle -----------------------------------------------------
 
+/// Fate Check response for the frontend.
 #[derive(Debug, Clone, Serialize)]
 pub struct FateCheckResponse {
     pub roll: u32,
@@ -285,8 +283,8 @@ pub async fn combat_attack(
         .map_err(err)?
         .ok_or_else(|| format!("action `{action_id}` not found"))?;
 
-    let outcome = execute_attack(&mut dice, &actor, &mut victim, &action, prereq.as_ref())
-        .map_err(err)?;
+    let outcome =
+        execute_attack(&mut dice, &actor, &mut victim, &action, prereq.as_ref()).map_err(err)?;
 
     if outcome.check_roll.is_some() || outcome.attack_roll.is_some() || outcome.damage_dealt > 0 {
         let narrative = format!(
@@ -299,17 +297,24 @@ pub async fn combat_attack(
             outcome.target_hp_remaining
         );
         if let Some(sid) = scene_id {
-            let _ = state.repo.append_log(&sid, "Combat", &narrative, None).await;
+            let _ = state
+                .repo
+                .append_log(&sid, "Combat", &narrative, None)
+                .await;
         }
     }
 
     emit(&app, "combat:outcome", &outcome);
-    emit(&app, "combatant:state", &serde_json::json!({
-        "id": victim.id,
-        "name": victim.name,
-        "hit_points": victim.hit_points,
-        "status": victim.status,
-    }));
+    emit(
+        &app,
+        "combatant:state",
+        &serde_json::json!({
+            "id": victim.id,
+            "name": victim.name,
+            "hit_points": victim.hit_points,
+            "status": victim.status,
+        }),
+    );
     Ok(outcome)
 }
 
@@ -354,7 +359,7 @@ pub async fn dm_resolve(
 
 use auto_dm_core::models::{
     ActionCost, CostType, HitPoints, Identity, Outcomes, Resolution, ResolutionType,
-    SuccessOutcome, Targeting, TargetType,
+    SuccessOutcome, TargetType, Targeting,
 };
 
 /// Populate starter SRD-aligned sample data (clean-room mechanics only) when

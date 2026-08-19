@@ -14,7 +14,10 @@ pub enum GameIntent {
     /// A change to the current scene's description (set-dressing, new exits, etc.).
     SceneDelta { delta: String },
     /// A line spoken by a non-player character.
-    NpcSpeech { npc_id: Option<String>, line: String },
+    NpcSpeech {
+        npc_id: Option<String>,
+        line: String,
+    },
     /// Request to roll a skill/attribute check (resolved by the engine).
     DiceRoll {
         skill: String,
@@ -135,13 +138,19 @@ mod stripped_json_tests {
     #[test]
     fn strips_json_fence() {
         let s = "```json\n{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}\n```";
-        assert_eq!(stripped_json(s), Some("{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}"));
+        assert_eq!(
+            stripped_json(s),
+            Some("{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}")
+        );
     }
 
     #[test]
     fn strips_bare_fence() {
         let s = "```\n{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}\n```";
-        assert_eq!(stripped_json(s), Some("{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}"));
+        assert_eq!(
+            stripped_json(s),
+            Some("{\"type\":\"narration\",\"payload\":{\"text\":\"hi\"}}")
+        );
     }
 
     #[test]
@@ -169,7 +178,9 @@ fn get_opt_str(v: &Value, key: &str) -> Option<String> {
 }
 
 fn get_i32_opt(v: &Value, key: &str) -> Option<i32> {
-    v.get(key).and_then(|x| x.as_i64()).and_then(|n| i32::try_from(n).ok())
+    v.get(key)
+        .and_then(|x| x.as_i64())
+        .and_then(|n| i32::try_from(n).ok())
 }
 
 /// GBNF grammar (llama.cpp / llama-cpp grammar format) that constrains the
@@ -233,10 +244,8 @@ mod tests {
 
     #[test]
     fn parses_narration() {
-        let g = GameIntent::from_llm_text(&sample(
-            "narration",
-            "{\"text\":\"The gate groans open.\"}",
-        ));
+        let g =
+            GameIntent::from_llm_text(&sample("narration", "{\"text\":\"The gate groans open.\"}"));
         assert_eq!(
             g,
             GameIntent::Narration {
@@ -281,7 +290,12 @@ mod tests {
     fn tolerates_code_fence_and_missing_payload_fields() {
         let raw = "```json\n{\"type\":\"scene_delta\",\"payload\":{}}\n```";
         let g = GameIntent::from_llm_text(raw);
-        assert_eq!(g, GameIntent::SceneDelta { delta: String::new() });
+        assert_eq!(
+            g,
+            GameIntent::SceneDelta {
+                delta: String::new()
+            }
+        );
     }
 
     #[test]

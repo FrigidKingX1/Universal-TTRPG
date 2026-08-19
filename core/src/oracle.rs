@@ -69,18 +69,19 @@ impl Odds {
 /// Mythic GME 2e Fate Chart: FATE_CHART[odds_rank - 1][chaos_factor - 1].
 /// The result is the number a d100 roll must be at or below to be a Yes.
 const FATE_CHART: [[u32; 9]; 10] = [
-    [6, 9, 12, 15, 18, 22, 26, 30, 34],   // Impossible
-    [11, 15, 19, 23, 27, 31, 36, 41, 46], // No Way
-    [16, 20, 24, 29, 33, 38, 43, 48, 53], // Very Unlikely
-    [22, 27, 32, 37, 42, 47, 52, 57, 63], // Unlikely
-    [28, 33, 38, 43, 48, 53, 58, 64, 70], // 50/50
-    [34, 40, 46, 51, 57, 62, 68, 74, 80], // Somewhat Likely
-    [40, 46, 52, 58, 64, 71, 77, 83, 89], // Likely
-    [47, 53, 60, 66, 73, 80, 86, 92, 99], // Very Likely
-    [54, 61, 67, 74, 81, 88, 94, 99, 100], // Near Sure Thing
+    [6, 9, 12, 15, 18, 22, 26, 30, 34],     // Impossible
+    [11, 15, 19, 23, 27, 31, 36, 41, 46],   // No Way
+    [16, 20, 24, 29, 33, 38, 43, 48, 53],   // Very Unlikely
+    [22, 27, 32, 37, 42, 47, 52, 57, 63],   // Unlikely
+    [28, 33, 38, 43, 48, 53, 58, 64, 70],   // 50/50
+    [34, 40, 46, 51, 57, 62, 68, 74, 80],   // Somewhat Likely
+    [40, 46, 52, 58, 64, 71, 77, 83, 89],   // Likely
+    [47, 53, 60, 66, 73, 80, 86, 92, 99],   // Very Likely
+    [54, 61, 67, 74, 81, 88, 94, 99, 100],  // Near Sure Thing
     [61, 68, 75, 82, 89, 96, 99, 100, 100], // A Sure Thing
 ];
 
+/// Fate Check outcome (Yes or No).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FateOutcome {
@@ -88,6 +89,7 @@ pub enum FateOutcome {
     No,
 }
 
+/// Result of a Mythic-style Fate Check.
 #[derive(Debug, Clone, Serialize)]
 pub struct FateResult {
     pub roll: u32,
@@ -234,51 +236,180 @@ pub struct MeaningTable {
 impl MeaningTable {
     pub fn default_table() -> Self {
         static TABLE: OnceLock<MeaningTable> = OnceLock::new();
-        TABLE.get_or_init(|| {
-            let to_strings = |words: &[&str]| -> Vec<String> {
-                words.iter().map(|w| w.to_string()).collect()
-            };
-            Self {
-            action: to_strings(&[
-                "abandon", "approach", "attack", "betray", "block", "break", "capture", "carry",
-                "cast", "close", "collapse", "complete", "conceal", "confirm", "construct",
-                "consume", "cross", "destroy", "divide", "escape", "expand", "flee", "follow",
-                "gather", "grant", "guide", "hide", "hold", "imprison", "join", "journey",
-                "limit", "locate", "lose", "move", "negotiate", "open", "protect", "pursue",
-                "rebuild", "release", "remember", "replace", "return", "reveal", "seize",
-                "search", "separate", "signal", "strengthen",
-            ]),
-            subject: to_strings(&[
-                "ally", "animal", "army", "artifact", "bandit", "beast", "border", "building",
-                "child", "city", "craft", "cult", "danger", "death", "door", "dungeon", "enemy",
-                "forest", "fortune", "gate", "guard", "guardian", "harbor", "healer", "herald",
-                "horde", "hostage", "hunter", "journal", "law", "library", "merchant", "message",
-                "mine", "mountain", "noble", "oath", "priest", "prison", "prophet", "road",
-                "scroll", "soldier", "spell", "spirit", "temple", "thief", "tomb", "trail",
-                "treasure",
-            ]),
-            descriptor: to_strings(&[
-                "ancient", "armored", "barren", "blessed", "bloodied", "broken", "burning",
-                "cursed", "dangerous", "dark", "dead", "diseased", "distant", "dreaming",
-                "dwarven", "enchanted", "fading", "frozen", "glowing", "golden", "hidden",
-                "hollow", "hostile", "iron", "living", "lonely", "lost", "loyal", "massive",
-                "mechanical", "mysterious", "old", "poisoned", "protected", "roaring", "savage",
-                "shadowed", "shining", "silent", "sinking", "small", "smoking", "soldiered",
-                "stormy", "sunken", "twisted", "undead", "untamed", "watched", "wounded",
-            ]),
-            focus: to_strings(&[
-                "an army", "a battle", "a betrayal", "the borders", "a child", "a city",
-                "the coast", "a creature", "a criminal", "the crown", "a curse", "the dead",
-                "a door", "a dream", "an enemy", "an escape", "a forest", "a fortress",
-                "a god", "gold", "a guard", "a guild", "a hostage", "a house", "a journey",
-                "a king", "a knight", "a law", "a map", "a mask", "a merchant", "a mine",
-                "a monster", "the moon", "a mountain", "a mystery", "a name", "a noble",
-                "a priest", "a prophecy", "a river", "a road", "a scroll", "a secret", "a ship",
-                "a spell", "a spirit", "a tomb", "a village", "a weapon",
-            ]),
-            }
-        })
-        .clone()
+        TABLE
+            .get_or_init(|| {
+                let to_strings = |words: &[&str]| -> Vec<String> {
+                    words.iter().map(|w| w.to_string()).collect()
+                };
+                Self {
+                    action: to_strings(&[
+                        "abandon",
+                        "approach",
+                        "attack",
+                        "betray",
+                        "block",
+                        "break",
+                        "capture",
+                        "carry",
+                        "cast",
+                        "close",
+                        "collapse",
+                        "complete",
+                        "conceal",
+                        "confirm",
+                        "construct",
+                        "consume",
+                        "cross",
+                        "destroy",
+                        "divide",
+                        "escape",
+                        "expand",
+                        "flee",
+                        "follow",
+                        "gather",
+                        "grant",
+                        "guide",
+                        "hide",
+                        "hold",
+                        "imprison",
+                        "join",
+                        "journey",
+                        "limit",
+                        "locate",
+                        "lose",
+                        "move",
+                        "negotiate",
+                        "open",
+                        "protect",
+                        "pursue",
+                        "rebuild",
+                        "release",
+                        "remember",
+                        "replace",
+                        "return",
+                        "reveal",
+                        "seize",
+                        "search",
+                        "separate",
+                        "signal",
+                        "strengthen",
+                    ]),
+                    subject: to_strings(&[
+                        "ally", "animal", "army", "artifact", "bandit", "beast", "border",
+                        "building", "child", "city", "craft", "cult", "danger", "death", "door",
+                        "dungeon", "enemy", "forest", "fortune", "gate", "guard", "guardian",
+                        "harbor", "healer", "herald", "horde", "hostage", "hunter", "journal",
+                        "law", "library", "merchant", "message", "mine", "mountain", "noble",
+                        "oath", "priest", "prison", "prophet", "road", "scroll", "soldier",
+                        "spell", "spirit", "temple", "thief", "tomb", "trail", "treasure",
+                    ]),
+                    descriptor: to_strings(&[
+                        "ancient",
+                        "armored",
+                        "barren",
+                        "blessed",
+                        "bloodied",
+                        "broken",
+                        "burning",
+                        "cursed",
+                        "dangerous",
+                        "dark",
+                        "dead",
+                        "diseased",
+                        "distant",
+                        "dreaming",
+                        "dwarven",
+                        "enchanted",
+                        "fading",
+                        "frozen",
+                        "glowing",
+                        "golden",
+                        "hidden",
+                        "hollow",
+                        "hostile",
+                        "iron",
+                        "living",
+                        "lonely",
+                        "lost",
+                        "loyal",
+                        "massive",
+                        "mechanical",
+                        "mysterious",
+                        "old",
+                        "poisoned",
+                        "protected",
+                        "roaring",
+                        "savage",
+                        "shadowed",
+                        "shining",
+                        "silent",
+                        "sinking",
+                        "small",
+                        "smoking",
+                        "soldiered",
+                        "stormy",
+                        "sunken",
+                        "twisted",
+                        "undead",
+                        "untamed",
+                        "watched",
+                        "wounded",
+                    ]),
+                    focus: to_strings(&[
+                        "an army",
+                        "a battle",
+                        "a betrayal",
+                        "the borders",
+                        "a child",
+                        "a city",
+                        "the coast",
+                        "a creature",
+                        "a criminal",
+                        "the crown",
+                        "a curse",
+                        "the dead",
+                        "a door",
+                        "a dream",
+                        "an enemy",
+                        "an escape",
+                        "a forest",
+                        "a fortress",
+                        "a god",
+                        "gold",
+                        "a guard",
+                        "a guild",
+                        "a hostage",
+                        "a house",
+                        "a journey",
+                        "a king",
+                        "a knight",
+                        "a law",
+                        "a map",
+                        "a mask",
+                        "a merchant",
+                        "a mine",
+                        "a monster",
+                        "the moon",
+                        "a mountain",
+                        "a mystery",
+                        "a name",
+                        "a noble",
+                        "a priest",
+                        "a prophecy",
+                        "a river",
+                        "a road",
+                        "a scroll",
+                        "a secret",
+                        "a ship",
+                        "a spell",
+                        "a spirit",
+                        "a tomb",
+                        "a village",
+                        "a weapon",
+                    ]),
+                }
+            })
+            .clone()
     }
 
     /// Generate two paired meanings (Action+Subject and Descriptor+Focus),
