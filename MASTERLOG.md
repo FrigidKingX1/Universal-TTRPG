@@ -286,6 +286,11 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 - **Settings store** — `tauri-plugin-store` available for future key-value persistence
 - **Version bump script** — `scripts/bump-version.cjs` synchronizes version across `package.json`, `Cargo.toml`, and `tauri.conf.json` in one command
 
+### Remaining Bugfix Pass
+- **setActiveZone race condition** — staleness check prevents zone A's nodes overwriting zone B's when switching rapidly
+- **LinesVeilPanel save ordering** — sequence counter prevents out-of-order saves from rapid add/remove clicks
+- **CharacterSheet state desync** — `useEffect` syncs local editor state when profile updates externally (combat HP, long rest)
+
 ---
 
 ## Frontend Features

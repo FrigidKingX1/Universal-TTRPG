@@ -1109,7 +1109,11 @@ export const useStore = create<AutoDmState>((set, get) => ({
   setActiveZone: (id) => {
     set({ activeZoneId: id, explorationNodes: [] });
     if (id) {
-      void backend.listExplorationNodes(id).then((nodes) => set({ explorationNodes: nodes })).catch(() => {});
+      const zoneId = id;
+      void backend.listExplorationNodes(zoneId).then((nodes) => {
+        // Only apply if zone hasn't changed during the async load
+        if (get().activeZoneId === zoneId) set({ explorationNodes: nodes });
+      }).catch(() => {});
     }
   },
   addExplorationZone: async (name, zoneType, description, dangerLevel) => {

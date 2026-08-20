@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
@@ -131,6 +131,20 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const [maxHp, setMaxHp] = useState(profile.resource_pools.hp?.maximum ?? 10);
   const [inventory, setInventory] = useState<InventoryItem[]>(profile.inventory);
   const [abilities, setAbilities] = useState(profile.abilities);
+
+  // Sync local state when profile prop changes externally (e.g., combat HP update, long rest)
+  useEffect(() => {
+    setName(profile.identity.name);
+    setAncestry(profile.identity.ancestry ?? "");
+    setArchetype(profile.identity.archetype ?? "");
+    setBackground(profile.identity.background ?? "");
+    setLevel(profile.identity.level_or_rank);
+    setAttrs(profile.attributes);
+    setHp(profile.resource_pools.hp?.current ?? 10);
+    setMaxHp(profile.resource_pools.hp?.maximum ?? 10);
+    setInventory(profile.inventory);
+    setAbilities(profile.abilities);
+  }, [profile]);
 
   const [newItemName, setNewItemName] = useState("");
   const [newAbility, setNewAbility] = useState("");

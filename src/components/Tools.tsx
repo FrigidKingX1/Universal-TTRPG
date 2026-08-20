@@ -641,6 +641,7 @@ export function LinesVeilPanel() {
   const [newLine, setNewLine] = useState("");
   const [newVeil, setNewVeil] = useState("");
   const showToast = useStore((s) => s.showToast);
+  const saveSeq = useRef(0);
 
   useEffect(() => {
     backend.getLinesVeils().then((lv) => {
@@ -650,7 +651,10 @@ export function LinesVeilPanel() {
   }, []);
 
   const save = async (l: string[], v: string[]) => {
+    const seq = ++saveSeq.current;
     await backend.setLinesVeils(l, v);
+    // If a newer save was triggered, skip updating local state
+    if (seq !== saveSeq.current) return;
   };
 
   const addLine = () => {
