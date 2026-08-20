@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 import type { Disposition } from "../types";
@@ -132,6 +132,9 @@ function SceneSummaryEditor({ scene }: { scene: { id: string; summary_text?: str
     setSaving(true);
     try {
       await backend.updateSceneSummary(scene.id, text.trim() || null);
+      useStore.setState((s) => ({
+        scenes: s.scenes.map((sc) => sc.id === scene.id ? { ...sc, summary_text: text.trim() || null } : sc),
+      }));
     } catch {
       // best-effort
     } finally {
@@ -159,10 +162,15 @@ function SceneCfEditor({ scene }: { scene: { id: string; chaos_factor: number } 
   const [cf, setCf] = useState(scene.chaos_factor);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => { setCf(scene.chaos_factor); }, [scene.chaos_factor]);
+
   const save = async () => {
     setSaving(true);
     try {
       await backend.updateSceneChaosFactor(scene.id, cf);
+      useStore.setState((s) => ({
+        scenes: s.scenes.map((sc) => sc.id === scene.id ? { ...sc, chaos_factor: cf } : sc),
+      }));
     } catch {
       // best-effort
     } finally {
@@ -414,7 +422,7 @@ function NpcCharactersPanel() {
                     <input
                       value={editLocation}
                       onChange={(e) => setEditLocation(e.currentTarget.value)}
-                      onBlur={() => { if (editLocation !== (npc.location ?? "")) void updateNpcLocation(npc.id, editLocation); }}
+                      onBlur={() => { if (expandedId === npc.id && editLocation !== (npc.location ?? "")) void updateNpcLocation(npc.id, editLocation); }}
                       placeholder="Where are they?"
                     />
                   </label>
@@ -425,7 +433,7 @@ function NpcCharactersPanel() {
                     <textarea
                       value={editNotes}
                       onChange={(e) => setEditNotes(e.currentTarget.value)}
-                      onBlur={() => { if (editNotes !== (npc.notes ?? "")) void updateNpcNotes(npc.id, editNotes); }}
+                      onBlur={() => { if (expandedId === npc.id && editNotes !== (npc.notes ?? "")) void updateNpcNotes(npc.id, editNotes); }}
                       placeholder="DM notes about this NPC..."
                       rows={2}
                     />
@@ -493,8 +501,8 @@ function DoomClocksPanel() {
                 {clock.current}/{clock.max}
               </span>
               <div style={{ display: "flex", gap: "0.2rem" }}>
-                <button onClick={() => void tickDoomClock(clock.id)} disabled={clock.current === 0} title="Tick 1">+1</button>
-                <button onClick={() => void advanceDoomClock(clock.id, 1)} disabled={clock.current === 0} title="Advance 1">-1</button>
+                <button onClick={() => void tickDoomClock(clock.id)} disabled={clock.current === 0} title="Advance 1 toward doom">Advance 1</button>
+                <button onClick={() => void advanceDoomClock(clock.id, 5)} disabled={clock.current === 0} title="Advance 5 toward doom">Advance 5</button>
                 <button onClick={() => void resetDoomClock(clock.id)} title="Reset">↺</button>
                 <button className="danger" onClick={() => void deleteDoomClock(clock.id)} title="Delete">×</button>
               </div>
@@ -693,8 +701,10 @@ export function ExplorationPanel() {
                             placeholder="Contents (comma-separated)"
                             style={{ fontSize: "0.75rem" }}
                             onBlur={() => {
-                              const newContents = editContents.split(",").map((s) => s.trim()).filter(Boolean);
-                              void updateExplorationNode(n.id, { contents: newContents });
+                              if (expandedNodeId === n.id) {
+                                const newContents = editContents.split(",").map((s) => s.trim()).filter(Boolean);
+                                void updateExplorationNode(n.id, { contents: newContents });
+                              }
                             }}
                           />
                           <textarea
@@ -703,7 +713,7 @@ export function ExplorationPanel() {
                             placeholder="Notes..."
                             rows={2}
                             style={{ fontSize: "0.75rem" }}
-                            onBlur={() => void updateExplorationNode(n.id, { notes: editNotes })}
+                            onBlur={() => { if (expandedNodeId === n.id) void updateExplorationNode(n.id, { notes: editNotes }); }}
                           />
                         </div>
                       )}

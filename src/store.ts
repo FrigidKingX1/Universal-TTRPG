@@ -576,6 +576,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
     currentTurnIndex: 0,
     combatantStates: {},
     combatantConditions: {},
+    deathSaves: {},
     lastCombat: null,
   }); persistCombat(); },
 
@@ -585,10 +586,13 @@ export const useStore = create<AutoDmState>((set, get) => ({
     const newConditions = { ...s.combatantConditions };
     delete newConditions[entityId];
     const newOrder = s.initiativeOrder.filter((e) => e.combatant_id !== entityId);
+    const newDeathSaves = { ...s.deathSaves };
+    delete newDeathSaves[entityId];
     return {
       combatantStates: newStates,
       combatantConditions: newConditions,
       initiativeOrder: newOrder,
+      deathSaves: newDeathSaves,
     };
   }); persistCombat(); },
 
@@ -596,8 +600,9 @@ export const useStore = create<AutoDmState>((set, get) => ({
     const s = useStore.getState();
     let healed = 0;
     for (const c of s.characters) {
+      const currentStates = useStore.getState().combatantStates;
       const max = c.resource_pools.hp?.maximum ?? 10;
-      const current = s.combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
+      const current = currentStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       if (current < max) {
         await s.saveCharacter({
           ...c,
@@ -606,9 +611,13 @@ export const useStore = create<AutoDmState>((set, get) => ({
             hp: { ...c.resource_pools.hp!, current: max },
           },
         });
-        const newStates = { ...s.combatantStates };
-        if (newStates[c.id]) newStates[c.id] = { ...newStates[c.id], hit_points: max };
-        useStore.setState({ combatantStates: newStates });
+        const latest = useStore.getState().combatantStates;
+        useStore.setState({
+          combatantStates: {
+            ...latest,
+            [c.id]: { ...latest[c.id], hit_points: max },
+          },
+        });
         healed++;
       }
     }
@@ -623,8 +632,9 @@ export const useStore = create<AutoDmState>((set, get) => ({
     const s = useStore.getState();
     let healed = 0;
     for (const c of s.characters) {
+      const currentStates = useStore.getState().combatantStates;
       const max = c.resource_pools.hp?.maximum ?? 10;
-      const current = s.combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
+      const current = currentStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       const halfMax = Math.floor(max / 2);
       if (current < max && halfMax > 0) {
         const restored = Math.min(halfMax, max - current);
@@ -636,9 +646,13 @@ export const useStore = create<AutoDmState>((set, get) => ({
             hp: { ...c.resource_pools.hp!, current: newHp },
           },
         });
-        const newStates = { ...s.combatantStates };
-        if (newStates[c.id]) newStates[c.id] = { ...newStates[c.id], hit_points: newHp };
-        useStore.setState({ combatantStates: newStates });
+        const latest = useStore.getState().combatantStates;
+        useStore.setState({
+          combatantStates: {
+            ...latest,
+            [c.id]: { ...latest[c.id], hit_points: newHp },
+          },
+        });
         healed++;
       }
     }
@@ -659,7 +673,10 @@ export const useStore = create<AutoDmState>((set, get) => ({
 
   showToast: (msg) => {
     set({ toast: msg });
-    setTimeout(() => set({ toast: null }), 2500);
+    setTimeout(() => {
+      const current = useStore.getState().toast;
+      if (current === msg) set({ toast: null });
+    }, 2500);
   },
 
   cloneStatBlock: async (id) => {
@@ -689,6 +706,9 @@ export const useStore = create<AutoDmState>((set, get) => ({
         : Math.min(9, scene.chaos_factor + 1);
       if (newCf !== scene.chaos_factor) {
         await backend.updateSceneChaosFactor(scene.id, newCf);
+        set((prev) => ({
+          scenes: prev.scenes.map((sc) => sc.id === scene.id ? { ...sc, chaos_factor: newCf } : sc),
+        }));
         get().showToast(`CF adjusted: ${scene.chaos_factor} → ${newCf} (${cfAdjust})`);
       }
     }
@@ -746,6 +766,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
         },
         lastHpChange: null,
       }));
+      persistCombat();
       get().showToast("Undone");
     }
   },
@@ -894,7 +915,15 @@ export const useStore = create<AutoDmState>((set, get) => ({
         disposition: row.disposition as Disposition,
         alive: row.alive,
         location: row.location ?? undefined,
-        knows: (() => { try { return JSON.parse(row.knows_json) as string[]; } catch { return []; } })(),
+        knows: (() => {
+          try {
+            const raw = JSON.parse(row.knows_json);
+            if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === "string") {
+              return raw.map((text: string) => ({ text, scene_id: undefined, timestamp: undefined }));
+            }
+            return raw;
+          } catch { return []; }
+        })(),
         notes: row.notes ?? undefined,
         last_seen_scene_id: row.last_seen_scene_id ?? undefined,
         created_at: row.created_at,
@@ -1205,12 +1234,13 @@ export async function subscribeToEvents() {
     listen<RollResponse>("dice:rolled", (e) => get().recordRoll(e.payload)),
     listen<FateCheckResponse>("oracle:fate", (e) => get().recordFate(e.payload)),
     listen<EventMeaning>("oracle:event", (e) => get().recordEvent(e.payload)),
-    listen<EngineOutcome>("combat:outcome", (e) =>
+    listen<EngineOutcome>("combat:outcome", (e) => {
       useStore.setState((s) => ({
         lastCombat: e.payload,
         combatHistory: [...s.combatHistory.slice(-19), e.payload],
-      })),
-    ),
+      }));
+      persistCombat();
+    }),
     listen<CombatantState>("combatant:state", (e) => {
       const p = e.payload;
       const s = useStore.getState();
@@ -1228,6 +1258,7 @@ export async function subscribeToEvents() {
           : c,
       );
       useStore.setState({ combatantStates: updated, characters });
+      persistCombat();
     }),
     listen<Scene>("scene:created", async () => {
       const scenes = await backend.listScenes();

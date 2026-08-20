@@ -241,6 +241,33 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 - **Travel UI**: trail breadcrumb display, Travel Here buttons on connected nodes, Start/End expedition
 - **Connection editor**: checkbox grid in node edit form to set connected nodes
 
+### Bugfix, QA & QoL Pass
+**Combat HP fixes:**
+- Added `getMaxHp()` returning entity's maximum HP; `hpInfo` now uses it instead of current HP as max
+- `quickHpAdjust` now updates `combatantStates` in-memory (was saving to backend only, causing stale UI)
+- Combat summary shows counts ("3 hits, 1 defeated") instead of literal "target" strings
+
+**State management fixes:**
+- `longRest`/`shortRest` now read latest `combatantStates` from store each iteration (was using stale snapshot, only last character updated)
+- `completeScene` now updates `scenes` array in state after CF adjustment (badge was stale)
+- `undoLastHpChange` now calls `persistCombat()` (was not persisting to SQLite)
+- `endCombat` now clears `deathSaves` (was carrying over between encounters)
+- `removeCombatant` now clears entity's `deathSaves` entry (was orphaned)
+
+**Event & toast fixes:**
+- `combat:outcome` and `combatant:state` event listeners now call `persistCombat()` (was losing state on restart)
+- Toast race condition fixed: timeout only clears toast if current toast matches the one that was scheduled
+
+**UI/UX fixes:**
+- DoomClock buttons relabeled to "Advance 1" / "Advance 5" (was confusing "+1"/"-1" for a countdown)
+- NPC location/notes onBlur now checks `expandedId` matches NPC (was saving wrong NPC's data on switch)
+- Exploration node contents/notes onBlur now checks `expandedNodeId` (same shared-state fix)
+- `SceneCfEditor` now syncs with prop changes via `useEffect` (was stale on external update)
+- `SceneSummaryEditor`/`SceneCfEditor` now update store's `scenes` array on save
+- Initiative roll shows toast "Need at least 2 combatants" instead of silently doing nothing
+- Death save buttons only shown for player characters (not stat blocks)
+- `addNpcCharacter` now correctly parses legacy `string[]` knows into `NpcKnowledge[]` format
+
 ---
 
 ## Frontend Features

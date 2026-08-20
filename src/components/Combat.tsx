@@ -81,9 +81,10 @@ export function Combat() {
   };
 
   const hpInfo = (entity: CharacterProfile | EncounterStatBlock) => {
+    const max = getMaxHp(entity);
     const st = combatantStates[entity.id];
-    if (st) return { current: st.hit_points, max: getHitPoints(entity), status: st.status };
-    return { current: getHitPoints(entity), max: getHitPoints(entity), status: undefined };
+    if (st) return { current: st.hit_points, max, status: st.status };
+    return { current: getHitPoints(entity), max, status: undefined };
   };
 
   // Get actions available to the selected attacker.
@@ -110,7 +111,13 @@ export function Combat() {
       const current = combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       const max = c.resource_pools.hp?.maximum ?? current;
       const newHp = Math.max(0, Math.min(max, current + amount));
-      useStore.setState({ lastHpChange: { entityId: entity.id, previousHp, newHp } });
+      useStore.setState({
+        lastHpChange: { entityId: entity.id, previousHp, newHp },
+        combatantStates: {
+          ...combatantStates,
+          [c.id]: { hit_points: newHp, status: combatantStates[c.id]?.status },
+        },
+      });
       void saveCharacter({
         ...c,
         resource_pools: {
@@ -124,7 +131,13 @@ export function Combat() {
       const current = combatantStates[b.id]?.hit_points ?? b.hit_points.current;
       const max = b.hit_points.maximum;
       const newHp = Math.max(0, Math.min(max, current + amount));
-      useStore.setState({ lastHpChange: { entityId: entity.id, previousHp, newHp } });
+      useStore.setState({
+        lastHpChange: { entityId: entity.id, previousHp, newHp },
+        combatantStates: {
+          ...combatantStates,
+          [b.id]: { hit_points: newHp, status: combatantStates[b.id]?.status },
+        },
+      });
       void saveStatBlock({
         ...b,
         hit_points: { ...b.hit_points, current: newHp },
@@ -163,16 +176,15 @@ export function Combat() {
   };
 
   const endCombatWithSummary = () => {
-    // Compute summary from combat history
     let totalDmg = 0;
-    const targets: string[] = [];
-    const defeated: string[] = [];
+    let hits = 0;
+    let kills = 0;
     for (const h of combatHistory) {
       totalDmg += h.damage_dealt;
-      if (h.damage_dealt > 0) targets.push(h.target_status);
-      if (h.target_status === "DEFEATED") defeated.push("target");
+      if (h.damage_dealt > 0) hits++;
+      if (h.target_status === "DEFEATED") kills++;
     }
-    setCombatSummary({ damageDealt: totalDmg, targetsHit: targets, defeated });
+    setCombatSummary({ damageDealt: totalDmg, targetsHit: [`${hits} hit${hits !== 1 ? "s" : ""}`], defeated: [`${kills} defeated`] });
     setShowSummary(true);
     endCombat();
   };
@@ -196,7 +208,10 @@ export function Combat() {
 
   const initiative = () => {
     const picks = entities.map((e) => e.value);
-    if (picks.length < 2) return;
+    if (picks.length < 2) {
+      useStore.getState().showToast("Need at least 2 combatants for initiative");
+      return;
+    }
     void rollInitiative(picks);
   };
 
@@ -284,7 +299,7 @@ export function Combat() {
                 </select>
               </div>
               <div className="card-footer-row">
-                {hp.current <= 0 && hp.status !== "dead" && hp.status !== "stable" && (
+                {hp.current <= 0 && hp.status !== "dead" && hp.status !== "stable" && isChar && (
                   <div className="death-save-row">
                     <span className="muted">Death Saves: {deathSaves[e.value.id]?.successes ?? 0}/{deathSaves[e.value.id]?.failures ?? 0}</span>
                     <button className="death-save-btn" onClick={() => void rollDeathSave(e.value.id)}>Roll Death Save</button>
@@ -560,6 +575,13 @@ function getHitPoints(entity: CharacterProfile | EncounterStatBlock): number {
     return entity.resource_pools.hp?.current ?? 0;
   }
   return entity.hit_points.current;
+}
+
+function getMaxHp(entity: CharacterProfile | EncounterStatBlock): number {
+  if ("resource_pools" in entity) {
+    return entity.resource_pools.hp?.maximum ?? getHitPoints(entity);
+  }
+  return entity.hit_points.maximum;
 }
 
 function getArmorClass(entity: CharacterProfile | EncounterStatBlock): number {
