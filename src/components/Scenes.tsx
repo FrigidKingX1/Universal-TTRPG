@@ -58,6 +58,9 @@ export function Scenes() {
                 Delete
               </button>
             </div>
+            {sc.id !== activeSceneId && sc.summary_text && (
+              <p className="scene-preview muted">{sc.summary_text.length > 120 ? sc.summary_text.slice(0, 120) + "…" : sc.summary_text}</p>
+            )}
             {sc.id === activeSceneId && <SceneSummaryEditor scene={sc} />}
             {sc.id === activeSceneId && <SceneCfEditor scene={sc} />}
           </li>

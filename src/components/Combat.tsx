@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useStore } from "../store";
 import type { CharacterProfile, EncounterStatBlock, EngineOutcome } from "../types";
 
+const CONDITIONS = ["Poisoned", "Prone", "Stunned", "Frightened", "Blinded", "Charmed", "Invisible", "Exhaustion"];
+
 export function Combat() {
   const characters = useStore((s) => s.characters);
   const statBlocks = useStore((s) => s.statBlocks);
@@ -14,6 +16,8 @@ export function Combat() {
   const combatHistory = useStore((s) => s.combatHistory);
   const initiativeOrder = useStore((s) => s.initiativeOrder);
   const combatantStates = useStore((s) => s.combatantStates);
+  const combatantConditions = useStore((s) => s.combatantConditions);
+  const toggleCondition = useStore((s) => s.toggleCondition);
   const currentRound = useStore((s) => s.currentRound);
   const currentTurnIndex = useStore((s) => s.currentTurnIndex);
 
@@ -170,6 +174,23 @@ export function Combat() {
                     {amt > 0 ? "+" : ""}{amt}
                   </button>
                 ))}
+              </div>
+              <div className="condition-row">
+                {(combatantConditions[e.value.id] ?? []).map((c) => (
+                  <span key={c} className="condition-badge" onClick={() => toggleCondition(e.value.id, c)}>
+                    {c} ×
+                  </span>
+                ))}
+                <select
+                  className="condition-select"
+                  value=""
+                  onChange={(ev) => { if (ev.currentTarget.value) toggleCondition(e.value.id, ev.currentTarget.value); ev.currentTarget.value = ""; }}
+                >
+                  <option value="">+ Condition</option>
+                  {CONDITIONS.filter((c) => !(combatantConditions[e.value.id] ?? []).includes(c)).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
             </div>
           );

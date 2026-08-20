@@ -6,6 +6,7 @@ export function Bestiary() {
   const statBlocks = useStore((s) => s.statBlocks);
   const saveStatBlock = useStore((s) => s.saveStatBlock);
   const deleteStatBlock = useStore((s) => s.deleteStatBlock);
+  const cloneStatBlock = useStore((s) => s.cloneStatBlock);
   const actions = useStore((s) => s.actions);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -35,6 +36,7 @@ export function Bestiary() {
               <button onClick={() => setEditingId(editingId === b.id ? null : b.id)}>
                 {editingId === b.id ? "Close" : "Edit"}
               </button>
+              <button onClick={() => void cloneStatBlock(b.id)}>Clone</button>
               <button className="danger" onClick={() => { if (confirm(`Delete ${b.name}?`)) void deleteStatBlock(b.id); }}>
                 Delete
               </button>

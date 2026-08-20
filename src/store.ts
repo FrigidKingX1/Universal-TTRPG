@@ -19,6 +19,7 @@ import type {
 export interface AutoDmState {
   loading: boolean;
   error: string | null;
+  toast: string | null;
 
   characters: CharacterProfile[];
   actions: ActionDefinition[];
@@ -39,6 +40,7 @@ export interface AutoDmState {
   dmHistory: import("./types").DmResponse[];
   initiativeOrder: InitiativeEntry[];
   combatantStates: Record<string, CombatantState>;
+  combatantConditions: Record<string, string[]>;
   currentRound: number;
   currentTurnIndex: number;
 
@@ -83,6 +85,9 @@ export interface AutoDmState {
   ) => Promise<void>;
   nextTurn: () => void;
   endCombat: () => void;
+  toggleCondition: (entityId: string, condition: string) => void;
+  showToast: (msg: string) => void;
+  cloneStatBlock: (id: string) => Promise<void>;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -129,6 +134,7 @@ export function newStatBlock(name: string): EncounterStatBlock {
 export const useStore = create<AutoDmState>((set, get) => ({
   loading: true,
   error: null,
+  toast: null,
 
   characters: [],
   actions: [],
@@ -149,6 +155,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
   dmHistory: [],
   initiativeOrder: [],
   combatantStates: {},
+  combatantConditions: {},
   currentRound: 0,
   currentTurnIndex: 0,
   ollama: { reachable: false, models: [], currentModel: "llama3.2" },
@@ -360,8 +367,37 @@ export const useStore = create<AutoDmState>((set, get) => ({
     currentRound: 0,
     currentTurnIndex: 0,
     combatantStates: {},
+    combatantConditions: {},
     lastCombat: null,
   }),
+
+  toggleCondition: (entityId, condition) => set((s) => {
+    const current = s.combatantConditions[entityId] ?? [];
+    const updated = current.includes(condition)
+      ? current.filter((c) => c !== condition)
+      : [...current, condition];
+    return { combatantConditions: { ...s.combatantConditions, [entityId]: updated } };
+  }),
+
+  showToast: (msg) => {
+    set({ toast: msg });
+    setTimeout(() => set({ toast: null }), 2500);
+  },
+
+  cloneStatBlock: async (id) => {
+    const blocks = get().statBlocks;
+    const original = blocks.find((b) => b.id === id);
+    if (!original) return;
+    const clone: EncounterStatBlock = {
+      ...original,
+      id: crypto.randomUUID(),
+      name: `${original.name} (copy)`,
+      hit_points: { ...original.hit_points, current: original.hit_points.maximum },
+    };
+    await backend.saveStatBlock(clone);
+    set({ statBlocks: await backend.listStatBlocks() });
+    get().showToast(`Cloned "${original.name}"`);
+  },
 }));
 
 let unlisteners: UnlistenFn[] = [];

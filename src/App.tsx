@@ -23,6 +23,7 @@ function App() {
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
   const setError = useStore((s) => s.setError);
+  const toast = useStore((s) => s.toast);
   const activeScene = useStore((s) =>
     s.scenes.find((sc) => sc.id === s.activeSceneId),
   );
@@ -77,6 +78,7 @@ function App() {
           <button onClick={() => setError(null)}>dismiss</button>
         </div>
       )}
+      {toast && <div className="toast">{toast}</div>}
       {loading && <p className="muted">Loading…</p>}
       {!loading && tab === "scenes" && <Scenes />}
       {!loading && tab === "characters" && (

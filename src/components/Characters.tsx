@@ -83,6 +83,18 @@ export function CharacterList() {
               <span className="muted">
                 HP {c.resource_pools.hp?.current ?? 0}/{c.resource_pools.hp?.maximum ?? 0}
               </span>
+            </div>
+            <div className="hp-bar">
+              <div
+                className={`hp-bar-fill ${(() => {
+                  const cur = c.resource_pools.hp?.current ?? 0;
+                  const max = c.resource_pools.hp?.maximum ?? 1;
+                  return cur <= 0 ? "dead" : cur < max * 0.25 ? "critical" : cur < max * 0.5 ? "wounded" : "healthy";
+                })()}`}
+                style={{ width: `${Math.max(0, Math.min(100, ((c.resource_pools.hp?.current ?? 0) / Math.max(1, c.resource_pools.hp?.maximum ?? 1)) * 100))}%` }}
+              />
+            </div>
+            <div className="card-row">
               <button onClick={() => setEditingId(editingId === c.id ? null : c.id)}>
                 {editingId === c.id ? "Close" : "Edit"}
               </button>

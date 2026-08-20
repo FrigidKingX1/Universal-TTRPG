@@ -17,13 +17,15 @@ export function DiceRoller() {
   };
 
   const presets = [
+    { label: "d4", expr: "1d4" },
+    { label: "d6", expr: "1d6" },
+    { label: "d8", expr: "1d8" },
+    { label: "d10", expr: "1d10" },
+    { label: "d12", expr: "1d12" },
     { label: "d20", expr: "1d20" },
-    { label: "d20+STR", expr: "1d20 + @attributes.STR.derived_modifier" },
-    { label: "d20+DEX", expr: "1d20 + @attributes.DEX.derived_modifier" },
-    { label: "d20+CON", expr: "1d20 + @attributes.CON.derived_modifier" },
-    { label: "d20+INT", expr: "1d20 + @attributes.INT.derived_modifier" },
-    { label: "d20+WIS", expr: "1d20 + @attributes.WIS.derived_modifier" },
-    { label: "d20+CHA", expr: "1d20 + @attributes.CHA.derived_modifier" },
+    { label: "d100", expr: "1d100" },
+    { label: "Adv", expr: "2d20kh1" },
+    { label: "Disadv", expr: "2d20kl1" },
     { label: "2d6", expr: "2d6" },
     { label: "4d6kh3", expr: "4d6kh3" },
   ];
@@ -78,6 +80,34 @@ export function OraclePanel() {
     return active ? active.chaos_factor : 5;
   });
   const [odds, setOdds] = useState("fifty_fifty");
+  const [showTable, setShowTable] = useState(false);
+
+  const ACTIONS = [
+    "Altered", "Attitude", "Arrival", "Betrayal", "Communication", "Complication",
+    "Council", "Danger", "Discovery", "Enemy", "Expedition", "Favor",
+    "Flow", "Goal", "Grave", "Guard", "Harm", "Hatred",
+    "Health", "Help", "Hierarchy", "Humor", "Inattention", "Injury",
+    "Interest", "Intrigue", "Journey", "Judge", "Knowledge", "Leadership",
+    "Location", "Military", "Move", "Mundane", "Nature", "Neutral",
+    "Object", "Obstacle", "Open", "Oppose", "Outdoor", "Peace",
+    "Physical", "Plot", "Possessions", "Prison", "Promise", "Reason",
+    "Report", "Resistance", "Revival", "Ruin", "Rumor", "Setback",
+    "Siege", "Stranger", "Struggle", "Supply", "Suspense", "Theme",
+    "Time", "Tradition", "Trap", "Trouble", "Truth", "Use",
+    "Vengeance", "Victory", "Vulnerability", "Waste", "Weapon", "Weather",
+  ];
+  const SUBJECTS = [
+    "Adversity", "Allies", "An enemy", "An object", "Bad news", "Benefits",
+    "Bounty", "Capabilities", "Clues", "Communication", "Complications", "Disaster",
+    "Evidence", "Familiar face", "Forgotten lore", "Friend", "Grants", "Guardian",
+    "Harm", "Helpers", "Information", "Interruption", "Location", "Messengers",
+    "Misfortune", "Mundane thing", "Nature", "NPC", "Obstacle", "Ominous signs",
+    "Opposition", "Outdoor", "Pain", "Peace", "Person", "Possessions",
+    "Power", "Prize", "Rival", "Rumor", "Ruin", "Setback",
+    "Something", "Stress", "Success", "Surprise", "Threat", "Time",
+    "Tools", "Trouble", "Truth", "Unknown", "Valuable", "Vehicle",
+    "Vulnerability", "Weapon", "Weather", "Work", "Wound", "Your objective",
+  ];
 
   const fate = async () => {
     try {
@@ -134,6 +164,30 @@ export function OraclePanel() {
           {lastEvent.descriptor}, {lastEvent.focus}
         </div>
       )}
+
+      {/* Meaning Table Reference */}
+      <div className="meaning-table-section">
+        <button className="log-toggle" onClick={() => setShowTable(!showTable)}>
+          {showTable ? "Hide" : "Show"} Meaning Tables
+        </button>
+        {showTable && (
+          <div className="meaning-tables">
+            <div className="meaning-col">
+              <h4>Actions ({ACTIONS.length})</h4>
+              <div className="meaning-grid">
+                {ACTIONS.map((a) => <span key={a} className="meaning-entry">{a}</span>)}
+              </div>
+            </div>
+            <div className="meaning-col">
+              <h4>Subjects ({SUBJECTS.length})</h4>
+              <div className="meaning-grid">
+                {SUBJECTS.map((s) => <span key={s} className="meaning-entry">{s}</span>)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {fateHistory.length > 0 && (
         <div className="oracle-history">
           <h3>Fate History</h3>

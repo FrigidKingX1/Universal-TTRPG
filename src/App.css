@@ -724,3 +724,107 @@ select:focus {
   flex: 1;
   min-width: 120px;
 }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: var(--accent);
+  color: #0b0d10;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 100;
+  animation: toast-in 0.25s ease, toast-out 0.3s ease 2.2s forwards;
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Combat Conditions */
+.condition-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+
+.condition-badge {
+  background: rgba(247, 118, 142, 0.2);
+  color: var(--danger);
+  border: 1px solid rgba(247, 118, 142, 0.3);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.condition-badge:hover {
+  background: rgba(247, 118, 142, 0.4);
+}
+
+.condition-select {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+/* Scene Preview */
+.scene-preview {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Meaning Table */
+.meaning-table-section {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.meaning-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.meaning-col h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.meaning-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.meaning-entry {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.meaning-entry:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
