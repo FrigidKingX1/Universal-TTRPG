@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useStore, newStatBlock } from "../store";
+import { backend } from "../backend";
 import type { EncounterStatBlock, Size } from "../types";
 
 export function Bestiary() {
@@ -151,6 +152,16 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
           <span>Formula</span>
           <input value={hpFormula} onChange={(e) => setHpFormula(e.currentTarget.value)} placeholder="2d6" />
         </label>
+        {hpFormula.trim() && (
+          <button className="roll-hp-btn" onClick={async () => {
+            try {
+              const r = await backend.rollDice(hpFormula.trim());
+              const rolled = Math.max(1, r.total);
+              setHp(rolled);
+              setMaxHp(rolled);
+            } catch { /* ignore */ }
+          }}>Roll HP</button>
+        )}
         <label className="attr">
           <span>Speed</span>
           <input type="number" min={0} value={speed} onChange={(e) => setSpeed(Number(e.currentTarget.value))} />

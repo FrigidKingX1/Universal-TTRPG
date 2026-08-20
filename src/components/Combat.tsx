@@ -4,6 +4,17 @@ import type { CharacterProfile, EncounterStatBlock, EngineOutcome } from "../typ
 
 const CONDITIONS = ["Poisoned", "Prone", "Stunned", "Frightened", "Blinded", "Charmed", "Invisible", "Exhaustion"];
 
+const CONDITION_DESC: Record<string, string> = {
+  Poisoned: "Disadvantage on attack rolls and ability checks.",
+  Prone: "Disadvantage on attack rolls. Melee attacks against you have advantage.",
+  Stunned: "Incapacitated. Auto-fails STR and DEX saves. Attacks against you have advantage.",
+  Frightened: "Disadvantage on ability checks and attack rolls while source is in line of sight.",
+  Blinded: "Auto-fails sight-based checks. Attacks against you have advantage. Your attacks have disadvantage.",
+  Charmed: "Can't target the charmer with harmful abilities. Charmer has advantage on social checks.",
+  Invisible: "Attacks against you have disadvantage. Your attacks have advantage.",
+  Exhaustion: "6 levels. Level 1: disadvantage on ability checks. Level 2: halved speed. And worse...",
+};
+
 export function Combat() {
   const characters = useStore((s) => s.characters);
   const statBlocks = useStore((s) => s.statBlocks);
@@ -12,6 +23,9 @@ export function Combat() {
   const rollInitiative = useStore((s) => s.rollInitiative);
   const nextTurn = useStore((s) => s.nextTurn);
   const endCombat = useStore((s) => s.endCombat);
+  const removeCombatant = useStore((s) => s.removeCombatant);
+  const longRest = useStore((s) => s.longRest);
+  const shortRest = useStore((s) => s.shortRest);
   const lastCombat = useStore((s) => s.lastCombat);
   const combatHistory = useStore((s) => s.combatHistory);
   const initiativeOrder = useStore((s) => s.initiativeOrder);
@@ -177,7 +191,7 @@ export function Combat() {
               </div>
               <div className="condition-row">
                 {(combatantConditions[e.value.id] ?? []).map((c) => (
-                  <span key={c} className="condition-badge" onClick={() => toggleCondition(e.value.id, c)}>
+                  <span key={c} className="condition-badge" title={CONDITION_DESC[c] ?? c} onClick={() => toggleCondition(e.value.id, c)}>
                     {c} ×
                   </span>
                 ))}
@@ -191,6 +205,11 @@ export function Combat() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+              </div>
+              <div className="card-footer-row">
+                <button className="remove-combatant-btn danger" onClick={() => { if (confirm(`Remove ${e.name} from combat?`)) removeCombatant(e.value.id); }}>
+                  Remove
+                </button>
               </div>
             </div>
           );
@@ -221,6 +240,12 @@ export function Combat() {
         <button onClick={applyCustomHp} disabled={!customHpTarget || customHpAmount === 0}>
           {customHpAmount >= 0 ? "Heal" : "Damage"}
         </button>
+      </div>
+
+      {/* Rest Buttons */}
+      <div className="rest-buttons-row">
+        <button className="rest-btn short-rest" onClick={() => void shortRest()}>Short Rest</button>
+        <button className="rest-btn long-rest" onClick={() => void longRest()}>Long Rest</button>
       </div>
 
       <div className="row">

@@ -85,9 +85,13 @@ export interface AutoDmState {
   ) => Promise<void>;
   nextTurn: () => void;
   endCombat: () => void;
+  removeCombatant: (entityId: string) => void;
+  longRest: () => Promise<void>;
+  shortRest: () => Promise<void>;
   toggleCondition: (entityId: string, condition: string) => void;
   showToast: (msg: string) => void;
   cloneStatBlock: (id: string) => Promise<void>;
+  completeScene: () => Promise<void>;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -371,6 +375,74 @@ export const useStore = create<AutoDmState>((set, get) => ({
     lastCombat: null,
   }),
 
+  removeCombatant: (entityId) => set((s) => {
+    const newStates = { ...s.combatantStates };
+    delete newStates[entityId];
+    const newConditions = { ...s.combatantConditions };
+    delete newConditions[entityId];
+    const newOrder = s.initiativeOrder.filter((e) => e.combatant_id !== entityId);
+    return {
+      combatantStates: newStates,
+      combatantConditions: newConditions,
+      initiativeOrder: newOrder,
+    };
+  }),
+
+  longRest: async () => {
+    const s = useStore.getState();
+    let healed = 0;
+    for (const c of s.characters) {
+      const max = c.resource_pools.hp?.maximum ?? 10;
+      const current = s.combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
+      if (current < max) {
+        await s.saveCharacter({
+          ...c,
+          resource_pools: {
+            ...c.resource_pools,
+            hp: { ...c.resource_pools.hp!, current: max },
+          },
+        });
+        const newStates = { ...s.combatantStates };
+        if (newStates[c.id]) newStates[c.id] = { ...newStates[c.id], hit_points: max };
+        useStore.setState({ combatantStates: newStates });
+        healed++;
+      }
+    }
+    get().showToast(`Long Rest: ${healed} character${healed !== 1 ? "s" : ""} healed to full`);
+    if (s.activeSceneId && healed > 0) {
+      await backend.appendLog(s.activeSceneId, "System", `Party takes a Long Rest. ${healed} character${healed !== 1 ? "s" : ""} fully healed.`);
+    }
+  },
+
+  shortRest: async () => {
+    const s = useStore.getState();
+    let healed = 0;
+    for (const c of s.characters) {
+      const max = c.resource_pools.hp?.maximum ?? 10;
+      const current = s.combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
+      const halfMax = Math.floor(max / 2);
+      if (current < max && halfMax > 0) {
+        const restored = Math.min(halfMax, max - current);
+        const newHp = current + restored;
+        await s.saveCharacter({
+          ...c,
+          resource_pools: {
+            ...c.resource_pools,
+            hp: { ...c.resource_pools.hp!, current: newHp },
+          },
+        });
+        const newStates = { ...s.combatantStates };
+        if (newStates[c.id]) newStates[c.id] = { ...newStates[c.id], hit_points: newHp };
+        useStore.setState({ combatantStates: newStates });
+        healed++;
+      }
+    }
+    get().showToast(`Short Rest: ${healed} character${healed !== 1 ? "s" : ""} recovered HP`);
+    if (s.activeSceneId && healed > 0) {
+      await backend.appendLog(s.activeSceneId, "System", `Party takes a Short Rest. ${healed} character${healed !== 1 ? "s" : ""} recovered hit points.`);
+    }
+  },
+
   toggleCondition: (entityId, condition) => set((s) => {
     const current = s.combatantConditions[entityId] ?? [];
     const updated = current.includes(condition)
@@ -397,6 +469,17 @@ export const useStore = create<AutoDmState>((set, get) => ({
     await backend.saveStatBlock(clone);
     set({ statBlocks: await backend.listStatBlocks() });
     get().showToast(`Cloned "${original.name}"`);
+  },
+
+  completeScene: async () => {
+    const s = get();
+    const scene = s.scenes.find((sc) => sc.id === s.activeSceneId);
+    if (!scene) return;
+    if (scene.summary_text) {
+      await backend.appendLog(scene.id, "System", `[Scene #${scene.scene_number} Complete] ${scene.summary_text}`);
+    }
+    await backend.appendLog(scene.id, "System", `Scene "${scene.title}" has been completed.`);
+    get().showToast(`Scene "${scene.title}" completed`);
   },
 }));
 

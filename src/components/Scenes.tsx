@@ -8,6 +8,7 @@ export function Scenes() {
   const createScene = useStore((s) => s.createScene);
   const setActiveScene = useStore((s) => s.setActiveScene);
   const deleteScene = useStore((s) => s.deleteScene);
+  const completeScene = useStore((s) => s.completeScene);
   const [title, setTitle] = useState("");
   const [cf, setCf] = useState(5);
 
@@ -51,6 +52,11 @@ export function Scenes() {
               </strong>
               <span className="muted">CF {sc.chaos_factor}</span>
               {sc.id === activeSceneId && <span className="badge">active</span>}
+              {sc.id === activeSceneId && (
+                <button className="complete-scene-btn" onClick={() => { if (confirm(`Complete scene "${sc.title}"?`)) void completeScene(); }}>
+                  Complete
+                </button>
+              )}
               {sc.id !== activeSceneId && (
                 <button onClick={() => void setActiveScene(sc.id)}>Set active</button>
               )}

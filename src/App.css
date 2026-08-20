@@ -828,3 +828,88 @@ select:focus {
   color: var(--text);
   border-color: var(--accent);
 }
+
+/* Rest Buttons */
+.rest-buttons-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.rest-btn {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  font-weight: 600;
+}
+
+.rest-btn.short-rest {
+  background: rgba(224, 175, 104, 0.25);
+  color: #e0af68;
+  border: 1px solid rgba(224, 175, 104, 0.4);
+}
+
+.rest-btn.short-rest:hover {
+  background: rgba(224, 175, 104, 0.4);
+}
+
+.rest-btn.long-rest {
+  background: rgba(158, 206, 106, 0.25);
+  color: #9ece6a;
+  border: 1px solid rgba(158, 206, 106, 0.4);
+}
+
+.rest-btn.long-rest:hover {
+  background: rgba(158, 206, 106, 0.4);
+}
+
+/* Remove Combatant */
+.card-footer-row {
+  margin-top: 0.35rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+}
+
+.remove-combatant-btn {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  background: rgba(247, 118, 142, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(247, 118, 142, 0.3);
+}
+
+.remove-combatant-btn:hover {
+  background: rgba(247, 118, 142, 0.3);
+}
+
+/* Roll HP Button */
+.roll-hp-btn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(122, 162, 247, 0.2);
+  color: var(--accent);
+  border: 1px solid rgba(122, 162, 247, 0.3);
+  align-self: center;
+}
+
+.roll-hp-btn:hover {
+  background: rgba(122, 162, 247, 0.35);
+}
+
+/* Complete Scene Button */
+.complete-scene-btn {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(158, 206, 106, 0.2);
+  color: #9ece6a;
+  border: 1px solid rgba(158, 206, 106, 0.3);
+}
+
+.complete-scene-btn:hover {
+  background: rgba(158, 206, 106, 0.35);
+}
+
+/* Condition tooltip */
+.condition-badge {
+  position: relative;
+  cursor: help;
+}
