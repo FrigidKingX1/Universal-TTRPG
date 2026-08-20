@@ -54,7 +54,7 @@ export function Scenes() {
               {sc.id !== activeSceneId && (
                 <button onClick={() => void setActiveScene(sc.id)}>Set active</button>
               )}
-              <button className="danger" onClick={() => void deleteScene(sc.id)}>
+              <button className="danger" onClick={() => { if (confirm(`Delete scene "${sc.title}"?`)) void deleteScene(sc.id); }}>
                 Delete
               </button>
             </div>

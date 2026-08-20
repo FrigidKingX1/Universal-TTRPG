@@ -48,7 +48,7 @@ export function CharacterList() {
               <button onClick={() => setEditingId(editingId === c.id ? null : c.id)}>
                 {editingId === c.id ? "Close" : "Edit"}
               </button>
-              <button className="danger" onClick={() => void deleteCharacter(c.id)}>
+              <button className="danger" onClick={() => { if (confirm(`Delete ${c.identity.name}?`)) void deleteCharacter(c.id); }}>
                 Delete
               </button>
             </div>
@@ -284,7 +284,7 @@ export function ActionList() {
               <button onClick={() => setEditingId(editingId === a.id ? null : a.id)}>
                 {editingId === a.id ? "Close" : "Edit"}
               </button>
-              <button className="danger" onClick={() => void deleteAction(a.id)}>
+              <button className="danger" onClick={() => { if (confirm(`Delete action "${a.name}"?`)) void deleteAction(a.id); }}>
                 Delete
               </button>
             </div>

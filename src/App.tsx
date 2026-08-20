@@ -26,6 +26,10 @@ function App() {
   const activeScene = useStore((s) =>
     s.scenes.find((sc) => sc.id === s.activeSceneId),
   );
+  const charCount = useStore((s) => s.characters.length);
+  const monsterCount = useStore((s) => s.statBlocks.length);
+  const logCount = useStore((s) => s.logs.length);
+  const sceneCount = useStore((s) => s.scenes.length);
 
   useEffect(() => {
     void bootstrap();
@@ -48,15 +52,23 @@ function App() {
       </header>
 
       <nav className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={tab === t.id ? "tab active" : "tab"}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          let count = 0;
+          if (t.id === "scenes") count = sceneCount;
+          else if (t.id === "characters") count = charCount;
+          else if (t.id === "bestiary") count = monsterCount;
+          else if (t.id === "tools") count = logCount;
+          return (
+            <button
+              key={t.id}
+              className={tab === t.id ? "tab active" : "tab"}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+              {count > 0 && <span className="tab-badge">{count}</span>}
+            </button>
+          );
+        })}
       </nav>
 
       {error && (

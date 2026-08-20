@@ -388,3 +388,156 @@ select:focus {
 .ability-list li {
   padding: 0.15rem 0;
 }
+
+.dice-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.preset-btn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.preset-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.roll-history {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.roll-history-entry {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.15rem 0;
+}
+
+.roll-history-entry span:first-child {
+  min-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oracle-history {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.oracle-history h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.oracle-history-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.oracle-history-entry:last-child {
+  border-bottom: none;
+}
+
+.dm-history {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.dm-history h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.dm-history-entry {
+  padding: 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 0.35rem;
+}
+
+.dm-history-entry .narrative {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0 0 0.2rem;
+}
+
+.hp-adjust-row {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+
+.hp-dmg {
+  background: rgba(247, 118, 142, 0.2);
+  color: var(--danger);
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid rgba(247, 118, 142, 0.3);
+}
+
+.hp-dmg:hover {
+  background: rgba(247, 118, 142, 0.35);
+}
+
+.hp-heal {
+  background: rgba(158, 206, 106, 0.2);
+  color: #9ece6a;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid rgba(158, 206, 106, 0.3);
+}
+
+.hp-heal:hover {
+  background: rgba(158, 206, 106, 0.35);
+}
+
+.tab-badge {
+  display: inline-block;
+  background: var(--muted);
+  color: var(--bg);
+  border-radius: 8px;
+  padding: 0 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 0.3rem;
+  min-width: 1.1rem;
+  text-align: center;
+}
+
+.tab.active .tab-badge {
+  background: var(--accent);
+}
+
+.ollama-status {
+  transition: border-color 0.3s ease;
+}
+
+.ollama-status.online {
+  border-color: rgba(158, 206, 106, 0.4);
+}
+
+.ollama-status.offline {
+  border-color: var(--border);
+}

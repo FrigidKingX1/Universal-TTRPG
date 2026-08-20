@@ -28,10 +28,15 @@ export interface AutoDmState {
   logs: LogEntry[];
 
   lastRoll: RollResponse | null;
+  rollHistory: RollResponse[];
   lastFate: FateCheckResponse | null;
+  fateHistory: FateCheckResponse[];
   lastEvent: EventMeaning | null;
+  eventHistory: EventMeaning[];
   lastCombat: EngineOutcome | null;
+  combatHistory: EngineOutcome[];
   lastDm: import("./types").DmResponse | null;
+  dmHistory: import("./types").DmResponse[];
   initiativeOrder: InitiativeEntry[];
   combatantStates: Record<string, CombatantState>;
 
@@ -128,10 +133,15 @@ export const useStore = create<AutoDmState>((set, get) => ({
   logs: [],
 
   lastRoll: null,
+  rollHistory: [],
   lastFate: null,
+  fateHistory: [],
   lastEvent: null,
+  eventHistory: [],
   lastCombat: null,
+  combatHistory: [],
   lastDm: null,
+  dmHistory: [],
   initiativeOrder: [],
   combatantStates: {},
   ollama: { reachable: false, models: [] },
@@ -239,9 +249,9 @@ export const useStore = create<AutoDmState>((set, get) => ({
     set({ logs: (await backend.listLogs(id, 200)) });
   },
 
-  recordRoll: (r) => set({ lastRoll: r }),
-  recordFate: (f) => set({ lastFate: f }),
-  recordEvent: (e) => set({ lastEvent: e }),
+  recordRoll: (r) => set((s) => ({ lastRoll: r, rollHistory: [...s.rollHistory.slice(-49), r] })),
+  recordFate: (f) => set((s) => ({ lastFate: f, fateHistory: [...s.fateHistory.slice(-19), f] })),
+  recordEvent: (e) => set((s) => ({ lastEvent: e, eventHistory: [...s.eventHistory.slice(-19), e] })),
 
   resolveDmAction: async (playerAction) => {
     const s = useStore.getState();
@@ -251,7 +261,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
       player_action: playerAction,
       chaos_factor: scene?.chaos_factor ?? 5,
     });
-    set({ lastDm: response });
+    set((s) => ({ lastDm: response, dmHistory: [...s.dmHistory.slice(-19), response] }));
     if (scene && response.narrative) {
       try {
         await backend.appendLog(scene.id, "Auto-DM", response.narrative);
@@ -321,7 +331,10 @@ export async function subscribeToEvents() {
     listen<FateCheckResponse>("oracle:fate", (e) => get().recordFate(e.payload)),
     listen<EventMeaning>("oracle:event", (e) => get().recordEvent(e.payload)),
     listen<EngineOutcome>("combat:outcome", (e) =>
-      useStore.setState({ lastCombat: e.payload }),
+      useStore.setState((s) => ({
+        lastCombat: e.payload,
+        combatHistory: [...s.combatHistory.slice(-19), e.payload],
+      })),
     ),
     listen<CombatantState>("combatant:state", (e) => {
       const p = e.payload;

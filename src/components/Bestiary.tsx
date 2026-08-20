@@ -35,7 +35,7 @@ export function Bestiary() {
               <button onClick={() => setEditingId(editingId === b.id ? null : b.id)}>
                 {editingId === b.id ? "Close" : "Edit"}
               </button>
-              <button className="danger" onClick={() => void deleteStatBlock(b.id)}>
+              <button className="danger" onClick={() => { if (confirm(`Delete ${b.name}?`)) void deleteStatBlock(b.id); }}>
                 Delete
               </button>
             </div>

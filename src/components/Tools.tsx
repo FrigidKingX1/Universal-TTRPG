@@ -3,7 +3,7 @@ import { backend } from "../backend";
 import { useStore } from "../store";
 
 export function DiceRoller() {
-  const lastRoll = useStore((s) => s.lastRoll);
+  const rollHistory = useStore((s) => s.rollHistory);
   const [expr, setExpr] = useState("1d20 + @attributes.STR.derived_modifier");
   const [result, setResult] = useState<string | null>(null);
 
@@ -16,9 +16,28 @@ export function DiceRoller() {
     }
   };
 
+  const presets = [
+    { label: "d20", expr: "1d20" },
+    { label: "d20+STR", expr: "1d20 + @attributes.STR.derived_modifier" },
+    { label: "d20+DEX", expr: "1d20 + @attributes.DEX.derived_modifier" },
+    { label: "d20+CON", expr: "1d20 + @attributes.CON.derived_modifier" },
+    { label: "d20+INT", expr: "1d20 + @attributes.INT.derived_modifier" },
+    { label: "d20+WIS", expr: "1d20 + @attributes.WIS.derived_modifier" },
+    { label: "d20+CHA", expr: "1d20 + @attributes.CHA.derived_modifier" },
+    { label: "2d6", expr: "2d6" },
+    { label: "4d6kh3", expr: "4d6kh3" },
+  ];
+
   return (
     <section className="panel">
       <h2>Dice Roller</h2>
+      <div className="dice-presets">
+        {presets.map((p) => (
+          <button key={p.label} onClick={() => setExpr(p.expr)} className="preset-btn">
+            {p.label}
+          </button>
+        ))}
+      </div>
       <form
         className="row"
         onSubmit={(e) => {
@@ -33,16 +52,27 @@ export function DiceRoller() {
         />
         <button type="submit">Roll</button>
       </form>
-      <p className="roll-result">
-        {result ?? (lastRoll ? `${lastRoll.total}  (${lastRoll.detail})` : "Roll something.")}
-      </p>
+      {result && <p className="roll-result">{result}</p>}
+      {rollHistory.length > 0 && (
+        <div className="roll-history">
+          {rollHistory.slice().reverse().map((r, i) => (
+            <div key={i} className="roll-history-entry">
+              <span className="muted">{r.expression}</span>
+              <strong>{r.total}</strong>
+              <span className="muted">{r.detail}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
 export function OraclePanel() {
   const lastFate = useStore((s) => s.lastFate);
+  const fateHistory = useStore((s) => s.fateHistory);
   const lastEvent = useStore((s) => s.lastEvent);
+  const eventHistory = useStore((s) => s.eventHistory);
   const chaosFactor = useStore((s) => {
     const active = s.scenes.find((sc) => sc.id === s.activeSceneId);
     return active ? active.chaos_factor : 5;
@@ -84,7 +114,7 @@ export function OraclePanel() {
             <option value="sure_thing">A Sure Thing</option>
           </select>
         </label>
-        <span className="muted">Chaos Factor {chaosFactor}</span>
+        <span className="muted">CF {chaosFactor}</span>
         <button onClick={() => void fate()}>Fate Check</button>
         <button onClick={() => void event()}>Random Event</button>
       </div>
@@ -104,12 +134,36 @@ export function OraclePanel() {
           {lastEvent.descriptor}, {lastEvent.focus}
         </div>
       )}
+      {fateHistory.length > 0 && (
+        <div className="oracle-history">
+          <h3>Fate History</h3>
+          {fateHistory.slice().reverse().map((f, i) => (
+            <div key={i} className="oracle-history-entry">
+              <span className={f.exceptional ? "exceptional" : ""}>{f.interpretation}</span>
+              <span className="muted">
+                {f.odds} — {f.roll}/{f.target} (CF {f.chaos_factor})
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {eventHistory.length > 0 && (
+        <div className="oracle-history">
+          <h3>Event History</h3>
+          {eventHistory.slice().reverse().map((e, i) => (
+            <div key={i} className="oracle-history-entry">
+              <strong>{e.action}</strong> the <strong>{e.subject}</strong> — {e.descriptor}, {e.focus}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
 export function DmPanel() {
   const lastDm = useStore((s) => s.lastDm);
+  const dmHistory = useStore((s) => s.dmHistory);
   const resolveDmAction = useStore((s) => s.resolveDmAction);
   const ollamaLive = useStore((s) => s.ollama.reachable);
   const activeSceneId = useStore((s) => s.activeSceneId);
@@ -185,6 +239,17 @@ export function DmPanel() {
             )}
             <span className="muted">Source: {lastDm.source}</span>
           </div>
+        </div>
+      )}
+      {dmHistory.length > 1 && (
+        <div className="dm-history">
+          <h3>Prior Resolutions</h3>
+          {dmHistory.slice(0, -1).reverse().map((d, i) => (
+            <div key={i} className="dm-history-entry">
+              <p className="narrative">{d.narrative}</p>
+              <span className="muted">{d.fate_interpretation} — {d.source}</span>
+            </div>
+          ))}
         </div>
       )}
     </section>
@@ -268,7 +333,7 @@ export function OllamaStatus() {
 
   if (!ollama.reachable) {
     return (
-      <section className="panel">
+      <section className="panel ollama-status offline">
         <h2>Ollama</h2>
         <p className="muted">offline — stub DM active (start Ollama to go live)</p>
       </section>
@@ -276,10 +341,13 @@ export function OllamaStatus() {
   }
 
   return (
-    <section className="panel">
-      <h2>Ollama</h2>
+    <section className="panel ollama-status online">
+      <h2>
+        Ollama{" "}
+        <span className="badge">online</span>
+      </h2>
       <p>
-        connected — {ollama.models.length} model{ollama.models.length !== 1 ? "s" : ""} installed
+        {ollama.models.length} model{ollama.models.length !== 1 ? "s" : ""} installed
       </p>
       <p className="muted">
         {ollama.models.length > 0

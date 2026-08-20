@@ -8,6 +8,8 @@ export function Combat() {
   const actions = useStore((s) => s.actions);
   const runAttack = useStore((s) => s.runAttack);
   const rollInitiative = useStore((s) => s.rollInitiative);
+  const saveCharacter = useStore((s) => s.saveCharacter);
+  const saveStatBlock = useStore((s) => s.saveStatBlock);
   const lastCombat = useStore((s) => s.lastCombat);
   const initiativeOrder = useStore((s) => s.initiativeOrder);
   const combatantStates = useStore((s) => s.combatantStates);
@@ -31,6 +33,31 @@ export function Combat() {
     const st = combatantStates[entity.id];
     if (st) return { current: st.hit_points, max: getHitPoints(entity), status: st.status };
     return { current: getHitPoints(entity), max: getHitPoints(entity), status: undefined };
+  };
+
+  const quickHpAdjust = (entity: CharacterProfile | EncounterStatBlock, isChar: boolean, amount: number) => {
+    if (isChar) {
+      const c = characters.find((x) => x.id === entity.id);
+      if (!c) return;
+      const current = combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
+      const max = c.resource_pools.hp?.maximum ?? current;
+      void saveCharacter({
+        ...c,
+        resource_pools: {
+          ...c.resource_pools,
+          hp: { ...c.resource_pools.hp!, current: Math.max(0, Math.min(max, current + amount)) },
+        },
+      });
+    } else {
+      const b = statBlocks.find((x) => x.id === entity.id);
+      if (!b) return;
+      const current = combatantStates[b.id]?.hit_points ?? b.hit_points.current;
+      const max = b.hit_points.maximum;
+      void saveStatBlock({
+        ...b,
+        hit_points: { ...b.hit_points, current: Math.max(0, Math.min(max, current + amount)) },
+      });
+    }
   };
 
   const attack = async () => {
@@ -65,6 +92,7 @@ export function Combat() {
           const hp = hpInfo(e.value);
           const pct = Math.max(0, Math.min(100, (hp.current / Math.max(1, hp.max)) * 100));
           const barClass = hp.current <= 0 ? "dead" : hp.current < hp.max * 0.25 ? "critical" : hp.current < hp.max * 0.5 ? "wounded" : "healthy";
+          const isChar = "identity" in e.value;
           return (
             <div key={e.key} className="combatant-card">
               <div className="card-row">
@@ -77,6 +105,17 @@ export function Combat() {
                 <div className="hp-bar">
                   <div className={`hp-bar-fill ${barClass}`} style={{ width: `${pct}%` }} />
                 </div>
+              </div>
+              <div className="hp-adjust-row">
+                {[-5, -1, 1, 5].map((amt) => (
+                  <button
+                    key={amt}
+                    className={amt < 0 ? "hp-dmg" : "hp-heal"}
+                    onClick={() => quickHpAdjust(e.value, isChar, amt)}
+                  >
+                    {amt > 0 ? "+" : ""}{amt}
+                  </button>
+                ))}
               </div>
             </div>
           );
