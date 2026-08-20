@@ -211,6 +211,12 @@ impl MythicOracle {
     pub fn random_event_now(&mut self) -> EventMeaning {
         MeaningTable::default_table().random_event(&mut self.rng)
     }
+
+    /// Mutable access to the internal RNG (for external callers that need
+    /// to perform additional rolls with the same entropy source).
+    pub fn rng_mut(&mut self) -> &mut ChaCha8Rng {
+        &mut self.rng
+    }
 }
 
 /// Result of pairing Meaning Table entries for a Random Event.

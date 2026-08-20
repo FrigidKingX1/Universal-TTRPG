@@ -3,6 +3,7 @@ import type {
   ActionDefinition,
   CharacterProfile,
   CombatantState,
+  DoomClock,
   DmRequest,
   DmResponse,
   EncounterStatBlock,
@@ -76,6 +77,29 @@ export const backend = {
     invoke<FateCheckResponse>("fate_check", { odds, chaosFactor, seed }),
   randomEvent: (chaosFactor: number, seed?: number) =>
     invoke<EventMeaning>("random_event", { chaosFactor, seed }),
+
+  // Scene Test (Mythic)
+  sceneTest: (chaosFactor: number, seed?: number) =>
+    invoke<SceneTestResponse>("scene_test_cmd", { chaosFactor, seed }),
+
+  // Lines & Veils safety
+  getLinesVeils: () =>
+    invoke<{ lines: string[]; veils: string[] }>("get_lines_veils"),
+  setLinesVeils: (lines: string[], veils: string[]) =>
+    invoke<void>("set_lines_veils", { lines, veils }),
+
+  // Doom Clocks
+  createDoomClock: (label: string, max: number, consequence: string, sceneId?: string) =>
+    invoke<DoomClock>("create_doom_clock", { label, max, consequence, sceneId }),
+  listDoomClocks: () => invoke<DoomClock[]>("list_doom_clocks"),
+  tickDoomClock: (id: string) =>
+    invoke<[number, number] | null>("tick_doom_clock", { id }),
+  advanceDoomClock: (id: string, ticks: number) =>
+    invoke<[number, number] | null>("advance_doom_clock", { id, ticks }),
+  resetDoomClock: (id: string) =>
+    invoke<void>("reset_doom_clock", { id }),
+  deleteDoomClock: (id: string) =>
+    invoke<boolean>("delete_doom_clock", { id }),
 
   // Combat
   combatAttack: (
@@ -210,6 +234,18 @@ export interface NpcCharacterRow {
   notes: string | null;
   last_seen_scene_id: string | null;
   created_at: string;
+}
+
+export interface SceneTestResponse {
+  outcome: string;
+  event: EnrichedEvent | null;
+}
+
+export interface EnrichedEvent {
+  meaning: EventMeaning;
+  suggested_npc_name: string | null;
+  remove_thread_id: string | null;
+  acting_npc: string | null;
 }
 
 export type CombatEvents = {

@@ -16,6 +16,7 @@ export function Scenes() {
   const [cf, setCf] = useState(5);
   const [showThreads, setShowThreads] = useState(false);
   const [showNpcs, setShowNpcs] = useState(false);
+  const [showClocks, setShowClocks] = useState(false);
 
   return (
     <section className="panel">
@@ -58,7 +59,13 @@ export function Scenes() {
               <span className="muted">CF {sc.chaos_factor}</span>
               {sc.id === activeSceneId && <span className="badge">active</span>}
               {sc.id === activeSceneId && (
-                <button className="complete-scene-btn" onClick={() => { if (confirm(`Complete scene "${sc.title}"?`)) void completeScene(); }}>
+                <button className="complete-scene-btn" onClick={() => {
+                  if (!confirm(`Complete scene "${sc.title}"?`)) return;
+                  const outcome = prompt("Scene outcome:\nType 'favor' if it went in the player's favor (CF-1),\n'against' if it went against them (CF+1),\nor leave blank for no CF change.");
+                  if (outcome === null) return;
+                  const adj = outcome === "favor" || outcome === "against" ? outcome as "favor" | "against" : undefined;
+                  void completeScene(adj);
+                }}>
                   Complete
                 </button>
               )}
@@ -74,6 +81,7 @@ export function Scenes() {
             )}
             {sc.id === activeSceneId && <SceneSummaryEditor scene={sc} />}
             {sc.id === activeSceneId && <SceneCfEditor scene={sc} />}
+            {sc.id === activeSceneId && <SceneTestRoller chaosFactor={sc.chaos_factor} />}
           </li>
         ))}
       </ul>
@@ -93,6 +101,14 @@ export function Scenes() {
           {showNpcs ? "▼" : "▶"} NPC Characters
         </button>
         {showNpcs && <NpcCharactersPanel />}
+      </div>
+
+      {/* ── Doom Clocks ──────────────────────────────────────────── */}
+      <div style={{ marginTop: "0.75rem" }}>
+        <button className="muted" onClick={() => setShowClocks(!showClocks)} style={{ fontSize: "0.85rem" }}>
+          {showClocks ? "▼" : "▶"} Doom Clocks
+        </button>
+        {showClocks && <DoomClocksPanel />}
       </div>
     </section>
   );
@@ -159,6 +175,49 @@ function SceneCfEditor({ scene }: { scene: { id: string; chaos_factor: number } 
       <button onClick={() => void save()} disabled={saving || cf === scene.chaos_factor}>
         {saving ? "Saving…" : "Update CF"}
       </button>
+    </div>
+  );
+}
+
+function SceneTestRoller({ chaosFactor }: { chaosFactor: number }) {
+  const showToast = useStore((s) => s.showToast);
+  const [result, setResult] = useState<{ outcome: string; event?: { meaning: { action: string; subject: string; descriptor: string; focus: string }; acting_npc?: string | null; suggested_npc_name?: string | null; remove_thread_id?: string | null } | null } | null>(null);
+  const [rolling, setRolling] = useState(false);
+
+  const roll = async () => {
+    setRolling(true);
+    try {
+      const resp = await backend.sceneTest(chaosFactor);
+      setResult(resp);
+      const label = resp.outcome === "as_expected" ? "As Expected" : resp.outcome === "altered" ? "Altered" : "Interrupted";
+      showToast(`Scene Test: ${label}`);
+    } catch (e) {
+      showToast(`Error: ${e}`);
+    } finally {
+      setRolling(false);
+    }
+  };
+
+  return (
+    <div className="sheet" style={{ marginTop: "0.4rem" }}>
+      <div className="card-row">
+        <button onClick={() => void roll()} disabled={rolling}>
+          {rolling ? "Rolling…" : "Scene Test (d10 vs CF " + chaosFactor + ")"}
+        </button>
+        {result && (
+          <span className={`badge ${result.outcome === "as_expected" ? "" : result.outcome === "altered" ? "disp-friendly" : "disp-hostile"}`}>
+            {result.outcome === "as_expected" ? "As Expected" : result.outcome === "altered" ? "Altered" : "Interrupted"}
+          </span>
+        )}
+      </div>
+      {result?.event && (
+        <div style={{ marginTop: "0.4rem", padding: "0.4rem", background: "rgba(255,255,255,0.03)", borderRadius: "4px", fontSize: "0.85rem" }}>
+          <strong>Random Event:</strong> {result.event.meaning.action} / {result.event.meaning.subject} — {result.event.meaning.descriptor} {result.event.meaning.focus}
+          {result.event.acting_npc && <span className="muted"> — NPC: {result.event.acting_npc}</span>}
+          {result.event.suggested_npc_name && <span className="muted"> — New NPC: {result.event.suggested_npc_name}</span>}
+          {result.event.remove_thread_id && <span className="muted"> — Thread at risk</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -364,6 +423,65 @@ function NpcCharactersPanel() {
                     Add Fact
                   </button>
                 </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DoomClocksPanel() {
+  const doomClocks = useStore((s) => s.doomClocks);
+  const addDoomClock = useStore((s) => s.addDoomClock);
+  const tickDoomClock = useStore((s) => s.tickDoomClock);
+  const advanceDoomClock = useStore((s) => s.advanceDoomClock);
+  const resetDoomClock = useStore((s) => s.resetDoomClock);
+  const deleteDoomClock = useStore((s) => s.deleteDoomClock);
+
+  const [label, setLabel] = useState("");
+  const [maxTicks, setMaxTicks] = useState(6);
+  const [consequence, setConsequence] = useState("");
+
+  const add = () => {
+    if (!label.trim() || !consequence.trim()) return;
+    void addDoomClock(label.trim(), maxTicks, consequence.trim());
+    setLabel("");
+    setConsequence("");
+  };
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <h4>Doom Clocks</h4>
+      <div className="row" style={{ marginBottom: "0.5rem" }}>
+        <input value={label} onChange={(e) => setLabel(e.currentTarget.value)} placeholder="Clock label…" style={{ flex: 2 }} />
+        <input type="number" value={maxTicks} onChange={(e) => setMaxTicks(Math.max(1, parseInt(e.currentTarget.value) || 6))} min={1} max={20} style={{ width: "3rem", flex: 0 }} />
+        <input value={consequence} onChange={(e) => setConsequence(e.currentTarget.value)} placeholder="Consequence…" style={{ flex: 3 }} />
+        <button onClick={add} disabled={!label.trim() || !consequence.trim()}>Add</button>
+      </div>
+      {doomClocks.length === 0 && <p className="muted" style={{ fontSize: "0.85rem" }}>No doom clocks.</p>}
+      <ul className="card-list">
+        {doomClocks.map((clock) => (
+          <li key={clock.id} className="card" style={{ opacity: clock.current === 0 ? 0.6 : 1 }}>
+            <div className="card-row">
+              <strong>{clock.label}</strong>
+              <span className={clock.current === 0 ? "exceptional" : clock.current <= 2 ? "fury" : ""} style={{ fontFamily: "monospace", fontSize: "1.1rem" }}>
+                {clock.current}/{clock.max}
+              </span>
+              <div style={{ display: "flex", gap: "0.2rem" }}>
+                <button onClick={() => void tickDoomClock(clock.id)} disabled={clock.current === 0} title="Tick 1">+1</button>
+                <button onClick={() => void advanceDoomClock(clock.id, 1)} disabled={clock.current === 0} title="Advance 1">-1</button>
+                <button onClick={() => void resetDoomClock(clock.id)} title="Reset">↺</button>
+                <button className="danger" onClick={() => void deleteDoomClock(clock.id)} title="Delete">×</button>
+              </div>
+            </div>
+            <p className="muted" style={{ fontSize: "0.8rem", margin: "0.2rem 0 0" }}>
+              When expired: {clock.consequence}
+            </p>
+            {clock.current === 0 && (
+              <div className="exceptional" style={{ fontSize: "0.85rem", marginTop: "0.3rem", fontWeight: "bold" }}>
+                ⚠ CLOCK EXPIRED — {clock.consequence}
               </div>
             )}
           </li>

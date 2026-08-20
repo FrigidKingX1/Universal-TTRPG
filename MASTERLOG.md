@@ -4,7 +4,7 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — 18 commits, 102 passing tests, fully functional core loop.
+**Status:** Active development — 21 commits, 115 passing tests, fully functional core loop.
 
 ---
 
@@ -17,7 +17,7 @@ Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant
 │  Characters · Bestiary · Combat · Scenes · Tools     │
 ├─────────────────────────────────────────────────────┤
 │              Tauri v2 Bridge (IPC)                    │
-│  commands.rs — 35+ invoke commands                    │
+│  commands.rs — 40+ invoke commands                    │
 │  db.rs — SQLite persistence (AppState)               │
 │  lib.rs — Ollama lifecycle, app init                  │
 ├─────────────────────────────────────────────────────┤
@@ -112,22 +112,23 @@ auto-dm/
 | `c357f25` | Flesh out Round 10: combat persistence, loot, NPC notes, keyboard shortcuts |
 | `dd232a6` | Flesh out Round 11: SQLite persistence for loot/notes/combat, batch HP, loot tables, combat summary |
 | `layer1` | Layer 1: Plot Threads + NPC Characters lists, Oracle enrichment, Scene Tests |
+| `layer2` | Layer 2: Scene Test UI, CF auto-adjust, Lines & Veils, Damage Types |
 
 ---
 
 ## Core Engine Tests
 
-83 tests total: 62 in Rust (60 core + 2 integration) + 21 frontend (Vitest). All pass clean.
+109 tests total: 79 in Rust (75 core + 4 integration) + 30 frontend (Vitest). All pass clean.
 
 ```
 dice::tests          — 13 tests (expressions, refs, parens, caps, edge cases, loot formulas)
-engine::tests        — 11 tests (combat, healing, initiative, prerequisites, loot tables)
+engine::tests        — 17 tests (combat, healing, initiative, prerequisites, loot tables, damage types, resistance/vulnerability/immunity)
 intent::tests        — 5 tests (parser, degradation, stripped JSON)
 llm::tests           — 9 tests (pipeline, DC clamping, stub backend)
 memory::tests        — 4 tests (ring buffer, context generation)
 oracle::tests        — 14 tests (fate chart, IE, chaos adjustment, scene tests, enriched events)
 models::tests        — 5 tests (thread serialization, NPC defaults, disposition labels)
-db::tests            — 3 tests (migrations, CRUD, threads + NPC characters)
+db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, settings CRUD)
 ```
 
 ### Frontend Tests (30)
@@ -150,6 +151,8 @@ db::tests            — 3 tests (migrations, CRUD, threads + NPC characters)
 ### Combat Engine (`core/src/engine.rs`)
 - Attack resolution: d20 + modifier vs target AC
 - Damage: formula-based (e.g., `1d6+2`)
+- **Damage Types**: 12 types (Slashing, Piercing, Bludgeoning, Fire, Cold, Lightning, Poison, Psychic, Necrotic, Radiant, Force, Thunder)
+- **Resistance/Vulnerability/Immunity**: targets take half / double / zero damage per type
 - Healing: clamped to max HP
 - Prerequisite checks before actions (skill checks with DC)
 - Status effects: Poisoned, Stunned, Frightened, etc.
@@ -180,11 +183,34 @@ db::tests            — 3 tests (migrations, CRUD, threads + NPC characters)
   - Configurable model (switchable at runtime)
   - `num_predict: 512` default, configurable via UI (128-2048)
   - `reachable()` health check
+- **Lines & Veils**: safety settings injected into DM system prompt
+  - Lines = hard bans (never generate these topics)
+  - Veils = fade to black (implied off-screen, never depicted)
 
 ### Memory (`core/src/memory.rs`)
 - Ring buffer of recent events (default: 40 entries)
 - `to_context()` for LLM prompt injection
 - Speaker + content timestamps
+
+### Layer 2 — Oracle Coherence & Safety
+- **Scene Test UI**: "Scene Test (d10 vs CF)" button on active scene, shows AsExpected/Altered/Interrupted
+- **Random Event integration**: Altered/Interrupted outcomes auto-roll a Random Event using threads/NPCs as context
+- **Chaos Factor auto-adjust**: Complete scene → prompt "favor" or "against" → CF ±1 (capped 1-9)
+- **Lines & Veils safety**: UI panel in Tools tab for managing hard bans and fade-to-black topics
+- **Lines & Veils injection**: Automatically injected into DM pipeline system prompt
+- **Damage Types**: 12 standard d20 types with Display, parse, serde support
+- **Combat damage modifiers**: Resistance (half), Vulnerability (double), Immunity (zero) applied per attack
+- **EngineOutcome enrichment**: New `damage_type` and `damage_modifier` fields for frontend display
+
+### Layer 3 — Doom Clocks
+- **DoomClock model**: Tick-based countdown clock (current/max/consequence/active) with tick, advance, reset methods
+- **SQLite persistence**: `doom_clocks` table with tick_current, tick_max, consequence, scene_id, active, created_at
+- **Repository CRUD**: save, list, tick, advance, reset, delete operations via SqliteRepository
+- **6 Tauri commands**: create_doom_clock, list_doom_clocks, tick_doom_clock, advance_doom_clock, reset_doom_clock, delete_doom_clock
+- **Frontend**: DoomClock type, backend wrappers, Zustand store actions, DoomClocksPanel UI with add/tick/advance/reset/delete
+- **5 model tests**: tick countdown, multi-tick advance, reset, inactive no-tick, serialization roundtrip
+- **1 DB test**: full CRUD lifecycle (create → list → tick → tick → advance → reset → list → delete)
+- **Column naming**: tick_current/tick_max to avoid SQLite reserved keyword conflicts
 
 ---
 
@@ -234,6 +260,10 @@ db::tests            — 3 tests (migrations, CRUD, threads + NPC characters)
 - **Scene preview**: truncated summary on inactive scenes
 - **Complete Scene**: logs summary, marks done
 - Active scene badge
+- **Scene Test roller**: d10 vs CF, shows AsExpected/Altered/Interrupted
+- **Plot Threads panel**: add/resolve/abandon threads per scene
+- **NPC Characters panel**: add/track NPCs with disposition and knowledge
+- **Doom Clocks panel**: add/tick/advance/reset/delete countdown clocks
 
 ### Tools Tab
 - **Ollama Status**: online/offline indicator, model selector dropdown
@@ -301,17 +331,17 @@ npx vite build
 
 | Category | Files | Lines (approx) |
 |----------|-------|-----------------|
-| Core engine (Rust) | 9 | ~1,700 |
-| Tauri backend (Rust) | 4 | ~1,200 |
-| Frontend (TS/TSX) | 10 | ~2,800 |
+| Core engine (Rust) | 9 | ~1,800 |
+| Tauri backend (Rust) | 4 | ~1,350 |
+| Frontend (TS/TSX) | 10 | ~3,000 |
 | CSS | 1 | ~1,000 |
-| **Total source** | **24** | **~6,700** |
+| **Total source** | **24** | **~7,150** |
 
 ---
 
 ## Current State (as of latest commit)
 
-- 102 tests passing (72 Rust + 30 frontend)
+- 115 tests passing (85 Rust + 30 frontend)
 - Clippy clean (zero warnings)
 - TS + Vite build clean
 - All core gameplay loops functional:
@@ -335,3 +365,7 @@ npx vite build
   - **NPC Characters list** (disposition, knowledge, location tracking)
   - **Oracle enrichment** (Random Events reference Threads and Characters)
   - **Scene Tests** (Mythic scene-open test based on Chaos Factor)
+  - **Chaos Factor auto-adjust** (favor/against after scene completion)
+  - **Lines & Veils safety** (hard bans + fade-to-black, injected into DM prompt)
+  - **Damage Types** (12 types, resistance/vulnerability/immunity modifiers)
+  - **Doom Clocks** (tick-based countdown with tick/advance/reset/delete, SQLite-persisted)

@@ -540,7 +540,13 @@ function CombatLogEntry({ outcome }: { outcome: EngineOutcome }) {
         <span className="muted"> vs AC {outcome.target_ac})</span>
       )}
       {outcome.damage_dealt > 0 && (
-        <span> — <strong>{outcome.damage_dealt} dmg</strong></span>
+        <span> — <strong>{outcome.damage_dealt} dmg</strong>
+          {outcome.damage_type && <span className="muted"> [{outcome.damage_type}]</span>}
+          {outcome.damage_modifier && <span className={outcome.damage_modifier === "immune" ? "exceptional" : outcome.damage_modifier === "vulnerable" ? "fury" : "muted"}> ({outcome.damage_modifier})</span>}
+        </span>
+      )}
+      {outcome.damage_dealt === 0 && outcome.damage_modifier === "immune" && (
+        <span className="exceptional"> — immune!</span>
       )}
       {outcome.target_hp_remaining <= 0 && (
         <span className="exceptional"> — defeated!</span>
@@ -586,7 +592,10 @@ function CombatResult({ outcome }: { outcome: EngineOutcome }) {
         </span>
       </p>
       <p>
-        Damage: <strong>{outcome.damage_dealt}</strong> · Target HP:{" "}
+        Damage: <strong>{outcome.damage_dealt}</strong>
+        {outcome.damage_type && <span className="muted"> [{outcome.damage_type}]</span>}
+        {outcome.damage_modifier && <span className={outcome.damage_modifier === "immune" ? "exceptional" : outcome.damage_modifier === "vulnerable" ? "fury" : "muted"}> ({outcome.damage_modifier})</span>}
+        {" · "}Target HP:{" "}
         <strong>{outcome.target_hp_remaining}</strong> · Status:{" "}
         <strong>{outcome.target_status}</strong>
       </p>

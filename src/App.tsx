@@ -4,7 +4,7 @@ import { CharacterList, ActionList } from "./components/Characters";
 import { Bestiary } from "./components/Bestiary";
 import { Scenes } from "./components/Scenes";
 import { Combat } from "./components/Combat";
-import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, CampaignData, NpcNotesPanel } from "./components/Tools";
+import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, CampaignData, NpcNotesPanel, LinesVeilPanel } from "./components/Tools";
 import "./App.css";
 
 type Tab = "scenes" | "characters" | "bestiary" | "combat" | "tools";
@@ -109,6 +109,7 @@ function App() {
           <DiceRoller />
           <OraclePanel />
           <NpcNotesPanel />
+          <LinesVeilPanel />
           <SessionLog />
           <CampaignData />
         </>

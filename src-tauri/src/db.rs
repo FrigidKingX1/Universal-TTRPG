@@ -5,7 +5,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
-use sqlx::Sqlite;
+use sqlx::{Row, Sqlite};
 use std::fmt;
 use std::sync::Mutex;
 use uuid::Uuid;
@@ -189,6 +189,26 @@ pub trait Repository: Send + Sync {
     ) -> Result<(), DbError>;
     async fn list_npc_characters(&self) -> Result<Vec<NpcCharacterRow>, DbError>;
     async fn delete_npc_character(&self, id: &str) -> Result<bool, DbError>;
+
+    // Campaign settings (key-value)
+    async fn get_setting(&self, key: &str) -> Result<Option<String>, DbError>;
+    async fn set_setting(&self, key: &str, value: &str) -> Result<(), DbError>;
+
+    // Doom Clocks
+    async fn save_doom_clock(
+        &self,
+        id: &str,
+        label: &str,
+        max: u32,
+        consequence: &str,
+        scene_id: Option<&str>,
+    ) -> Result<(), DbError>;
+    async fn list_doom_clocks(&self) -> Result<Vec<DoomClockRow>, DbError>;
+    async fn tick_doom_clock(&self, id: &str) -> Result<Option<(u32, u32)>, DbError>;
+    async fn advance_doom_clock(&self, id: &str, ticks: u32)
+        -> Result<Option<(u32, u32)>, DbError>;
+    async fn reset_doom_clock(&self, id: &str) -> Result<(), DbError>;
+    async fn delete_doom_clock(&self, id: &str) -> Result<bool, DbError>;
 }
 
 /// A loot entry (items dropped by monsters, assigned to characters).
@@ -244,6 +264,17 @@ pub struct NpcCharacterRow {
     pub knows_json: String,
     pub notes: Option<String>,
     pub last_seen_scene_id: Option<String>,
+    pub created_at: String,
+}
+
+pub struct DoomClockRow {
+    pub id: String,
+    pub label: String,
+    pub current: u32,
+    pub max: u32,
+    pub consequence: String,
+    pub scene_id: Option<String>,
+    pub active: bool,
     pub created_at: String,
 }
 
@@ -372,6 +403,20 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
             knows_json TEXT NOT NULL DEFAULT '[]',
             notes TEXT,
             last_seen_scene_id TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS campaign_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );",
+        "CREATE TABLE IF NOT EXISTS doom_clocks (
+            id TEXT PRIMARY KEY,
+            label TEXT NOT NULL,
+            tick_current INTEGER NOT NULL,
+            tick_max INTEGER NOT NULL,
+            consequence TEXT NOT NULL,
+            scene_id TEXT,
+            active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
     ];
@@ -1208,6 +1253,130 @@ impl Repository for SqliteRepository {
             .await?;
         Ok(r.rows_affected() > 0)
     }
+
+    // ── Campaign Settings ──────────────────────────────────────────────
+
+    async fn get_setting(&self, key: &str) -> Result<Option<String>, DbError> {
+        let row: Option<(String,)> =
+            sqlx::query_as("SELECT value FROM campaign_settings WHERE key = ?")
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await?;
+        Ok(row.map(|(v,)| v))
+    }
+
+    async fn set_setting(&self, key: &str, value: &str) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO campaign_settings (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(key)
+        .bind(value)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    // ── Doom Clocks ────────────────────────────────────────────────────
+
+    async fn save_doom_clock(
+        &self,
+        id: &str,
+        label: &str,
+        max: u32,
+        consequence: &str,
+        scene_id: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO doom_clocks (id, label, tick_current, tick_max, consequence, scene_id, active)
+             VALUES (?, ?, ?, ?, ?, ?, TRUE)",
+        )
+        .bind(id)
+        .bind(label)
+        .bind(max as i64)
+        .bind(max as i64)
+        .bind(consequence)
+        .bind(scene_id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn list_doom_clocks(&self) -> Result<Vec<DoomClockRow>, DbError> {
+        let rows = sqlx::query("SELECT id, label, tick_current, tick_max, consequence, scene_id, active, created_at FROM doom_clocks ORDER BY created_at")
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(|row| {
+                let raw_tick_current: i32 = row.try_get("tick_current").unwrap_or(0);
+                let raw_max: i32 = row.try_get("tick_max").unwrap_or(0);
+                DoomClockRow {
+                    id: row.try_get("id").unwrap_or_default(),
+                    label: row.try_get("label").unwrap_or_default(),
+                    current: raw_tick_current as u32,
+                    max: raw_max as u32,
+                    consequence: row.try_get("consequence").unwrap_or_default(),
+                    scene_id: row.try_get("scene_id").ok().flatten(),
+                    active: row.try_get("active").unwrap_or(true),
+                    created_at: row.try_get("created_at").unwrap_or_default(),
+                }
+            })
+            .collect())
+    }
+
+    async fn tick_doom_clock(&self, id: &str) -> Result<Option<(u32, u32)>, DbError> {
+        sqlx::query("UPDATE doom_clocks SET tick_current = MAX(0, tick_current - 1) WHERE id = ? AND active = TRUE AND tick_current > 0")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        let row = sqlx::query("SELECT tick_current, tick_max FROM doom_clocks WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(row.map(|r| {
+            let c: i64 = r.try_get("tick_current").unwrap_or(0);
+            let m: i64 = r.try_get("tick_max").unwrap_or(0);
+            (c as u32, m as u32)
+        }))
+    }
+
+    async fn advance_doom_clock(
+        &self,
+        id: &str,
+        ticks: u32,
+    ) -> Result<Option<(u32, u32)>, DbError> {
+        sqlx::query("UPDATE doom_clocks SET tick_current = MAX(0, tick_current - ?) WHERE id = ? AND active = TRUE")
+            .bind(ticks as i64)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        let row = sqlx::query("SELECT tick_current, tick_max FROM doom_clocks WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(row.map(|r| {
+            let c: i64 = r.try_get("tick_current").unwrap_or(0);
+            let m: i64 = r.try_get("tick_max").unwrap_or(0);
+            (c as u32, m as u32)
+        }))
+    }
+
+    async fn reset_doom_clock(&self, id: &str) -> Result<(), DbError> {
+        sqlx::query("UPDATE doom_clocks SET tick_current = tick_max WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_doom_clock(&self, id: &str) -> Result<bool, DbError> {
+        let r = sqlx::query("DELETE FROM doom_clocks WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(r.rows_affected() > 0)
+    }
 }
 
 #[cfg(test)]
@@ -1366,5 +1535,88 @@ mod tests {
             .expect("delete npc");
         let npcs = repo.list_npc_characters().await.expect("list npcs");
         assert!(npcs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn settings_crud() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("connect");
+        run_migrations(&pool).await.expect("migrate");
+        let repo = SqliteRepository::new(pool);
+
+        // Initially empty.
+        assert!(repo.get_setting("lines").await.expect("get").is_none());
+        assert!(repo.get_setting("veils").await.expect("get").is_none());
+
+        // Set and retrieve.
+        let lines = vec!["torture".to_string(), "child harm".to_string()];
+        let veils = vec!["sex".to_string()];
+        repo.set_setting("lines", &serde_json::to_string(&lines).unwrap())
+            .await
+            .expect("set lines");
+        repo.set_setting("veils", &serde_json::to_string(&veils).unwrap())
+            .await
+            .expect("set veils");
+
+        let got_lines: Vec<String> =
+            serde_json::from_str(&repo.get_setting("lines").await.expect("get lines").unwrap())
+                .unwrap();
+        assert_eq!(got_lines, lines);
+
+        let got_veils: Vec<String> =
+            serde_json::from_str(&repo.get_setting("veils").await.expect("get veils").unwrap())
+                .unwrap();
+        assert_eq!(got_veils, veils);
+
+        // Update (upsert).
+        let new_lines = vec!["gore".to_string()];
+        repo.set_setting("lines", &serde_json::to_string(&new_lines).unwrap())
+            .await
+            .expect("update lines");
+        let got_lines: Vec<String> =
+            serde_json::from_str(&repo.get_setting("lines").await.expect("get lines").unwrap())
+                .unwrap();
+        assert_eq!(got_lines, new_lines);
+    }
+
+    #[tokio::test]
+    async fn doom_clock_crud() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("connect");
+        run_migrations(&pool).await.expect("migrate");
+        let repo = SqliteRepository::new(pool);
+
+        // Create.
+        repo.save_doom_clock("dc1", "Guard Alert", 4, "Guards arrive", Some("s1"))
+            .await
+            .expect("save clock");
+        let clocks = repo.list_doom_clocks().await.expect("list");
+        assert_eq!(clocks.len(), 1);
+        assert_eq!(clocks[0].current, 4);
+        assert_eq!(clocks[0].label, "Guard Alert");
+
+        // Tick.
+        let result = repo.tick_doom_clock("dc1").await.expect("tick");
+        assert_eq!(result, Some((3, 4)));
+        let result = repo.tick_doom_clock("dc1").await.expect("tick");
+        assert_eq!(result, Some((2, 4)));
+
+        // Advance.
+        let result = repo.advance_doom_clock("dc1", 2).await.expect("advance");
+        assert_eq!(result, Some((0, 4)));
+
+        // Reset.
+        repo.reset_doom_clock("dc1").await.expect("reset");
+        let clocks = repo.list_doom_clocks().await.expect("list");
+        assert_eq!(clocks[0].current, 4);
+
+        // Delete.
+        assert!(repo.delete_doom_clock("dc1").await.expect("delete"));
+        let clocks = repo.list_doom_clocks().await.expect("list");
+        assert!(clocks.is_empty());
     }
 }

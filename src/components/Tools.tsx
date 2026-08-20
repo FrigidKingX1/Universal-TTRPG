@@ -634,3 +634,89 @@ export function NpcNotesPanel() {
     </section>
   );
 }
+
+export function LinesVeilPanel() {
+  const [lines, setLines] = useState<string[]>([]);
+  const [veils, setVeils] = useState<string[]>([]);
+  const [newLine, setNewLine] = useState("");
+  const [newVeil, setNewVeil] = useState("");
+  const showToast = useStore((s) => s.showToast);
+
+  useEffect(() => {
+    backend.getLinesVeils().then((lv) => {
+      setLines(lv.lines);
+      setVeils(lv.veils);
+    }).catch(() => {});
+  }, []);
+
+  const save = async (l: string[], v: string[]) => {
+    await backend.setLinesVeils(l, v);
+  };
+
+  const addLine = () => {
+    if (!newLine.trim()) return;
+    const updated = [...lines, newLine.trim()];
+    setLines(updated);
+    setNewLine("");
+    void save(updated, veils);
+    showToast("Line added");
+  };
+  const removeLine = (i: number) => {
+    const updated = lines.filter((_, idx) => idx !== i);
+    setLines(updated);
+    void save(updated, veils);
+  };
+  const addVeil = () => {
+    if (!newVeil.trim()) return;
+    const updated = [...veils, newVeil.trim()];
+    setVeils(updated);
+    setNewVeil("");
+    void save(lines, updated);
+    showToast("Veil added");
+  };
+  const removeVeil = (i: number) => {
+    const updated = veils.filter((_, idx) => idx !== i);
+    setVeils(updated);
+    void save(lines, updated);
+  };
+
+  return (
+    <section className="tool-card">
+      <h3>Lines &amp; Veils</h3>
+      <p className="muted" style={{ fontSize: "0.8rem" }}>
+        <strong>Lines</strong> = hard bans (never generate).
+        <strong> Veils</strong> = fade to black (implied off-screen).
+      </p>
+      <div>
+        <strong>Lines (hard ban)</strong>
+        <div className="row" style={{ marginTop: "0.3rem" }}>
+          <input value={newLine} onChange={(e) => setNewLine(e.currentTarget.value)} placeholder="Topic to ban…" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLine(); } }} />
+          <button onClick={addLine} disabled={!newLine.trim()}>Add</button>
+        </div>
+        {lines.map((l, i) => (
+          <div key={i} className="card-row" style={{ marginTop: "0.2rem" }}>
+            <span className="badge disp-hostile">LINE</span>
+            <span>{l}</span>
+            <button className="danger" onClick={() => removeLine(i)} style={{ fontSize: "0.7rem" }}>×</button>
+          </div>
+        ))}
+        {lines.length === 0 && <p className="muted" style={{ fontSize: "0.8rem" }}>No lines set.</p>}
+      </div>
+      <div style={{ marginTop: "0.6rem" }}>
+        <strong>Veils (fade to black)</strong>
+        <div className="row" style={{ marginTop: "0.3rem" }}>
+          <input value={newVeil} onChange={(e) => setNewVeil(e.currentTarget.value)} placeholder="Topic to veil…" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addVeil(); } }} />
+          <button onClick={addVeil} disabled={!newVeil.trim()}>Add</button>
+        </div>
+        {veils.map((v, i) => (
+          <div key={i} className="card-row" style={{ marginTop: "0.2rem" }}>
+            <span className="badge disp-friendly">VEIL</span>
+            <span>{v}</span>
+            <button className="danger" onClick={() => removeVeil(i)} style={{ fontSize: "0.7rem" }}>×</button>
+          </div>
+        ))}
+        {veils.length === 0 && <p className="muted" style={{ fontSize: "0.8rem" }}>No veils set.</p>}
+      </div>
+    </section>
+  );
+}

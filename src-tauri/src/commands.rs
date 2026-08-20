@@ -5,7 +5,9 @@ use auto_dm_core::engine::{
 };
 use auto_dm_core::llm::{DmRequest, DmResponse};
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
-use auto_dm_core::oracle::{EventMeaning, MythicOracle, Odds};
+use auto_dm_core::oracle::{
+    EnrichedEvent, EventMeaning, MythicOracle, NpcRef, Odds, OracleContext, ThreadRef,
+};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
@@ -287,6 +289,240 @@ pub fn random_event(
     Ok(meaning)
 }
 
+/// Response from a Scene Test, including the outcome and optional enriched event.
+#[derive(Serialize)]
+pub struct SceneTestResponse {
+    pub outcome: String,
+    pub event: Option<EnrichedEvent>,
+}
+
+/// Perform a Mythic Scene Test: d10 vs Chaos Factor.
+/// If Altered or Interrupted, a Random Event is generated using
+/// the current Threads and Characters lists for context.
+#[tauri::command]
+pub fn scene_test_cmd(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    chaos_factor: u32,
+    _seed: Option<u64>,
+) -> CmdResult<SceneTestResponse> {
+    let cf = (chaos_factor as u8).clamp(1, 9);
+    // Use a timestamp-based seed for the scene test RNG.
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u64;
+    let mut oracle = MythicOracle::with_seed(chaos_factor, seed);
+    // We need a separate rng for scene_test; extract from oracle via seed.
+    let mut rng_seed = seed.wrapping_add(1);
+    // Simple xorshift for scene_test d10.
+    rng_seed ^= rng_seed << 13;
+    rng_seed ^= rng_seed >> 7;
+    rng_seed ^= rng_seed << 17;
+    let roll = (rng_seed % 10 + 1) as u8;
+    let outcome = if roll <= cf / 2 {
+        auto_dm_core::oracle::SceneOutcome::Interrupted
+    } else if roll <= cf {
+        auto_dm_core::oracle::SceneOutcome::Altered
+    } else {
+        auto_dm_core::oracle::SceneOutcome::AsExpected
+    };
+
+    let mut event = None;
+    if outcome != auto_dm_core::oracle::SceneOutcome::AsExpected {
+        // Build OracleContext from current threads and NPCs.
+        let threads = tokio::runtime::Handle::current().block_on(state.repo.list_threads());
+        let npcs = tokio::runtime::Handle::current().block_on(state.repo.list_npc_characters());
+        let ctx = OracleContext {
+            open_threads: threads
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|t| t.status == "open")
+                .map(|t| ThreadRef {
+                    id: t.id,
+                    description: t.description,
+                })
+                .collect(),
+            npcs: npcs
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|n| n.alive)
+                .map(|n| NpcRef {
+                    id: n.id,
+                    name: n.name,
+                    disposition: n.disposition,
+                })
+                .collect(),
+        };
+        let table = auto_dm_core::oracle::MeaningTable::default_table();
+        event = Some(table.random_event_with_context(oracle.rng_mut(), &ctx));
+        if let Some(ref ev) = event {
+            emit(&app, "oracle:event", &ev.meaning);
+        }
+    }
+
+    let outcome_str = match outcome {
+        auto_dm_core::oracle::SceneOutcome::AsExpected => "as_expected",
+        auto_dm_core::oracle::SceneOutcome::Altered => "altered",
+        auto_dm_core::oracle::SceneOutcome::Interrupted => "interrupted",
+    };
+    Ok(SceneTestResponse {
+        outcome: outcome_str.to_string(),
+        event,
+    })
+}
+
+// ---------- Lines & Veils / Safety Settings ---------------------------
+
+/// Get the Lines (hard bans) and Veils (fade-to-black) as JSON arrays of strings.
+#[tauri::command]
+pub async fn get_lines_veils(state: State<'_, AppState>) -> CmdResult<serde_json::Value> {
+    let lines = state
+        .repo
+        .get_setting("lines")
+        .await
+        .map_err(|e| e.to_string())?
+        .and_then(|v| serde_json::from_str::<Vec<String>>(&v).ok())
+        .unwrap_or_default();
+    let veils = state
+        .repo
+        .get_setting("veils")
+        .await
+        .map_err(|e| e.to_string())?
+        .and_then(|v| serde_json::from_str::<Vec<String>>(&v).ok())
+        .unwrap_or_default();
+    Ok(serde_json::json!({ "lines": lines, "veils": veils }))
+}
+
+/// Set the Lines (hard bans) and Veils (fade-to-black) as JSON arrays of strings.
+#[tauri::command]
+pub async fn set_lines_veils(
+    state: State<'_, AppState>,
+    lines: Vec<String>,
+    veils: Vec<String>,
+) -> CmdResult<()> {
+    state
+        .repo
+        .set_setting(
+            "lines",
+            &serde_json::to_string(&lines).unwrap_or_else(|_| "[]".into()),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    state
+        .repo
+        .set_setting(
+            "veils",
+            &serde_json::to_string(&veils).unwrap_or_else(|_| "[]".into()),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ---------- Doom Clocks ------------------------------------------------
+
+#[derive(Serialize)]
+pub struct DoomClockResponse {
+    pub id: String,
+    pub label: String,
+    pub current: u32,
+    pub max: u32,
+    pub consequence: String,
+    pub scene_id: Option<String>,
+    pub active: bool,
+}
+
+#[tauri::command]
+pub async fn create_doom_clock(
+    state: State<'_, AppState>,
+    label: String,
+    max: u32,
+    consequence: String,
+    scene_id: Option<String>,
+) -> CmdResult<DoomClockResponse> {
+    let id = uuid::Uuid::new_v4().to_string();
+    state
+        .repo
+        .save_doom_clock(&id, &label, max.max(1), &consequence, scene_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(DoomClockResponse {
+        id,
+        label,
+        current: max.max(1),
+        max: max.max(1),
+        consequence,
+        scene_id,
+        active: true,
+    })
+}
+
+#[tauri::command]
+pub async fn list_doom_clocks(state: State<'_, AppState>) -> CmdResult<Vec<DoomClockResponse>> {
+    let rows = state
+        .repo
+        .list_doom_clocks()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|r| DoomClockResponse {
+            id: r.id,
+            label: r.label,
+            current: r.current,
+            max: r.max,
+            consequence: r.consequence,
+            scene_id: r.scene_id,
+            active: r.active,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn tick_doom_clock(
+    state: State<'_, AppState>,
+    id: String,
+) -> CmdResult<Option<(u32, u32)>> {
+    state
+        .repo
+        .tick_doom_clock(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn advance_doom_clock(
+    state: State<'_, AppState>,
+    id: String,
+    ticks: u32,
+) -> CmdResult<Option<(u32, u32)>> {
+    state
+        .repo
+        .advance_doom_clock(&id, ticks)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn reset_doom_clock(state: State<'_, AppState>, id: String) -> CmdResult<()> {
+    state
+        .repo
+        .reset_doom_clock(&id)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_doom_clock(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+    state
+        .repo
+        .delete_doom_clock(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // ---------- Combat -----------------------------------------------------
 
 #[tauri::command]
@@ -374,6 +610,17 @@ pub async fn dm_resolve(
         let mem = state.memory.lock().map_err(err)?;
         if !mem.is_empty() {
             request.memory_context = Some(mem.to_context(20));
+        }
+    }
+    // Inject Lines & Veils from campaign settings.
+    if let Ok(Some(lines_json)) = state.repo.get_setting("lines").await {
+        if let Ok(lv) = serde_json::from_str::<Vec<String>>(&lines_json) {
+            request.lines = lv;
+        }
+    }
+    if let Ok(Some(veils_json)) = state.repo.get_setting("veils").await {
+        if let Ok(vv) = serde_json::from_str::<Vec<String>>(&veils_json) {
+            request.veils = vv;
         }
     }
     let response = state
@@ -548,6 +795,9 @@ pub async fn seed_defaults(state: State<'_, AppState>) -> CmdResult<()> {
             quantity_formula: "2d6".to_string(),
             chance: 80,
         }],
+        resistances: Vec::new(),
+        vulnerabilities: Vec::new(),
+        immunities: Vec::new(),
     };
     repo.save_stat_block(&goblin).await.map_err(err)?;
 

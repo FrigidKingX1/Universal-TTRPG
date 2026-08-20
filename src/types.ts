@@ -205,6 +205,8 @@ export interface EngineOutcome {
   target_hp_remaining: number;
   target_status: string;
   applied_status?: string;
+  damage_type?: string;
+  damage_modifier?: string;
 }
 
 export interface InitiativeEntry {
@@ -268,9 +270,19 @@ export interface NpcCharacter {
   name: string;
   disposition: Disposition;
   alive: boolean;
-  location?: string;
+  location?: string | null;
   knows: string[];
-  notes?: string;
-  last_seen_scene_id?: string;
+  notes?: string | null;
+  last_seen_scene_id?: string | null;
   created_at: string;
+}
+
+export interface DoomClock {
+  id: string;
+  label: string;
+  current: number;
+  max: number;
+  consequence: string;
+  scene_id?: string | null;
+  active: boolean;
 }

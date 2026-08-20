@@ -6,6 +6,7 @@ import type {
   CharacterProfile,
   CombatantState,
   Disposition,
+  DoomClock,
   EncounterStatBlock,
   EngineOutcome,
   EventMeaning,
@@ -113,7 +114,7 @@ export interface AutoDmState {
   toggleCondition: (entityId: string, condition: string) => void;
   showToast: (msg: string) => void;
   cloneStatBlock: (id: string) => Promise<void>;
-  completeScene: () => Promise<void>;
+  completeScene: (cfAdjust?: "favor" | "against") => Promise<void>;
   deathSaves: Record<string, { successes: number; failures: number }>;
   rollDeathSave: (entityId: string) => Promise<void>;
   lastHpChange: { entityId: string; previousHp: number; newHp: number } | null;
@@ -148,6 +149,14 @@ export interface AutoDmState {
   addNpcKnowledge: (id: string, fact: string) => Promise<void>;
   markNpcDead: (id: string) => Promise<void>;
   deleteNpcCharacter: (id: string) => Promise<void>;
+
+  // Doom Clocks
+  doomClocks: DoomClock[];
+  addDoomClock: (label: string, max: number, consequence: string) => Promise<void>;
+  tickDoomClock: (id: string) => Promise<void>;
+  advanceDoomClock: (id: string, ticks: number) => Promise<void>;
+  resetDoomClock: (id: string) => Promise<void>;
+  deleteDoomClock: (id: string) => Promise<void>;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -226,6 +235,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
   npcNotes: [],
   plotThreads: [],
   npcCharacters: [],
+  doomClocks: [],
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -304,6 +314,11 @@ export const useStore = create<AutoDmState>((set, get) => ({
           created_at: r.created_at,
         }));
       } catch { /* best-effort */ }
+      // Load doom clocks.
+      let doomClocks: DoomClock[] = [];
+      try {
+        doomClocks = await backend.listDoomClocks();
+      } catch { /* best-effort */ }
       set({
         characters,
         actions,
@@ -317,6 +332,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
         npcNotes,
         plotThreads,
         npcCharacters,
+        doomClocks,
       });
     } catch (e) {
       set({ loading: false, error: String(e) });
@@ -621,10 +637,21 @@ export const useStore = create<AutoDmState>((set, get) => ({
     get().showToast(`Cloned "${original.name}"`);
   },
 
-  completeScene: async () => {
+  completeScene: async (cfAdjust) => {
     const s = get();
     const scene = s.scenes.find((sc) => sc.id === s.activeSceneId);
     if (!scene) return;
+    // Auto-adjust Chaos Factor based on Mythic rule:
+    // Against PCs → CF +1, In PCs' favor → CF -1.
+    if (cfAdjust) {
+      const newCf = cfAdjust === "favor"
+        ? Math.max(1, scene.chaos_factor - 1)
+        : Math.min(9, scene.chaos_factor + 1);
+      if (newCf !== scene.chaos_factor) {
+        await backend.updateSceneChaosFactor(scene.id, newCf);
+        get().showToast(`CF adjusted: ${scene.chaos_factor} → ${newCf} (${cfAdjust})`);
+      }
+    }
     if (scene.summary_text) {
       await backend.appendLog(scene.id, "System", `[Scene #${scene.scene_number} Complete] ${scene.summary_text}`);
     }
@@ -913,6 +940,75 @@ export const useStore = create<AutoDmState>((set, get) => ({
     try {
       await backend.deleteNpcCharacter(id);
       set((s) => ({ npcCharacters: s.npcCharacters.filter((n) => n.id !== id) }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  // ── Doom Clocks ────────────────────────────────────────────────
+
+  addDoomClock: async (label, max, consequence) => {
+    try {
+      const clock = await backend.createDoomClock(label, max, consequence);
+      set((s) => ({ doomClocks: [...s.doomClocks, clock] }));
+      get().showToast(`Doom Clock created: ${label}`);
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  tickDoomClock: async (id) => {
+    try {
+      const result = await backend.tickDoomClock(id);
+      if (result) {
+        const [current, max] = result;
+        set((s) => ({
+          doomClocks: s.doomClocks.map((c) => c.id === id ? { ...c, current } : c),
+        }));
+        if (current === 0) {
+          const clock = get().doomClocks.find((c) => c.id === id);
+          get().showToast(`DOOM: ${clock?.consequence ?? "Something terrible happens!"}`);
+        }
+      }
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  advanceDoomClock: async (id, ticks) => {
+    try {
+      const result = await backend.advanceDoomClock(id, ticks);
+      if (result) {
+        const [current, _max] = result;
+        set((s) => ({
+          doomClocks: s.doomClocks.map((c) => c.id === id ? { ...c, current } : c),
+        }));
+        if (current === 0) {
+          const clock = get().doomClocks.find((c) => c.id === id);
+          get().showToast(`DOOM: ${clock?.consequence ?? "Something terrible happens!"}`);
+        }
+      }
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  resetDoomClock: async (id) => {
+    try {
+      await backend.resetDoomClock(id);
+      set((s) => ({
+        doomClocks: s.doomClocks.map((c) => c.id === id ? { ...c, current: c.max } : c),
+      }));
+      get().showToast("Doom Clock reset");
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  deleteDoomClock: async (id) => {
+    try {
+      await backend.deleteDoomClock(id);
+      set((s) => ({ doomClocks: s.doomClocks.filter((c) => c.id !== id) }));
     } catch (e) {
       get().showToast(`Error: ${e}`);
     }

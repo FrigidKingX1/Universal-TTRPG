@@ -109,6 +109,25 @@ pub struct DmRequest {
     /// Recent campaign events injected as context for the LLM (Phase 3 memory).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory_context: Option<String>,
+    /// Hard-ban topics that must never appear in generated narrative.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub lines: Vec<String>,
+    /// Topics that should be faded to black / implied off-screen.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub veils: Vec<String>,
+}
+
+impl Default for DmRequest {
+    fn default() -> Self {
+        Self {
+            scene_summary: String::new(),
+            player_action: String::new(),
+            chaos_factor: 5,
+            memory_context: None,
+            lines: Vec::new(),
+            veils: Vec::new(),
+        }
+    }
 }
 
 /// Result of the DM resolving a player action.
@@ -178,6 +197,16 @@ impl<B: LlmBackend> DmPipeline<B> {
         };
 
         let stub = self.backend.is_stub();
+        // Build a dynamic system prompt that includes Lines & Veils.
+        let mut sys = SYSTEM_PROMPT.to_string();
+        if !request.lines.is_empty() {
+            sys.push_str("\n\nHARD SAFETY LINES (never describe these, no exceptions): ");
+            sys.push_str(&request.lines.join(", "));
+        }
+        if !request.veils.is_empty() {
+            sys.push_str("\n\nVEILS (these topics exist but must be faded to black / implied off-screen, never depicted in detail): ");
+            sys.push_str(&request.veils.join(", "));
+        }
         let (narrative, intent, source) = if stub {
             let n = stub_narrative(request, &fate, event_meaning.as_ref());
             (
@@ -193,10 +222,7 @@ impl<B: LlmBackend> DmPipeline<B> {
                 &mechanical_events,
                 request.memory_context.as_deref(),
             );
-            let raw = self
-                .backend
-                .complete(SYSTEM_PROMPT, &prompt, Some(512))
-                .await?;
+            let raw = self.backend.complete(&sys, &prompt, Some(512)).await?;
             let intent = GameIntent::from_llm_text(&raw);
             let mut dice = match seed {
                 Some(s) => DiceEngine::with_seed(s.wrapping_add(1)),
@@ -377,7 +403,7 @@ mod tests {
             scene_summary: "A moonlit courtyard before an iron gate.".to_string(),
             player_action: "I press the gate open.".to_string(),
             chaos_factor: 5,
-            memory_context: None,
+            ..Default::default()
         };
         let out =
             futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(42))).unwrap();
@@ -399,7 +425,7 @@ mod tests {
             scene_summary: String::new(),
             player_action: "I wait.".to_string(),
             chaos_factor: 5,
-            memory_context: None,
+            ..Default::default()
         };
         // seed 1 -> deterministic; the response must always be structurally valid.
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
@@ -430,7 +456,7 @@ mod tests {
             scene_summary: "A torchlit hall.".to_string(),
             player_action: "I sneak past the guard.".to_string(),
             chaos_factor: 5,
-            memory_context: None,
+            ..Default::default()
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert_eq!(out.source, "ollama");
@@ -451,7 +477,7 @@ mod tests {
             scene_summary: String::new(),
             player_action: "I wait.".to_string(),
             chaos_factor: 5,
-            memory_context: None,
+            ..Default::default()
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert_eq!(out.source, "ollama");
@@ -468,7 +494,7 @@ mod tests {
             scene_summary: "A sheer cliff face.".to_string(),
             player_action: "I climb the cliff.".to_string(),
             chaos_factor: 5,
-            memory_context: None,
+            ..Default::default()
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(out.mechanical_events.iter().any(|e| e.contains("DC 20")));
@@ -487,7 +513,7 @@ mod tests {
             scene_summary: String::new(),
             player_action: "I look around.".to_string(),
             chaos_factor: 5,
-            memory_context: None,
+            ..Default::default()
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(out.mechanical_events.iter().any(|e| e.contains("DC 10")));
@@ -511,7 +537,7 @@ mod tests {
             scene_summary: String::new(),
             player_action: "I try my luck.".to_string(),
             chaos_factor: 5,
-            memory_context: None,
+            ..Default::default()
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(out.mechanical_events.iter().any(|e| e.contains("DC 30")));

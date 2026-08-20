@@ -228,6 +228,15 @@ pub struct EncounterStatBlock {
     /// the dice engine; chance is a percentage (0-100) the item drops at all.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub loot_table: Vec<LootTableEntry>,
+    /// Damage types this creature is resistant to (takes half damage).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub resistances: Vec<String>,
+    /// Damage types this creature is vulnerable to (takes double damage).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub vulnerabilities: Vec<String>,
+    /// Damage types this creature is immune to (takes no damage).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub immunities: Vec<String>,
 }
 
 /// A single entry in a monster's loot table.
@@ -250,11 +259,118 @@ fn default_loot_chance() -> i32 {
     100
 }
 
+/// Standard damage types for the d20 system.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum DamageType {
+    Slashing,
+    Piercing,
+    Bludgeoning,
+    Fire,
+    Cold,
+    Lightning,
+    Poison,
+    Psychic,
+    Necrotic,
+    Radiant,
+    Force,
+    Thunder,
+}
+
+impl DamageType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Slashing => "slashing",
+            Self::Piercing => "piercing",
+            Self::Bludgeoning => "bludgeoning",
+            Self::Fire => "fire",
+            Self::Cold => "cold",
+            Self::Lightning => "lightning",
+            Self::Poison => "poison",
+            Self::Psychic => "psychic",
+            Self::Necrotic => "necrotic",
+            Self::Radiant => "radiant",
+            Self::Force => "force",
+            Self::Thunder => "thunder",
+        }
+    }
+
+    pub fn from_str_opt(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "slashing" => Some(Self::Slashing),
+            "piercing" => Some(Self::Piercing),
+            "bludgeoning" => Some(Self::Bludgeoning),
+            "fire" => Some(Self::Fire),
+            "cold" => Some(Self::Cold),
+            "lightning" => Some(Self::Lightning),
+            "poison" => Some(Self::Poison),
+            "psychic" => Some(Self::Psychic),
+            "necrotic" => Some(Self::Necrotic),
+            "radiant" => Some(Self::Radiant),
+            "force" => Some(Self::Force),
+            "thunder" => Some(Self::Thunder),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for DamageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// A rolled loot item ready for distribution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RolledLoot {
     pub name: String,
     pub quantity: i32,
+}
+
+/// A Doom Clock: a countdown tracker. When it reaches 0, something bad happens.
+/// Inspired by PbtA / Forged in the Dark doom clocks.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DoomClock {
+    pub id: String,
+    pub label: String,
+    pub current: u32,
+    pub max: u32,
+    /// What happens when this clock reaches 0.
+    pub consequence: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scene_id: Option<String>,
+    #[serde(default = "default_clock_active")]
+    pub active: bool,
+    pub created_at: String,
+}
+
+fn default_clock_active() -> bool {
+    true
+}
+
+impl DoomClock {
+    /// Advance the clock by 1 tick. Returns true if the clock reached 0.
+    pub fn tick(&mut self) -> bool {
+        if self.current > 0 && self.active {
+            self.current -= 1;
+        }
+        self.current == 0
+    }
+
+    /// Advance the clock by multiple ticks. Returns true if it reached 0.
+    pub fn advance(&mut self, ticks: u32) -> bool {
+        self.current = self.current.saturating_sub(ticks);
+        self.current == 0
+    }
+
+    /// Reset the clock to its maximum value.
+    pub fn reset(&mut self) {
+        self.current = self.max;
+    }
+
+    pub fn is_expired(&self) -> bool {
+        self.current == 0 && self.active
+    }
 }
 
 /// Roll a creature's loot table using the given dice engine. Returns only items
@@ -433,5 +549,93 @@ mod tests {
         assert!(npc.notes.is_none());
         assert!(npc.location.is_none());
         assert!(npc.last_seen_scene_id.is_none());
+    }
+
+    #[test]
+    fn doom_clock_tick_counts_down() {
+        let mut clock = DoomClock {
+            id: "dc1".into(),
+            label: "Guard Alert".into(),
+            current: 3,
+            max: 6,
+            consequence: "The guards arrive".into(),
+            scene_id: None,
+            active: true,
+            created_at: "".into(),
+        };
+        assert!(!clock.tick());
+        assert_eq!(clock.current, 2);
+        assert!(!clock.tick());
+        assert_eq!(clock.current, 1);
+        assert!(clock.tick());
+        assert_eq!(clock.current, 0);
+        assert!(clock.is_expired());
+    }
+
+    #[test]
+    fn doom_clock_advance_multi_tick() {
+        let mut clock = DoomClock {
+            id: "dc2".into(),
+            label: "Ritual".into(),
+            current: 4,
+            max: 8,
+            consequence: "Demon summoned".into(),
+            scene_id: None,
+            active: true,
+            created_at: "".into(),
+        };
+        assert!(!clock.advance(3));
+        assert_eq!(clock.current, 1);
+        assert!(clock.advance(5));
+        assert_eq!(clock.current, 0);
+    }
+
+    #[test]
+    fn doom_clock_reset() {
+        let mut clock = DoomClock {
+            id: "dc3".into(),
+            label: "Pursuit".into(),
+            current: 0,
+            max: 4,
+            consequence: "Caught".into(),
+            scene_id: None,
+            active: true,
+            created_at: "".into(),
+        };
+        clock.reset();
+        assert_eq!(clock.current, 4);
+    }
+
+    #[test]
+    fn doom_clock_inactive_doesnt_tick() {
+        let mut clock = DoomClock {
+            id: "dc4".into(),
+            label: "Paused".into(),
+            current: 3,
+            max: 6,
+            consequence: "Bad".into(),
+            scene_id: None,
+            active: false,
+            created_at: "".into(),
+        };
+        assert!(!clock.tick());
+        assert_eq!(clock.current, 3);
+    }
+
+    #[test]
+    fn doom_clock_roundtrips() {
+        let clock = DoomClock {
+            id: "dc5".into(),
+            label: "Invasion".into(),
+            current: 2,
+            max: 8,
+            consequence: "Army arrives".into(),
+            scene_id: Some("s1".into()),
+            active: true,
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_string(&clock).unwrap();
+        let de: DoomClock = serde_json::from_str(&json).unwrap();
+        assert_eq!(clock, de);
     }
 }

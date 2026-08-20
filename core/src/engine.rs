@@ -24,6 +24,12 @@ pub struct Combatant {
     pub bonuses: HashMap<String, i32>,
     pub actions: Vec<String>,
     pub status: Option<String>,
+    /// Damage types this creature is resistant to (half damage).
+    pub resistances: Vec<String>,
+    /// Damage types this creature is vulnerable to (double damage).
+    pub vulnerabilities: Vec<String>,
+    /// Damage types this creature is immune to (zero damage).
+    pub immunities: Vec<String>,
 }
 
 impl Combatant {
@@ -75,6 +81,9 @@ impl From<&CharacterProfile> for Combatant {
             bonuses: HashMap::new(),
             actions: p.abilities.clone(),
             status: None,
+            resistances: Vec::new(),
+            vulnerabilities: Vec::new(),
+            immunities: Vec::new(),
         }
     }
 }
@@ -91,6 +100,9 @@ impl From<&EncounterStatBlock> for Combatant {
             bonuses: HashMap::new(),
             actions: s.actions.clone(),
             status: None,
+            resistances: s.resistances.clone(),
+            vulnerabilities: s.vulnerabilities.clone(),
+            immunities: s.immunities.clone(),
         }
     }
 }
@@ -130,6 +142,12 @@ pub struct EngineOutcome {
     pub target_hp_remaining: i32,
     pub target_status: String,
     pub applied_status: Option<String>,
+    /// The damage type of the attack (if any).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub damage_type: Option<String>,
+    /// Modifier note: "resisted", "vulnerable", or "immune".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub damage_modifier: Option<String>,
 }
 
 /// Error type for the combat engine.
@@ -170,6 +188,33 @@ pub fn apply_damage(target: &mut Combatant, amount: i32) -> String {
     } else {
         target.status = None;
         "ALIVE".to_string()
+    }
+}
+
+/// Modify raw damage based on the target's resistances, vulnerabilities, and immunities.
+/// Returns the adjusted damage (immune → 0, resistant → half, vulnerable → double).
+pub fn modify_damage_for_type(raw: i32, damage_type: &str, target: &Combatant) -> i32 {
+    let dt = damage_type.to_lowercase();
+    if target
+        .resistances
+        .iter()
+        .any(|r| r.eq_ignore_ascii_case(&dt))
+    {
+        raw / 2
+    } else if target
+        .vulnerabilities
+        .iter()
+        .any(|v| v.eq_ignore_ascii_case(&dt))
+    {
+        raw * 2
+    } else if target
+        .immunities
+        .iter()
+        .any(|i| i.eq_ignore_ascii_case(&dt))
+    {
+        0
+    } else {
+        raw
     }
 }
 
@@ -247,6 +292,8 @@ pub fn execute_attack(
                 target_hp_remaining: target.hit_points,
                 target_status: current_status(target),
                 applied_status: None,
+                damage_type: None,
+                damage_modifier: None,
             });
         }
         check_result = Some("SUCCESS".to_string());
@@ -355,7 +402,35 @@ pub fn execute_attack(
         }
     }
 
-    // 3. Apply damage and compute status.
+    // 3. Apply damage-type modifiers (resistance/vulnerability/immunity).
+    let damage_type_str = resolution
+        .outcomes
+        .as_ref()
+        .and_then(|o| o.on_success.as_ref())
+        .and_then(|s| s.damage_type.as_deref())
+        .unwrap_or("");
+    let mut damage_modifier: Option<String> = None;
+    if !damage_type_str.is_empty() {
+        let dt = damage_type_str.to_lowercase();
+        let pre_modifier = damage_dealt;
+        if !target
+            .immunities
+            .iter()
+            .any(|i| i.eq_ignore_ascii_case(&dt))
+        {
+            damage_dealt = modify_damage_for_type(damage_dealt, damage_type_str, target);
+            if damage_dealt < pre_modifier {
+                damage_modifier = Some("resisted".to_string());
+            } else if damage_dealt > pre_modifier {
+                damage_modifier = Some("vulnerable".to_string());
+            }
+        } else {
+            damage_dealt = 0;
+            damage_modifier = Some("immune".to_string());
+        }
+    }
+
+    // 4. Apply damage and compute status.
     let target_status = if damage_dealt > 0 {
         apply_damage(target, damage_dealt)
     } else {
@@ -377,6 +452,12 @@ pub fn execute_attack(
         target_hp_remaining: target.hit_points,
         target_status,
         applied_status,
+        damage_type: if damage_type_str.is_empty() {
+            None
+        } else {
+            Some(damage_type_str.to_string())
+        },
+        damage_modifier,
     })
 }
 
@@ -527,6 +608,9 @@ mod tests {
             attributes,
             actions: vec![],
             loot_table: vec![],
+            resistances: Vec::new(),
+            vulnerabilities: Vec::new(),
+            immunities: Vec::new(),
         }
     }
 
@@ -738,6 +822,9 @@ mod tests {
                     chance: 10,
                 },
             ],
+            resistances: Vec::new(),
+            vulnerabilities: Vec::new(),
+            immunities: Vec::new(),
         };
         let c = Combatant::from(&s);
         assert_eq!(c.name, "Orc");
@@ -764,5 +851,94 @@ mod tests {
         let rolled = crate::models::roll_loot_table(&mut dice, &loot_table);
         assert!(!rolled.is_empty());
         assert!(rolled.iter().any(|l| l.name == "Gold"));
+    }
+
+    #[test]
+    fn modify_damage_resistance_halves() {
+        let mut target = make_combatant("T");
+        target.resistances.push("fire".to_string());
+        assert_eq!(modify_damage_for_type(20, "fire", &target), 10);
+        assert_eq!(modify_damage_for_type(15, "Fire", &target), 7);
+    }
+
+    #[test]
+    fn modify_damage_vulnerability_doubles() {
+        let mut target = make_combatant("T");
+        target.vulnerabilities.push("cold".to_string());
+        assert_eq!(modify_damage_for_type(5, "cold", &target), 10);
+    }
+
+    #[test]
+    fn modify_damage_immunity_zeroes() {
+        let mut target = make_combatant("T");
+        target.immunities.push("psychic".to_string());
+        assert_eq!(modify_damage_for_type(50, "psychic", &target), 0);
+    }
+
+    #[test]
+    fn modify_damage_no_match_passthrough() {
+        let target = make_combatant("T");
+        assert_eq!(modify_damage_for_type(12, "fire", &target), 12);
+    }
+
+    #[test]
+    fn damage_type_display_and_parse() {
+        assert_eq!(crate::models::DamageType::Slashing.as_str(), "slashing");
+        assert_eq!(
+            crate::models::DamageType::from_str_opt("Fire"),
+            Some(crate::models::DamageType::Fire)
+        );
+        assert_eq!(crate::models::DamageType::from_str_opt("bogus"), None);
+        assert_eq!(format!("{}", crate::models::DamageType::Radiant), "radiant");
+    }
+
+    #[test]
+    fn statblock_resistances_serialize() {
+        let mut attrs = HashMap::new();
+        attrs.insert("STR".to_string(), 16);
+        let s = EncounterStatBlock {
+            id: "t".into(),
+            name: "T".into(),
+            challenge_rating: 1.0,
+            size: None,
+            creature_type: None,
+            alignment: None,
+            armor_class: 14,
+            hit_points: HitPoints {
+                current: 30,
+                maximum: 30,
+                formula: None,
+            },
+            speed_feet: None,
+            attributes: attrs,
+            actions: vec![],
+            loot_table: vec![],
+            resistances: vec!["fire".into()],
+            vulnerabilities: vec!["cold".into()],
+            immunities: vec!["poison".into()],
+        };
+        let c = Combatant::from(&s);
+        assert_eq!(c.resistances, vec!["fire"]);
+        assert_eq!(c.vulnerabilities, vec!["cold"]);
+        assert_eq!(c.immunities, vec!["poison"]);
+    }
+
+    fn make_combatant(name: &str) -> Combatant {
+        let mut attrs = HashMap::new();
+        attrs.insert("STR".to_string(), 10);
+        Combatant {
+            id: name.to_string(),
+            name: name.to_string(),
+            hit_points: 20,
+            max_hit_points: 20,
+            armor_class: 10,
+            attributes: attrs,
+            bonuses: HashMap::new(),
+            actions: vec![],
+            status: None,
+            resistances: Vec::new(),
+            vulnerabilities: Vec::new(),
+            immunities: Vec::new(),
+        }
     }
 }
