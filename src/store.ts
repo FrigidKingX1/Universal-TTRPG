@@ -120,14 +120,14 @@ export interface AutoDmState {
 
   // Loot
   loot: LootEntry[];
-  addLoot: (name: string, qty: number, sourceEntity: string) => void;
-  assignLoot: (lootId: string, characterId: string) => void;
-  clearLoot: () => void;
+  addLoot: (name: string, qty: number, sourceEntity: string) => Promise<void>;
+  assignLoot: (lootId: string, characterId: string) => Promise<void>;
+  clearLoot: () => Promise<void>;
 
   // NPC relationship notes
   npcNotes: NpcNote[];
-  addNpcNote: (npcName: string, relation: string, note: string) => void;
-  deleteNpcNote: (id: string) => void;
+  addNpcNote: (npcName: string, relation: string, note: string) => Promise<void>;
+  deleteNpcNote: (id: string) => Promise<void>;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -168,6 +168,7 @@ export function newStatBlock(name: string): EncounterStatBlock {
     hit_points: { current: 10, maximum: 10 },
     attributes: { STR: 12, DEX: 12, CON: 12, INT: 8, WIS: 10, CHA: 8 },
     actions: [],
+    loot_table: [],
   };
 }
 
@@ -220,27 +221,37 @@ export const useStore = create<AutoDmState>((set, get) => ({
       const logs = activeSceneId
         ? await backend.listLogs(activeSceneId, 200)
         : [];
-      // Restore persisted combat state from localStorage.
+      // Restore persisted combat state from SQLite.
       let combatState: Partial<AutoDmState> = {};
-      try {
-        const saved = localStorage.getItem("auto-dm-combat");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          combatState = {
-            initiativeOrder: parsed.initiativeOrder ?? [],
-            combatantStates: parsed.combatantStates ?? {},
-            combatantConditions: parsed.combatantConditions ?? {},
-            currentRound: parsed.currentRound ?? 0,
-            currentTurnIndex: parsed.currentTurnIndex ?? 0,
-            deathSaves: parsed.deathSaves ?? {},
-          };
+      let loot: LootEntry[] = [];
+      let npcNotes: NpcNote[] = [];
+      if (activeSceneId) {
+        try {
+          const saved = await backend.loadCombatState(activeSceneId);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            combatState = {
+              initiativeOrder: parsed.initiativeOrder ?? [],
+              combatantStates: parsed.combatantStates ?? {},
+              combatantConditions: parsed.combatantConditions ?? {},
+              currentRound: parsed.currentRound ?? 0,
+              currentTurnIndex: parsed.currentTurnIndex ?? 0,
+              deathSaves: parsed.deathSaves ?? {},
+            };
+          }
+        } catch {
+          // Corrupted or missing — start fresh.
         }
-        const savedLoot = localStorage.getItem("auto-dm-loot");
-        if (savedLoot) combatState.loot = JSON.parse(savedLoot);
-        const savedNotes = localStorage.getItem("auto-dm-npc-notes");
-        if (savedNotes) combatState.npcNotes = JSON.parse(savedNotes);
-      } catch {
-        // Corrupted localStorage — start fresh.
+        // Load loot from SQLite.
+        try {
+          const rows = await backend.listLoot(activeSceneId);
+          loot = rows.map((r) => ({ id: r.id, name: r.name, quantity: r.quantity, assignedTo: r.assigned_to, sourceEntity: r.source_entity, timestamp: r.timestamp }));
+        } catch { /* best-effort */ }
+        // Load NPC notes from SQLite.
+        try {
+          const rows = await backend.listNpcNotes(activeSceneId);
+          npcNotes = rows.map((r) => ({ id: r.id, npcName: r.npc_name, relation: r.relation, note: r.note, timestamp: r.timestamp }));
+        } catch { /* best-effort */ }
       }
       set({
         characters,
@@ -251,6 +262,8 @@ export const useStore = create<AutoDmState>((set, get) => ({
         logs,
         loading: false,
         ...combatState,
+        loot,
+        npcNotes,
       });
     } catch (e) {
       set({ loading: false, error: String(e) });
@@ -632,46 +645,69 @@ export const useStore = create<AutoDmState>((set, get) => ({
   setNumPredict: (n) => set((s) => ({ ollama: { ...s.ollama, numPredict: Math.max(64, Math.min(2048, n)) } })),
 
   // Loot
-  addLoot: (name, qty, sourceEntity) => {
-    const entry: LootEntry = { id: crypto.randomUUID(), name, quantity: qty, assignedTo: null, sourceEntity, timestamp: new Date().toISOString() };
-    set((s) => {
-      const loot = [...s.loot, entry];
-      localStorage.setItem("auto-dm-loot", JSON.stringify(loot));
-      return { loot };
-    });
-    get().showToast(`Added ${qty}× ${name} to loot`);
+  addLoot: async (name, qty, sourceEntity) => {
+    const sceneId = get().activeSceneId;
+    if (!sceneId) { get().showToast("No active scene"); return; }
+    try {
+      const row = await backend.saveLoot(sceneId, name, qty, sourceEntity);
+      const entry: LootEntry = { id: row.id, name: row.name, quantity: row.quantity, assignedTo: row.assigned_to, sourceEntity: row.source_entity, timestamp: row.timestamp };
+      set((s) => ({ loot: [...s.loot, entry] }));
+      get().showToast(`Added ${qty}× ${name} to loot`);
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
   },
-  assignLoot: (lootId, characterId) => set((s) => {
-    const loot = s.loot.map((l) => l.id === lootId ? { ...l, assignedTo: characterId } : l);
-    localStorage.setItem("auto-dm-loot", JSON.stringify(loot));
-    const entry = loot.find((l) => l.id === lootId);
-    if (entry) get().showToast(`Assigned ${entry.name} to ${s.characters.find((c) => c.id === characterId)?.identity.name ?? "character"}`);
-    return { loot };
-  }),
-  clearLoot: () => {
-    localStorage.removeItem("auto-dm-loot");
-    set({ loot: [] });
+  assignLoot: async (lootId, characterId) => {
+    try {
+      await backend.assignLootToCharacter(lootId, characterId);
+      set((s) => {
+        const loot = s.loot.map((l) => l.id === lootId ? { ...l, assignedTo: characterId } : l);
+        const entry = loot.find((l) => l.id === lootId);
+        if (entry) get().showToast(`Assigned ${entry.name} to ${s.characters.find((c) => c.id === characterId)?.identity.name ?? "character"}`);
+        return { loot };
+      });
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+  clearLoot: async () => {
+    const sceneId = get().activeSceneId;
+    if (!sceneId) return;
+    try {
+      await backend.clearLootInScene(sceneId);
+      set({ loot: [] });
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
   },
 
   // NPC relationship notes
-  addNpcNote: (npcName, relation, note) => {
-    const entry: NpcNote = { id: crypto.randomUUID(), npcName, relation, note, timestamp: new Date().toISOString() };
-    set((s) => {
-      const npcNotes = [...s.npcNotes, entry];
-      localStorage.setItem("auto-dm-npc-notes", JSON.stringify(npcNotes));
-      return { npcNotes };
-    });
+  addNpcNote: async (npcName, relation, note) => {
+    const sceneId = get().activeSceneId;
+    if (!sceneId) { get().showToast("No active scene"); return; }
+    try {
+      const row = await backend.saveNpcNote(sceneId, npcName, relation, note);
+      const entry: NpcNote = { id: row.id, npcName: row.npc_name, relation: row.relation, note: row.note, timestamp: row.timestamp };
+      set((s) => ({ npcNotes: [...s.npcNotes, entry] }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
   },
-  deleteNpcNote: (id) => set((s) => {
-    const npcNotes = s.npcNotes.filter((n) => n.id !== id);
-    localStorage.setItem("auto-dm-npc-notes", JSON.stringify(npcNotes));
-    return { npcNotes };
-  }),
+  deleteNpcNote: async (id) => {
+    try {
+      await backend.deleteNpcNote(id);
+      set((s) => ({ npcNotes: s.npcNotes.filter((n) => n.id !== id) }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
 }));
 
-// Persist combat state to localStorage whenever it changes.
+// Persist combat state to SQLite (best-effort).
 function persistCombat() {
   const s = useStore.getState();
+  const sceneId = s.activeSceneId;
+  if (!sceneId) return;
   const data = {
     initiativeOrder: s.initiativeOrder,
     combatantStates: s.combatantStates,
@@ -680,7 +716,7 @@ function persistCombat() {
     currentTurnIndex: s.currentTurnIndex,
     deathSaves: s.deathSaves,
   };
-  localStorage.setItem("auto-dm-combat", JSON.stringify(data));
+  void backend.saveCombatState(sceneId, JSON.stringify(data));
 }
 
 let unlisteners: UnlistenFn[] = [];

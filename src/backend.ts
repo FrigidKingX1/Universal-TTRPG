@@ -112,6 +112,32 @@ export const backend = {
   exportCampaign: () => invoke<CampaignExport>("export_campaign"),
   importCampaign: (data: CampaignExport) =>
     invoke<void>("import_campaign", { data }),
+
+  // Loot (SQLite)
+  saveLoot: (sceneId: string, name: string, quantity: number, sourceEntity: string) =>
+    invoke<LootRow>("save_loot", { sceneId, name, quantity, sourceEntity }),
+  assignLootToCharacter: (lootId: string, characterId: string) =>
+    invoke<void>("assign_loot", { lootId, characterId }),
+  listLoot: (sceneId: string) =>
+    invoke<LootRow[]>("list_loot", { sceneId }),
+  clearLootInScene: (sceneId: string) =>
+    invoke<void>("clear_loot", { sceneId }),
+  rollMonsterLoot: (statBlockId: string, sceneId: string) =>
+    invoke<LootRow[]>("roll_monster_loot", { statBlockId, sceneId }),
+
+  // NPC Notes (SQLite)
+  saveNpcNote: (sceneId: string, npcName: string, relation: string, note: string) =>
+    invoke<NpcNoteRow>("save_npc_note", { sceneId, npcName, relation, note }),
+  listNpcNotes: (sceneId: string) =>
+    invoke<NpcNoteRow[]>("list_npc_notes", { sceneId }),
+  deleteNpcNote: (id: string) =>
+    invoke<boolean>("delete_npc_note", { id }),
+
+  // Combat state persistence
+  saveCombatState: (sceneId: string, stateJson: string) =>
+    invoke<void>("save_combat_state", { sceneId, stateJson }),
+  loadCombatState: (sceneId: string) =>
+    invoke<string | null>("load_combat_state", { sceneId }),
 };
 
 export interface CampaignExport {
@@ -120,6 +146,27 @@ export interface CampaignExport {
   stat_blocks: EncounterStatBlock[];
   scenes: Scene[];
   logs: LogEntry[];
+  loot: LootRow[];
+  npc_notes: NpcNoteRow[];
+}
+
+export interface LootRow {
+  id: string;
+  scene_id: string;
+  name: string;
+  quantity: number;
+  source_entity: string;
+  assigned_to: string | null;
+  timestamp: string;
+}
+
+export interface NpcNoteRow {
+  id: string;
+  scene_id: string;
+  npc_name: string;
+  relation: string;
+  note: string;
+  timestamp: string;
 }
 
 export type CombatEvents = {

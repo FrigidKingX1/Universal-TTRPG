@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useStore, newStatBlock } from "../store";
 import { backend } from "../backend";
-import type { EncounterStatBlock, Size } from "../types";
+import type { EncounterStatBlock, LootTableEntry, Size } from "../types";
 
 export function Bestiary() {
   const statBlocks = useStore((s) => s.statBlocks);
@@ -83,6 +83,10 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
   const [speed, setSpeed] = useState(block.speed_feet ?? 30);
   const [attrs, setAttrs] = useState(block.attributes);
   const [actions, setActions] = useState(block.actions);
+  const [lootTable, setLootTable] = useState<LootTableEntry[]>(block.loot_table ?? []);
+  const [newLootName, setNewLootName] = useState("");
+  const [newLootQty, setNewLootQty] = useState("1");
+  const [newLootChance, setNewLootChance] = useState(100);
 
   const save = () => {
     void saveStatBlock({
@@ -101,8 +105,19 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
       speed_feet: speed,
       attributes: attrs,
       actions,
+      loot_table: lootTable,
     });
   };
+
+  const addLootEntry = () => {
+    if (!newLootName.trim()) return;
+    setLootTable([...lootTable, { name: newLootName.trim(), quantity_formula: newLootQty || "1", chance: newLootChance }]);
+    setNewLootName("");
+    setNewLootQty("1");
+    setNewLootChance(100);
+  };
+
+  const removeLootEntry = (idx: number) => setLootTable(lootTable.filter((_, i) => i !== idx));
 
   const toggleAction = (id: string) =>
     setActions(actions.includes(id) ? actions.filter((a) => a !== id) : [...actions, id]);
@@ -197,6 +212,27 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
         ))}
         {allActions.length === 0 && <p className="muted">Create actions in the Characters tab first.</p>}
       </div>
+
+      <h3>Loot Table</h3>
+      {lootTable.length > 0 && (
+        <div className="loot-table-list">
+          {lootTable.map((entry, idx) => (
+            <div key={idx} className="card-row" style={{ gap: "0.4rem", marginBottom: "0.25rem" }}>
+              <span>{entry.name}</span>
+              <span className="muted">×{entry.quantity_formula}</span>
+              <span className="muted">{entry.chance}%</span>
+              <button className="danger" onClick={() => removeLootEntry(idx)} style={{ fontSize: "0.7rem" }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="row" style={{ marginTop: "0.25rem" }}>
+        <input value={newLootName} onChange={(e) => setNewLootName(e.currentTarget.value)} placeholder="Item name" />
+        <input value={newLootQty} onChange={(e) => setNewLootQty(e.currentTarget.value)} placeholder="Qty formula" style={{ width: "5rem" }} />
+        <input type="number" min={0} max={100} value={newLootChance} onChange={(e) => setNewLootChance(Number(e.currentTarget.value))} style={{ width: "4rem" }} />
+        <button onClick={addLootEntry} disabled={!newLootName.trim()}>Add</button>
+      </div>
+      <p className="muted">Quantity formula (e.g. "2d6"), drop chance % (0-100).</p>
 
       <button onClick={save}>Save Monster</button>
     </div>

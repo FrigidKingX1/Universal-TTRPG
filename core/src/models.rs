@@ -223,6 +223,62 @@ pub struct EncounterStatBlock {
     pub attributes: HashMap<String, i32>,
     /// References to ActionDefinition IDs.
     pub actions: Vec<String>,
+    /// Loot table: items this creature drops on defeat. Each entry is
+    /// `(name, quantity_formula, chance_0_100)`. The formula is rolled via
+    /// the dice engine; chance is a percentage (0-100) the item drops at all.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub loot_table: Vec<LootTableEntry>,
+}
+
+/// A single entry in a monster's loot table.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LootTableEntry {
+    pub name: String,
+    /// Dice formula for quantity, e.g. "2d6" or "1". Defaults to "1".
+    #[serde(default = "default_loot_qty")]
+    pub quantity_formula: String,
+    /// Percentage chance (0–100) this item drops. Defaults to 100.
+    #[serde(default = "default_loot_chance")]
+    pub chance: i32,
+}
+
+fn default_loot_qty() -> String {
+    "1".to_string()
+}
+
+fn default_loot_chance() -> i32 {
+    100
+}
+
+/// A rolled loot item ready for distribution.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RolledLoot {
+    pub name: String,
+    pub quantity: i32,
+}
+
+/// Roll a creature's loot table using the given dice engine. Returns only items
+/// that passed their chance check (d100 <= chance).
+pub fn roll_loot_table(
+    dice: &mut crate::dice::DiceEngine,
+    loot_table: &[LootTableEntry],
+) -> Vec<RolledLoot> {
+    let mut result = Vec::new();
+    for entry in loot_table {
+        // Roll d100 for drop chance.
+        let chance_roll: i32 = dice.evaluate("d100").map(|r| r.total as i32).unwrap_or(101);
+        if chance_roll <= entry.chance {
+            let qty = dice
+                .evaluate(&entry.quantity_formula)
+                .map(|r| (r.total as i32).max(1))
+                .unwrap_or(1);
+            result.push(RolledLoot {
+                name: entry.name.clone(),
+                quantity: qty,
+            });
+        }
+    }
+    result
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

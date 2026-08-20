@@ -65,6 +65,10 @@ export function Combat() {
   const [lootName, setLootName] = useState("");
   const [lootQty, setLootQty] = useState(1);
   const [lootSource, setLootSource] = useState("");
+  const [selectedEntities, setSelectedEntities] = useState<Set<string>>(new Set());
+  const [batchHpAmount, setBatchHpAmount] = useState(0);
+  const [showSummary, setShowSummary] = useState(false);
+  const [combatSummary, setCombatSummary] = useState<{ damageDealt: number; targetsHit: string[]; defeated: string[] } | null>(null);
 
   const entities = [
     ...characters.map((c) => ({ key: `char:${c.id}`, name: c.identity.name, value: c as CharacterProfile | EncounterStatBlock })),
@@ -137,6 +141,42 @@ export function Combat() {
     setCustomHpAmount(0);
   };
 
+  const toggleSelect = (entityId: string) => {
+    setSelectedEntities((prev) => {
+      const next = new Set(prev);
+      if (next.has(entityId)) next.delete(entityId);
+      else next.add(entityId);
+      return next;
+    });
+  };
+
+  const applyBatchHp = () => {
+    if (batchHpAmount === 0 || selectedEntities.size === 0) return;
+    for (const key of selectedEntities) {
+      const entity = resolve(key);
+      if (!entity) continue;
+      const isChar = "identity" in entity;
+      quickHpAdjust(entity, isChar, batchHpAmount);
+    }
+    setBatchHpAmount(0);
+    setSelectedEntities(new Set());
+  };
+
+  const endCombatWithSummary = () => {
+    // Compute summary from combat history
+    let totalDmg = 0;
+    const targets: string[] = [];
+    const defeated: string[] = [];
+    for (const h of combatHistory) {
+      totalDmg += h.damage_dealt;
+      if (h.damage_dealt > 0) targets.push(h.target_status);
+      if (h.target_status === "DEFEATED") defeated.push("target");
+    }
+    setCombatSummary({ damageDealt: totalDmg, targetsHit: targets, defeated });
+    setShowSummary(true);
+    endCombat();
+  };
+
   const attack = async () => {
     const attacker = resolve(attackerKey);
     const target = resolve(targetKey);
@@ -164,6 +204,7 @@ export function Combat() {
   const currentTurnId = initiativeOrder.length > 0 ? initiativeOrder[currentTurnIndex]?.combatant_id : null;
 
   return (
+    <>
     <section className="panel">
       <h2>Combat Tracker</h2>
 
@@ -178,7 +219,7 @@ export function Combat() {
           </div>
           <div className="tracker-actions">
             <button onClick={nextTurn}>Next Turn</button>
-            <button className="danger" onClick={endCombat}>End Combat</button>
+            <button className="danger" onClick={endCombatWithSummary}>End Combat</button>
           </div>
         </div>
       )}
@@ -284,6 +325,34 @@ export function Combat() {
         </label>
         <button onClick={applyCustomHp} disabled={!customHpTarget || customHpAmount === 0}>
           {customHpAmount >= 0 ? "Heal" : "Damage"}
+        </button>
+      </div>
+
+      {/* Batch HP Adjust */}
+      <div className="row custom-hp-row" style={{ marginTop: "0.5rem" }}>
+        <label>
+          Batch Target(s)
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", maxWidth: "20rem" }}>
+            {entities.map((e) => (
+              <label key={e.key} style={{ fontSize: "0.85rem", display: "flex", gap: "0.2rem" }}>
+                <input type="checkbox" checked={selectedEntities.has(e.key)} onChange={() => toggleSelect(e.key)} />
+                {e.name}
+              </label>
+            ))}
+          </div>
+        </label>
+        <label>
+          HP
+          <input
+            type="number"
+            value={batchHpAmount}
+            onChange={(e) => setBatchHpAmount(Number(e.currentTarget.value))}
+            placeholder="± amount"
+            style={{ width: "5rem" }}
+          />
+        </label>
+        <button onClick={applyBatchHp} disabled={selectedEntities.size === 0 || batchHpAmount === 0}>
+          {batchHpAmount >= 0 ? "Batch Heal" : "Batch Damage"}
         </button>
       </div>
 
@@ -442,6 +511,21 @@ export function Combat() {
         )}
       </div>
     </section>
+    {showSummary && combatSummary && (
+      <div className="modal-overlay" onClick={() => setShowSummary(false)}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <h3>Combat Summary</h3>
+          <p>Total damage dealt: <strong>{combatSummary.damageDealt}</strong></p>
+          <p>Targets hit: <strong>{combatSummary.targetsHit.length}</strong></p>
+          {combatSummary.defeated.length > 0 && (
+            <p className="exceptional">Defeated: {combatSummary.defeated.join(", ")}</p>
+          )}
+          <p className="muted">Loot rolled and added to the Loot tab.</p>
+          <button onClick={() => setShowSummary(false)}>Close</button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

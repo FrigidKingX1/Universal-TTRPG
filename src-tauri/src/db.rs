@@ -119,9 +119,67 @@ pub trait Repository: Send + Sync {
 
     async fn export_campaign(&self) -> Result<CampaignExport, DbError>;
     async fn import_campaign(&self, data: &CampaignExport) -> Result<(), DbError>;
+
+    // Loot
+    async fn save_loot(
+        &self,
+        scene_id: &str,
+        name: &str,
+        quantity: i32,
+        source_entity: &str,
+    ) -> Result<LootRow, DbError>;
+    async fn assign_loot(&self, loot_id: &str, character_id: &str) -> Result<(), DbError>;
+    async fn list_loot(&self, scene_id: &str) -> Result<Vec<LootRow>, DbError>;
+    async fn clear_loot(&self, scene_id: &str) -> Result<(), DbError>;
+
+    // NPC Notes
+    async fn save_npc_note(
+        &self,
+        scene_id: &str,
+        npc_name: &str,
+        relation: &str,
+        note: &str,
+    ) -> Result<NpcNoteRow, DbError>;
+    async fn list_npc_notes(&self, scene_id: &str) -> Result<Vec<NpcNoteRow>, DbError>;
+    async fn delete_npc_note(&self, id: &str) -> Result<bool, DbError>;
+
+    // Combat state persistence
+    async fn save_combat_state(&self, scene_id: &str, state_json: &str) -> Result<(), DbError>;
+    async fn load_combat_state(&self, scene_id: &str) -> Result<Option<String>, DbError>;
 }
 
-/// Full campaign data for export/import.
+/// A loot entry (items dropped by monsters, assigned to characters).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LootRow {
+    pub id: String,
+    pub scene_id: String,
+    pub name: String,
+    pub quantity: i32,
+    pub source_entity: String,
+    pub assigned_to: Option<String>,
+    pub timestamp: String,
+}
+
+/// An NPC relationship note.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NpcNoteRow {
+    pub id: String,
+    pub scene_id: String,
+    pub npc_name: String,
+    pub relation: String,
+    pub note: String,
+    pub timestamp: String,
+}
+
+/// Persisted combat state (initiative, HP, conditions, etc.).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CombatStateRow {
+    pub scene_id: String,
+    pub state_json: String,
+    pub updated_at: String,
+}
+
+/// CampaignExport now includes loot and notes for full round-trip.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CampaignExport {
     pub characters: Vec<CharacterProfile>,
@@ -129,6 +187,10 @@ pub struct CampaignExport {
     pub stat_blocks: Vec<EncounterStatBlock>,
     pub scenes: Vec<Scene>,
     pub logs: Vec<LogEntry>,
+    #[serde(default)]
+    pub loot: Vec<LootRow>,
+    #[serde(default)]
+    pub npc_notes: Vec<NpcNoteRow>,
 }
 
 /// SQLite-backed repository using an async connection pool.
@@ -198,6 +260,28 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
             content TEXT NOT NULL,
             payload_json TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS loot_entries (
+            id TEXT PRIMARY KEY,
+            scene_id TEXT REFERENCES campaign_scenes(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            source_entity TEXT NOT NULL DEFAULT '',
+            assigned_to TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS npc_notes (
+            id TEXT PRIMARY KEY,
+            scene_id TEXT REFERENCES campaign_scenes(id) ON DELETE CASCADE,
+            npc_name TEXT NOT NULL,
+            relation TEXT NOT NULL DEFAULT 'Unknown',
+            note TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS combat_state (
+            scene_id TEXT PRIMARY KEY REFERENCES campaign_scenes(id) ON DELETE CASCADE,
+            state_json TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
     ];
     let mut tx = pool.begin().await?;
@@ -535,11 +619,25 @@ impl Repository for SqliteRepository {
         let stat_blocks = self.list_stat_blocks().await?;
         let scenes = self.list_scenes().await?;
         let mut logs = Vec::new();
+        let mut all_loot = Vec::new();
+        let mut all_notes = Vec::new();
         for scene in &scenes {
             let scene_logs = self.list_logs(&scene.id, 10000).await?;
             logs.extend(scene_logs);
+            let loot = self.list_loot(&scene.id).await.unwrap_or_default();
+            all_loot.extend(loot);
+            let notes = self.list_npc_notes(&scene.id).await.unwrap_or_default();
+            all_notes.extend(notes);
         }
-        Ok(CampaignExport { characters, actions, stat_blocks, scenes, logs })
+        Ok(CampaignExport {
+            characters,
+            actions,
+            stat_blocks,
+            scenes,
+            logs,
+            loot: all_loot,
+            npc_notes: all_notes,
+        })
     }
 
     async fn import_campaign(&self, data: &CampaignExport) -> Result<(), DbError> {
@@ -573,9 +671,206 @@ impl Repository for SqliteRepository {
         }
         for l in &data.logs {
             let sid = l.scene_id.as_deref().unwrap_or("");
-            self.append_log(sid, &l.speaker, &l.content, l.payload.clone()).await?;
+            self.append_log(sid, &l.speaker, &l.content, l.payload.clone())
+                .await?;
+        }
+        // Import loot
+        for loot in &data.loot {
+            sqlx::query(
+                "INSERT OR IGNORE INTO loot_entries (id, scene_id, name, quantity, source_entity, assigned_to, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&loot.id)
+            .bind(&loot.scene_id)
+            .bind(&loot.name)
+            .bind(loot.quantity)
+            .bind(&loot.source_entity)
+            .bind(&loot.assigned_to)
+            .bind(&loot.timestamp)
+            .execute(&self.pool)
+            .await?;
+        }
+        // Import NPC notes
+        for note in &data.npc_notes {
+            sqlx::query(
+                "INSERT OR IGNORE INTO npc_notes (id, scene_id, npc_name, relation, note, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&note.id)
+            .bind(&note.scene_id)
+            .bind(&note.npc_name)
+            .bind(&note.relation)
+            .bind(&note.note)
+            .bind(&note.timestamp)
+            .execute(&self.pool)
+            .await?;
         }
         Ok(())
+    }
+
+    // ---- Loot ----
+
+    async fn save_loot(
+        &self,
+        scene_id: &str,
+        name: &str,
+        quantity: i32,
+        source_entity: &str,
+    ) -> Result<LootRow, DbError> {
+        let id = Uuid::new_v4().to_string();
+        let timestamp = Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO loot_entries (id, scene_id, name, quantity, source_entity, assigned_to, timestamp)
+             VALUES (?, ?, ?, ?, ?, NULL, ?)",
+        )
+        .bind(&id)
+        .bind(scene_id)
+        .bind(name)
+        .bind(quantity)
+        .bind(source_entity)
+        .bind(&timestamp)
+        .execute(&self.pool)
+        .await?;
+        Ok(LootRow {
+            id,
+            scene_id: scene_id.to_string(),
+            name: name.to_string(),
+            quantity,
+            source_entity: source_entity.to_string(),
+            assigned_to: None,
+            timestamp,
+        })
+    }
+
+    async fn assign_loot(&self, loot_id: &str, character_id: &str) -> Result<(), DbError> {
+        sqlx::query("UPDATE loot_entries SET assigned_to = ? WHERE id = ?")
+            .bind(character_id)
+            .bind(loot_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn list_loot(&self, scene_id: &str) -> Result<Vec<LootRow>, DbError> {
+        let rows: Vec<(String, String, i32, String, Option<String>, String)> = sqlx::query_as(
+            "SELECT id, name, quantity, source_entity, assigned_to, timestamp
+             FROM loot_entries WHERE scene_id = ? ORDER BY timestamp ASC",
+        )
+        .bind(scene_id)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(id, name, quantity, source_entity, assigned_to, timestamp)| LootRow {
+                    id,
+                    scene_id: scene_id.to_string(),
+                    name,
+                    quantity,
+                    source_entity,
+                    assigned_to,
+                    timestamp,
+                },
+            )
+            .collect())
+    }
+
+    async fn clear_loot(&self, scene_id: &str) -> Result<(), DbError> {
+        sqlx::query("DELETE FROM loot_entries WHERE scene_id = ?")
+            .bind(scene_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    // ---- NPC Notes ----
+
+    async fn save_npc_note(
+        &self,
+        scene_id: &str,
+        npc_name: &str,
+        relation: &str,
+        note: &str,
+    ) -> Result<NpcNoteRow, DbError> {
+        let id = Uuid::new_v4().to_string();
+        let timestamp = Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO npc_notes (id, scene_id, npc_name, relation, note, timestamp)
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(scene_id)
+        .bind(npc_name)
+        .bind(relation)
+        .bind(note)
+        .bind(&timestamp)
+        .execute(&self.pool)
+        .await?;
+        Ok(NpcNoteRow {
+            id,
+            scene_id: scene_id.to_string(),
+            npc_name: npc_name.to_string(),
+            relation: relation.to_string(),
+            note: note.to_string(),
+            timestamp,
+        })
+    }
+
+    async fn list_npc_notes(&self, scene_id: &str) -> Result<Vec<NpcNoteRow>, DbError> {
+        let rows: Vec<(String, String, String, String, String)> = sqlx::query_as(
+            "SELECT id, npc_name, relation, note, timestamp
+             FROM npc_notes WHERE scene_id = ? ORDER BY timestamp ASC",
+        )
+        .bind(scene_id)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|(id, npc_name, relation, note, timestamp)| NpcNoteRow {
+                id,
+                scene_id: scene_id.to_string(),
+                npc_name,
+                relation,
+                note,
+                timestamp,
+            })
+            .collect())
+    }
+
+    async fn delete_npc_note(&self, id: &str) -> Result<bool, DbError> {
+        let res = sqlx::query("DELETE FROM npc_notes WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(res.rows_affected() > 0)
+    }
+
+    // ---- Combat State ----
+
+    async fn save_combat_state(&self, scene_id: &str, state_json: &str) -> Result<(), DbError> {
+        let timestamp = Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO combat_state (scene_id, state_json, updated_at)
+             VALUES (?, ?, ?)
+             ON CONFLICT(scene_id) DO UPDATE SET
+               state_json = excluded.state_json,
+               updated_at = excluded.updated_at",
+        )
+        .bind(scene_id)
+        .bind(state_json)
+        .bind(&timestamp)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn load_combat_state(&self, scene_id: &str) -> Result<Option<String>, DbError> {
+        let row: Option<(String,)> =
+            sqlx::query_as("SELECT state_json FROM combat_state WHERE scene_id = ?")
+                .bind(scene_id)
+                .fetch_optional(&self.pool)
+                .await?;
+        Ok(row.map(|(json,)| json))
     }
 }
 

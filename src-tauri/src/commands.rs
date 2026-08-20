@@ -543,6 +543,11 @@ pub async fn seed_defaults(state: State<'_, AppState>) -> CmdResult<()> {
             ("CHA".to_string(), 8),
         ]),
         actions: vec!["act_shortsword".to_string()],
+        loot_table: vec![auto_dm_core::models::LootTableEntry {
+            name: "Gold Coins".to_string(),
+            quantity_formula: "2d6".to_string(),
+            chance: 80,
+        }],
     };
     repo.save_stat_block(&goblin).await.map_err(err)?;
 
@@ -623,4 +628,147 @@ pub async fn import_campaign(
     data: crate::db::CampaignExport,
 ) -> CmdResult<()> {
     state.repo.import_campaign(&data).await.map_err(err)
+}
+
+// ---------- Loot -----------------------------------------------------------
+
+/// Save a loot entry for the current scene.
+#[tauri::command]
+pub async fn save_loot(
+    state: State<'_, AppState>,
+    scene_id: String,
+    name: String,
+    quantity: i32,
+    source_entity: String,
+) -> CmdResult<crate::db::LootRow> {
+    state
+        .repo
+        .save_loot(&scene_id, &name, quantity, &source_entity)
+        .await
+        .map_err(err)
+}
+
+/// Assign a loot entry to a character.
+#[tauri::command]
+pub async fn assign_loot(
+    state: State<'_, AppState>,
+    loot_id: String,
+    character_id: String,
+) -> CmdResult<()> {
+    state
+        .repo
+        .assign_loot(&loot_id, &character_id)
+        .await
+        .map_err(err)
+}
+
+/// List all loot for a scene.
+#[tauri::command]
+pub async fn list_loot(
+    state: State<'_, AppState>,
+    scene_id: String,
+) -> CmdResult<Vec<crate::db::LootRow>> {
+    state.repo.list_loot(&scene_id).await.map_err(err)
+}
+
+/// Clear all loot for a scene.
+#[tauri::command]
+pub async fn clear_loot(state: State<'_, AppState>, scene_id: String) -> CmdResult<()> {
+    state.repo.clear_loot(&scene_id).await.map_err(err)
+}
+
+// ---------- NPC Notes -------------------------------------------------------
+
+/// Save an NPC note for the current scene.
+#[tauri::command]
+pub async fn save_npc_note(
+    state: State<'_, AppState>,
+    scene_id: String,
+    npc_name: String,
+    relation: String,
+    note: String,
+) -> CmdResult<crate::db::NpcNoteRow> {
+    state
+        .repo
+        .save_npc_note(&scene_id, &npc_name, &relation, &note)
+        .await
+        .map_err(err)
+}
+
+/// List NPC notes for a scene.
+#[tauri::command]
+pub async fn list_npc_notes(
+    state: State<'_, AppState>,
+    scene_id: String,
+) -> CmdResult<Vec<crate::db::NpcNoteRow>> {
+    state.repo.list_npc_notes(&scene_id).await.map_err(err)
+}
+
+/// Delete an NPC note by ID.
+#[tauri::command]
+pub async fn delete_npc_note(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+    state.repo.delete_npc_note(&id).await.map_err(err)
+}
+
+// ---------- Combat State Persistence ----------------------------------------
+
+/// Save combat state for the current scene.
+#[tauri::command]
+pub async fn save_combat_state(
+    state: State<'_, AppState>,
+    scene_id: String,
+    state_json: String,
+) -> CmdResult<()> {
+    state
+        .repo
+        .save_combat_state(&scene_id, &state_json)
+        .await
+        .map_err(err)
+}
+
+/// Load combat state for the current scene.
+#[tauri::command]
+pub async fn load_combat_state(
+    state: State<'_, AppState>,
+    scene_id: String,
+) -> CmdResult<Option<String>> {
+    state.repo.load_combat_state(&scene_id).await.map_err(err)
+}
+
+// ---------- Loot Roll (monster kill) ----------------------------------------
+
+/// Roll loot from a monster's loot table when it's defeated.
+#[tauri::command]
+pub async fn roll_monster_loot(
+    state: State<'_, AppState>,
+    stat_block_id: String,
+    scene_id: String,
+) -> CmdResult<Vec<crate::db::LootRow>> {
+    use auto_dm_core::dice::DiceEngine;
+    use auto_dm_core::models::roll_loot_table;
+
+    let block = state
+        .repo
+        .load_stat_block(&stat_block_id)
+        .await
+        .map_err(err)?;
+    let block = block.ok_or_else(|| err("stat block not found"))?;
+    // Use timestamp-based seed for quasi-randomness.
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u64;
+    let mut dice = DiceEngine::with_seed(seed);
+    let rolled = roll_loot_table(&mut dice, &block.loot_table);
+
+    let mut results = Vec::new();
+    for item in rolled {
+        let row = state
+            .repo
+            .save_loot(&scene_id, &item.name, item.quantity, &block.name)
+            .await
+            .map_err(err)?;
+        results.push(row);
+    }
+    Ok(results)
 }

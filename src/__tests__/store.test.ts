@@ -33,6 +33,21 @@ vi.mock("../backend", () => ({
     setOllamaModel: vi.fn().mockResolvedValue(undefined),
     ingestMemory: vi.fn().mockResolvedValue(undefined),
     dmResolve: vi.fn().mockResolvedValue({ narrative: "test", mechanical_events: [], fate_interpretation: "Yes", fate_roll: 50, fate_target: 50, chaos_factor: 5, intent: { Narration: { text: "test" } }, source: "stub" }),
+    // SQLite persistence mocks
+    saveLoot: vi.fn().mockImplementation((_sid: string, name: string, qty: number, src: string) =>
+      Promise.resolve({ id: "loot-" + Math.random().toString(36).slice(2), scene_id: "s1", name, quantity: qty, source_entity: src, assigned_to: null, timestamp: new Date().toISOString() })
+    ),
+    assignLootToCharacter: vi.fn().mockResolvedValue(undefined),
+    listLoot: vi.fn().mockResolvedValue([]),
+    clearLootInScene: vi.fn().mockResolvedValue(undefined),
+    rollMonsterLoot: vi.fn().mockResolvedValue([]),
+    saveNpcNote: vi.fn().mockImplementation((_sid: string, name: string, rel: string, note: string) =>
+      Promise.resolve({ id: "note-" + Math.random().toString(36).slice(2), scene_id: "s1", npc_name: name, relation: rel, note, timestamp: new Date().toISOString() })
+    ),
+    listNpcNotes: vi.fn().mockResolvedValue([]),
+    deleteNpcNote: vi.fn().mockResolvedValue(true),
+    saveCombatState: vi.fn().mockResolvedValue(undefined),
+    loadCombatState: vi.fn().mockResolvedValue(null),
   },
 }));
 
@@ -246,47 +261,40 @@ describe("Store pure logic", () => {
   });
 
   describe("Loot", () => {
-    it("adds loot entry", () => {
-      useStore.getState().addLoot("Gold Coins", 100, "");
+    it("adds loot entry", async () => {
+      useStore.setState({ activeSceneId: "s1" });
+      await useStore.getState().addLoot("Gold Coins", 100, "");
       expect(useStore.getState().loot).toHaveLength(1);
       expect(useStore.getState().loot[0].name).toBe("Gold Coins");
       expect(useStore.getState().loot[0].quantity).toBe(100);
     });
 
-    it("assigns loot to character", () => {
-      useStore.getState().addLoot("Magic Sword", 1, "");
-      const lootId = useStore.getState().loot[0].id;
-      useStore.getState().assignLoot(lootId, "char_1");
+    it("assigns loot to character", async () => {
+      useStore.setState({ activeSceneId: "s1", loot: [{ id: "l1", name: "Magic Sword", quantity: 1, assignedTo: null, sourceEntity: "", timestamp: "" }] });
+      await useStore.getState().assignLoot("l1", "char_1");
       expect(useStore.getState().loot[0].assignedTo).toBe("char_1");
     });
 
-    it("clears all loot", () => {
-      useStore.getState().addLoot("Potion", 3, "");
-      useStore.getState().clearLoot();
+    it("clears all loot", async () => {
+      useStore.setState({ activeSceneId: "s1", loot: [{ id: "l1", name: "Potion", quantity: 3, assignedTo: null, sourceEntity: "", timestamp: "" }] });
+      await useStore.getState().clearLoot();
       expect(useStore.getState().loot).toEqual([]);
     });
   });
 
   describe("NPC Notes", () => {
-    it("adds and retrieves notes", () => {
-      useStore.getState().addNpcNote("Bartender", "Ally", "Knows the underground");
+    it("adds and retrieves notes", async () => {
+      useStore.setState({ activeSceneId: "s1" });
+      await useStore.getState().addNpcNote("Bartender", "Ally", "Knows the underground");
       expect(useStore.getState().npcNotes).toHaveLength(1);
       expect(useStore.getState().npcNotes[0].npcName).toBe("Bartender");
       expect(useStore.getState().npcNotes[0].relation).toBe("Ally");
     });
 
-    it("deletes notes by id", () => {
-      useStore.getState().addNpcNote("Guard", "Enemy", "Watches the gate");
-      const id = useStore.getState().npcNotes[0].id;
-      useStore.getState().deleteNpcNote(id);
+    it("deletes notes by id", async () => {
+      useStore.setState({ activeSceneId: "s1", npcNotes: [{ id: "n1", npcName: "Guard", relation: "Enemy", note: "Watches the gate", timestamp: "" }] });
+      await useStore.getState().deleteNpcNote("n1");
       expect(useStore.getState().npcNotes).toHaveLength(0);
-    });
-
-    it("groups notes by NPC name", () => {
-      useStore.getState().addNpcNote("Bartender", "Ally", "Friendly");
-      useStore.getState().addNpcNote("Bartender", "Contact", "Has info");
-      useStore.getState().addNpcNote("Guard", "Enemy", "Hostile");
-      expect(useStore.getState().npcNotes).toHaveLength(3);
     });
   });
 

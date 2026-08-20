@@ -98,6 +98,12 @@ export interface HitPoints {
   formula?: string;
 }
 
+export interface LootTableEntry {
+  name: string;
+  quantity_formula: string;
+  chance: number;
+}
+
 export interface EncounterStatBlock {
   id: string;
   name: string;
@@ -110,6 +116,7 @@ export interface EncounterStatBlock {
   speed_feet?: number;
   attributes: Record<string, number>;
   actions: string[];
+  loot_table: LootTableEntry[];
 }
 
 export interface Scene {

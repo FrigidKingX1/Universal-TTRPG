@@ -622,4 +622,18 @@ mod tests {
         let r = d.evaluate("0d6 + 5").unwrap();
         assert_eq!(r.total, 5);
     }
+
+    #[test]
+    fn loot_formula_quantity_rolls() {
+        let mut d = DiceEngine::with_seed(42);
+        let r = d.evaluate("2d4").unwrap();
+        assert!(r.total >= 2 && r.total <= 8);
+    }
+
+    #[test]
+    fn loot_single_item_quantity() {
+        let mut d = DiceEngine::with_seed(1);
+        let r = d.evaluate("1").unwrap();
+        assert_eq!(r.total, 1);
+    }
 }

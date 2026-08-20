@@ -4,7 +4,7 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — 16 commits, 56 passing tests, fully functional core loop.
+**Status:** Active development — 17 commits, 83 passing tests, fully functional core loop.
 
 ---
 
@@ -17,7 +17,7 @@ Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant
 │  Characters · Bestiary · Combat · Scenes · Tools     │
 ├─────────────────────────────────────────────────────┤
 │              Tauri v2 Bridge (IPC)                    │
-│  commands.rs — 15+ invoke commands                    │
+│  commands.rs — 27+ invoke commands                    │
 │  db.rs — SQLite persistence (AppState)               │
 │  lib.rs — Ollama lifecycle, app init                  │
 ├─────────────────────────────────────────────────────┤
@@ -108,23 +108,29 @@ auto-dm/
 | `b139bc2` | Flesh out Round 6: combat tracker, quick rolls, DM suggestions |
 | `d575335` | Flesh out Round 7: toast, combat conditions, clone monster, dice presets |
 | `df3ef8d` | Flesh out Round 8: rest mechanic, remove combatant, HP roll, scene complete |
+| `ce9afb2` | Flesh out Round 9: 13 Vitest tests, export/import, death saves, undo HP |
+| `c357f25` | Flesh out Round 10: combat persistence, loot, NPC notes, keyboard shortcuts |
 
 ---
 
 ## Core Engine Tests
 
-56 tests total: 54 in core modules + 2 integration tests in db.rs. All pass clean.
+83 tests total: 62 in Rust (60 core + 2 integration) + 21 frontend (Vitest). All pass clean.
 
 ```
-dice::tests          — 11 tests (expressions, refs, parens, caps, edge cases)
-engine::tests        — 9 tests (combat, healing, initiative, prerequisites)
-intent::tests        — 5 tests (narration, dice, NPC speech, garbage input)
-intent::stripped_json — 4 tests (code fences, empty input)
-llm::tests           — 9 tests (pipeline, dice roll DC, DC clamping, events, stub)
-memory::tests        — 4 tests (ring buffer, context, zero max)
-oracle::tests        — 10 tests (fate chart, chaos, events, meaning table)
+dice::tests          — 13 tests (expressions, refs, parens, caps, edge cases, loot formulas)
+engine::tests        — 11 tests (combat, healing, initiative, prerequisites, loot tables)
+intent::tests        — 5 tests (parser, degradation, stripped JSON)
+llm::tests           — 9 tests (pipeline, DC clamping, stub backend)
+memory::tests        — 4 tests (ring buffer, context generation)
+oracle::tests        — 10 tests (fate chart, IE, chaos adjustment)
 db::tests            — 2 tests (migrations, CRUD)
 ```
+
+### Frontend Tests (21)
+- Characters, Bestiary, Combat, Scenes, Tools components
+- Store: combat persistence, loot CRUD, NPC notes, character cloning
+- num_predict clamping, multi-condition toggling, tab switching
 
 ---
 
@@ -143,6 +149,7 @@ db::tests            — 2 tests (migrations, CRUD)
 - Prerequisite checks before actions (skill checks with DC)
 - Status effects: Poisoned, Stunned, Frightened, etc.
 - Initiative: d20 + modifier per combatant, sorted descending
+- Loot tables: per-encounter loot with formula-based quantities and chance percentages
 
 ### Oracle (`core/src/oracle.rs`)
 - Mythic GM Emulator Fate Chart (10 odds levels)
@@ -163,7 +170,7 @@ db::tests            — 2 tests (migrations, CRUD)
 - `OllamaLlmBackend`: HTTP client for local Ollama API
   - Structured JSON output mode (response_format)
   - Configurable model (switchable at runtime)
-  - `num_predict: 256` for fast responses
+  - `num_predict: 512` default, configurable via UI (128-2048)
   - `reachable()` health check
 
 ### Memory (`core/src/memory.rs`)
@@ -190,6 +197,7 @@ db::tests            — 2 tests (migrations, CRUD)
 - Action assignment (linked to Actions from Characters tab)
 - Clone button (copies with fresh HP)
 - HP bar in card list view
+- **Loot table editor**: per-monster loot entries (name, qty formula, chance %)
 
 ### Combat Tab
 - **Initiative tracker**: roll initiative, sorted order
@@ -203,8 +211,13 @@ db::tests            — 2 tests (migrations, CRUD)
   - **Condition system**: 8 toggleable conditions with tooltips
   - **Remove button** (individual combatant removal)
 - **Attack system**: Attacker → Target → Action selection with filtered actions
+- **HP Undo**: Undo last HP change on any combatant
+- **Batch HP adjust**: Multi-select targets, apply damage/heal to all at once
 - **Rest mechanic**: Short Rest (half HP) and Long Rest (full HP) buttons
+- **Loot distribution**: Add items, assign to characters, full tracking
+- **Combat summary**: Modal after fight ends (damage dealt, targets hit, defeated)
 - **Mini combat log**: toggleable, newest first
+- **Combat persistence**: SQLite-backed (initiative, HP, conditions, death saves survive restart)
 
 ### Scenes Tab
 - Scene CRUD (create with title + chaos factor)
@@ -224,6 +237,11 @@ db::tests            — 2 tests (migrations, CRUD)
 - **Oracle Panel**: fate check (10 odds levels), random event
   - Collapsible meaning table reference (73 actions + 61 subjects)
   - Fate and event history
+- **NPC Notes Panel**: Per-scene NPC relationship tracking
+  - Add notes with categorized relations (Ally/Enemy/Neutral/Contact/Rival/Boss/Informant/Questgiver/Unknown)
+  - Grouped by NPC name, delete individual notes
+- **Session Summary**: Markdown digest of current scene logs
+- **Export/Import**: Full campaign JSON with characters, bestiary, scenes, logs, loot, and notes
 - **Session Log**: chronological log with:
   - Speaker color coding (player/combat/narrator/DM)
   - Search/filter by content or speaker
@@ -235,6 +253,8 @@ db::tests            — 2 tests (migrations, CRUD)
 - **Tab badges**: count indicators on Scenes, Characters, Bestiary, Tools
 - **Error banner**: dismissible error display
 - **Dark theme**: custom CSS with accent colors
+- **Keyboard shortcuts**: 1-5 switch tabs, Esc dismisses errors
+- **Character duplication**: Clone button on character cards
 
 ---
 
@@ -273,17 +293,17 @@ npx vite build
 
 | Category | Files | Lines (approx) |
 |----------|-------|-----------------|
-| Core engine (Rust) | 9 | ~1,400 |
-| Tauri backend (Rust) | 4 | ~700 |
-| Frontend (TS/TSX) | 10 | ~2,000 |
-| CSS | 1 | ~900 |
-| **Total source** | **24** | **~5,000** |
+| Core engine (Rust) | 9 | ~1,500 |
+| Tauri backend (Rust) | 4 | ~950 |
+| Frontend (TS/TSX) | 10 | ~2,400 |
+| CSS | 1 | ~950 |
+| **Total source** | **24** | **~5,800** |
 
 ---
 
-## Current State (as of df3ef8d)
+## Current State (as of latest commit)
 
-- 56 tests passing (54 core + 2 integration)
+- 83 tests passing (62 Rust + 21 frontend)
 - Clippy clean (zero warnings)
 - TS + Vite build clean
 - All core gameplay loops functional:
@@ -292,3 +312,14 @@ npx vite build
   - DM narrative resolution via Ollama (or stub)
   - Session logging with search
   - Full stat management for characters and monsters
+  - Combat state persistence via SQLite (initiative, HP, conditions, death saves)
+  - Loot distribution with assignment tracking
+  - NPC relationship notes per scene
+  - Monster loot table rolling on defeat
+  - Batch HP adjust with multi-select
+  - Combat summary modal after fight ends
+  - Configurable num_predict dropdown
+  - Character duplication (clone)
+  - Keyboard shortcuts (1-5 tabs, Esc dismiss)
+  - Export/Import campaign (JSON with loot + notes)
+  - Session summary generator

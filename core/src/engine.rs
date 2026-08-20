@@ -432,8 +432,8 @@ pub fn roll_initiative(
 mod tests {
     use super::*;
     use crate::models::{
-        ActionCost, CostType, HitPoints, Identity, Outcomes, Resolution, ResourcePool,
-        SuccessOutcome, TargetType, Targeting,
+        ActionCost, CostType, HitPoints, Identity, LootTableEntry, Outcomes, Resolution,
+        ResourcePool, SuccessOutcome, TargetType, Targeting,
     };
 
     fn profile_with_str(name: &str, str: i32, dex: i32, hp: i32) -> CharacterProfile {
@@ -526,6 +526,7 @@ mod tests {
             speed_feet: Some(30),
             attributes,
             actions: vec![],
+            loot_table: vec![],
         }
     }
 
@@ -717,15 +718,51 @@ mod tests {
             creature_type: Some("humanoid".to_string()),
             alignment: Some("chaotic evil".to_string()),
             armor_class: 13,
-            hit_points: HitPoints { current: 15, maximum: 15, formula: Some("2d8+6".to_string()) },
+            hit_points: HitPoints {
+                current: 15,
+                maximum: 15,
+                formula: Some("2d8+6".to_string()),
+            },
             speed_feet: Some(30),
             attributes: HashMap::from([("STR".to_string(), 16), ("DEX".to_string(), 12)]),
             actions: vec!["greataxe".to_string()],
+            loot_table: vec![
+                LootTableEntry {
+                    name: "Gold Coins".to_string(),
+                    quantity_formula: "2d6".to_string(),
+                    chance: 100,
+                },
+                LootTableEntry {
+                    name: "Magic Sword".to_string(),
+                    quantity_formula: "1".to_string(),
+                    chance: 10,
+                },
+            ],
         };
         let c = Combatant::from(&s);
         assert_eq!(c.name, "Orc");
         assert_eq!(c.armor_class, 13);
         assert_eq!(c.hit_points, 15);
         assert!(c.actions.contains(&"greataxe".to_string()));
+    }
+
+    #[test]
+    fn loot_table_rolls_correctly() {
+        let mut dice = DiceEngine::with_seed(1);
+        let loot_table = vec![
+            LootTableEntry {
+                name: "Gold".to_string(),
+                quantity_formula: "2d6".to_string(),
+                chance: 100,
+            },
+            LootTableEntry {
+                name: "Rare Gem".to_string(),
+                quantity_formula: "1".to_string(),
+                chance: 5,
+            },
+        ];
+        let rolled = crate::models::roll_loot_table(&mut dice, &loot_table);
+        assert!(!rolled.is_empty());
+        assert!(rolled.iter().any(|l| l.name == "Gold"));
     }
 }
