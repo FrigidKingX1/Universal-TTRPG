@@ -195,7 +195,7 @@ impl<B: LlmBackend> DmPipeline<B> {
             );
             let raw = self
                 .backend
-                .complete(SYSTEM_PROMPT, &prompt, Some(400))
+                .complete(SYSTEM_PROMPT, &prompt, Some(512))
                 .await?;
             let intent = GameIntent::from_llm_text(&raw);
             let mut dice = match seed {

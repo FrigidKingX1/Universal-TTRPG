@@ -607,3 +607,20 @@ pub fn ingest_memory(
     mem.push(&speaker, &content);
     Ok(())
 }
+
+// ---------- Export / Import ----------------------------------------------
+
+/// Export the full campaign data as JSON.
+#[tauri::command]
+pub async fn export_campaign(state: State<'_, AppState>) -> CmdResult<crate::db::CampaignExport> {
+    state.repo.export_campaign().await.map_err(err)
+}
+
+/// Import campaign data from JSON (overwrites existing data).
+#[tauri::command]
+pub async fn import_campaign(
+    state: State<'_, AppState>,
+    data: crate::db::CampaignExport,
+) -> CmdResult<()> {
+    state.repo.import_campaign(&data).await.map_err(err)
+}

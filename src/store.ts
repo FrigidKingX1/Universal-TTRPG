@@ -92,6 +92,12 @@ export interface AutoDmState {
   showToast: (msg: string) => void;
   cloneStatBlock: (id: string) => Promise<void>;
   completeScene: () => Promise<void>;
+  deathSaves: Record<string, { successes: number; failures: number }>;
+  rollDeathSave: (entityId: string) => Promise<void>;
+  lastHpChange: { entityId: string; previousHp: number; newHp: number } | null;
+  undoLastHpChange: () => void;
+  exportCampaign: () => Promise<string>;
+  importCampaign: (json: string) => Promise<void>;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -162,6 +168,8 @@ export const useStore = create<AutoDmState>((set, get) => ({
   combatantConditions: {},
   currentRound: 0,
   currentTurnIndex: 0,
+  deathSaves: {},
+  lastHpChange: null,
   ollama: { reachable: false, models: [], currentModel: "llama3.2" },
 
   bootstrap: async () => {
@@ -480,6 +488,68 @@ export const useStore = create<AutoDmState>((set, get) => ({
     }
     await backend.appendLog(scene.id, "System", `Scene "${scene.title}" has been completed.`);
     get().showToast(`Scene "${scene.title}" completed`);
+  },
+
+  rollDeathSave: async (entityId) => {
+    const s = get();
+    const ds = s.deathSaves[entityId] ?? { successes: 0, failures: 0 };
+    const r = await backend.rollDice("1d20");
+    const isTenPlus = r.total >= 10;
+    const newDs = isTenPlus
+      ? { successes: ds.successes + 1, failures: ds.failures }
+      : { successes: ds.successes, failures: ds.failures + 1 };
+    const result = isTenPlus ? "Success" : "Failure";
+    if (newDs.successes >= 3) {
+      set((st) => ({
+        deathSaves: { ...st.deathSaves, [entityId]: newDs },
+        combatantStates: {
+          ...st.combatantStates,
+          [entityId]: { ...st.combatantStates[entityId], status: "stable" },
+        },
+      }));
+      get().showToast("Stabilized!");
+    } else if (newDs.failures >= 3) {
+      set((st) => ({
+        deathSaves: { ...st.deathSaves, [entityId]: newDs },
+        combatantStates: {
+          ...st.combatantStates,
+          [entityId]: { ...st.combatantStates[entityId], hit_points: -1, status: "dead" },
+        },
+      }));
+      get().showToast("Dead!");
+    } else {
+      set((st) => ({ deathSaves: { ...st.deathSaves, [entityId]: newDs } }));
+      get().showToast(`Death Save: ${result} (${newDs.successes}/${newDs.failures})`);
+    }
+  },
+
+  undoLastHpChange: () => {
+    const change = get().lastHpChange;
+    if (!change) return;
+    const s = get();
+    const st = s.combatantStates[change.entityId];
+    if (st) {
+      set((prev) => ({
+        combatantStates: {
+          ...prev.combatantStates,
+          [change.entityId]: { ...st, hit_points: change.previousHp },
+        },
+        lastHpChange: null,
+      }));
+      get().showToast("Undone");
+    }
+  },
+
+  exportCampaign: async () => {
+    const data = await backend.exportCampaign();
+    return JSON.stringify(data, null, 2);
+  },
+
+  importCampaign: async (json: string) => {
+    const data = JSON.parse(json);
+    await backend.importCampaign(data);
+    await get().bootstrap();
+    get().showToast("Campaign imported");
   },
 }));
 

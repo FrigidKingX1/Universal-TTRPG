@@ -913,3 +913,36 @@ select:focus {
   position: relative;
   cursor: help;
 }
+
+/* Death Saves */
+.death-save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.death-save-btn {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(247, 118, 142, 0.2);
+  color: var(--danger);
+  border: 1px solid rgba(247, 118, 142, 0.3);
+}
+
+.death-save-btn:hover {
+  background: rgba(247, 118, 142, 0.35);
+}
+
+/* Undo Button */
+.undo-btn {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(224, 175, 104, 0.2);
+  color: #e0af68;
+  border: 1px solid rgba(224, 175, 104, 0.3);
+}
+
+.undo-btn:hover {
+  background: rgba(224, 175, 104, 0.35);
+}

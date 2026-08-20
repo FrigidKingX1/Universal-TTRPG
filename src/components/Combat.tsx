@@ -34,6 +34,10 @@ export function Combat() {
   const toggleCondition = useStore((s) => s.toggleCondition);
   const currentRound = useStore((s) => s.currentRound);
   const currentTurnIndex = useStore((s) => s.currentTurnIndex);
+  const deathSaves = useStore((s) => s.deathSaves);
+  const rollDeathSave = useStore((s) => s.rollDeathSave);
+  const lastHpChange = useStore((s) => s.lastHpChange);
+  const undoLastHpChange = useStore((s) => s.undoLastHpChange);
 
   const [attackerKey, setAttackerKey] = useState("");
   const [targetKey, setTargetKey] = useState("");
@@ -76,16 +80,19 @@ export function Combat() {
   })();
 
   const quickHpAdjust = (entity: CharacterProfile | EncounterStatBlock, isChar: boolean, amount: number) => {
+    const previousHp = combatantStates[entity.id]?.hit_points ?? (isChar ? (entity as CharacterProfile).resource_pools.hp?.current ?? 0 : (entity as EncounterStatBlock).hit_points.current);
     if (isChar) {
       const c = characters.find((x) => x.id === entity.id);
       if (!c) return;
       const current = combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       const max = c.resource_pools.hp?.maximum ?? current;
+      const newHp = Math.max(0, Math.min(max, current + amount));
+      useStore.setState({ lastHpChange: { entityId: entity.id, previousHp, newHp } });
       void saveCharacter({
         ...c,
         resource_pools: {
           ...c.resource_pools,
-          hp: { ...c.resource_pools.hp!, current: Math.max(0, Math.min(max, current + amount)) },
+          hp: { ...c.resource_pools.hp!, current: newHp },
         },
       });
     } else {
@@ -93,9 +100,11 @@ export function Combat() {
       if (!b) return;
       const current = combatantStates[b.id]?.hit_points ?? b.hit_points.current;
       const max = b.hit_points.maximum;
+      const newHp = Math.max(0, Math.min(max, current + amount));
+      useStore.setState({ lastHpChange: { entityId: entity.id, previousHp, newHp } });
       void saveStatBlock({
         ...b,
-        hit_points: { ...b.hit_points, current: Math.max(0, Math.min(max, current + amount)) },
+        hit_points: { ...b.hit_points, current: newHp },
       });
     }
   };
@@ -207,6 +216,15 @@ export function Combat() {
                 </select>
               </div>
               <div className="card-footer-row">
+                {hp.current <= 0 && hp.status !== "dead" && hp.status !== "stable" && (
+                  <div className="death-save-row">
+                    <span className="muted">Death Saves: {deathSaves[e.value.id]?.successes ?? 0}/{deathSaves[e.value.id]?.failures ?? 0}</span>
+                    <button className="death-save-btn" onClick={() => void rollDeathSave(e.value.id)}>Roll Death Save</button>
+                  </div>
+                )}
+                {lastHpChange?.entityId === e.value.id && (
+                  <button className="undo-btn" onClick={undoLastHpChange}>Undo</button>
+                )}
                 <button className="remove-combatant-btn danger" onClick={() => { if (confirm(`Remove ${e.name} from combat?`)) removeCombatant(e.value.id); }}>
                   Remove
                 </button>

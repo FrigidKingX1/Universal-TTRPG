@@ -116,6 +116,19 @@ pub trait Repository: Send + Sync {
         payload: Option<Value>,
     ) -> Result<LogEntry, DbError>;
     async fn list_logs(&self, scene_id: &str, limit: i64) -> Result<Vec<LogEntry>, DbError>;
+
+    async fn export_campaign(&self) -> Result<CampaignExport, DbError>;
+    async fn import_campaign(&self, data: &CampaignExport) -> Result<(), DbError>;
+}
+
+/// Full campaign data for export/import.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CampaignExport {
+    pub characters: Vec<CharacterProfile>,
+    pub actions: Vec<ActionDefinition>,
+    pub stat_blocks: Vec<EncounterStatBlock>,
+    pub scenes: Vec<Scene>,
+    pub logs: Vec<LogEntry>,
 }
 
 /// SQLite-backed repository using an async connection pool.
@@ -514,6 +527,55 @@ impl Repository for SqliteRepository {
                 })
             })
             .collect()
+    }
+
+    async fn export_campaign(&self) -> Result<CampaignExport, DbError> {
+        let characters = self.list_characters().await?;
+        let actions = self.list_actions().await?;
+        let stat_blocks = self.list_stat_blocks().await?;
+        let scenes = self.list_scenes().await?;
+        let mut logs = Vec::new();
+        for scene in &scenes {
+            let scene_logs = self.list_logs(&scene.id, 10000).await?;
+            logs.extend(scene_logs);
+        }
+        Ok(CampaignExport { characters, actions, stat_blocks, scenes, logs })
+    }
+
+    async fn import_campaign(&self, data: &CampaignExport) -> Result<(), DbError> {
+        for c in &data.characters {
+            self.save_character(c).await?;
+        }
+        for a in &data.actions {
+            self.save_action(a).await?;
+        }
+        for b in &data.stat_blocks {
+            self.save_stat_block(b).await?;
+        }
+        for s in &data.scenes {
+            sqlx::query(
+                "INSERT INTO campaign_scenes (id, scene_number, title, chaos_factor, summary_text, is_active)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   title = excluded.title,
+                   chaos_factor = excluded.chaos_factor,
+                   summary_text = excluded.summary_text,
+                   is_active = excluded.is_active",
+            )
+            .bind(&s.id)
+            .bind(s.scene_number)
+            .bind(&s.title)
+            .bind(s.chaos_factor)
+            .bind(&s.summary_text)
+            .bind(s.is_active)
+            .execute(&self.pool)
+            .await?;
+        }
+        for l in &data.logs {
+            let sid = l.scene_id.as_deref().unwrap_or("");
+            self.append_log(sid, &l.speaker, &l.content, l.payload.clone()).await?;
+        }
+        Ok(())
     }
 }
 

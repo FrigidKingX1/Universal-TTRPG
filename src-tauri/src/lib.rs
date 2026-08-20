@@ -115,6 +115,8 @@ pub fn run() {
             commands::get_ollama_model,
             commands::set_ollama_model,
             commands::ingest_memory,
+            commands::export_campaign,
+            commands::import_campaign,
         ])
         .run(tauri::generate_context!())
         .expect("fatal: Tauri runtime failed to start");

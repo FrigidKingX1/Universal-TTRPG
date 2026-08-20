@@ -107,7 +107,20 @@ export const backend = {
   setOllamaModel: (model: string) => invoke<void>("set_ollama_model", { model }),
   ingestMemory: (speaker: string, content: string) =>
     invoke<void>("ingest_memory", { speaker, content }),
+
+  // Export / Import
+  exportCampaign: () => invoke<CampaignExport>("export_campaign"),
+  importCampaign: (data: CampaignExport) =>
+    invoke<void>("import_campaign", { data }),
 };
+
+export interface CampaignExport {
+  characters: CharacterProfile[];
+  actions: ActionDefinition[];
+  stat_blocks: EncounterStatBlock[];
+  scenes: Scene[];
+  logs: LogEntry[];
+}
 
 export type CombatEvents = {
   "log:new": LogEntry;

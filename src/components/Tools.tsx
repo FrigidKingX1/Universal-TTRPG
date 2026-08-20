@@ -468,3 +468,58 @@ export function OllamaStatus() {
     </section>
   );
 }
+
+export function CampaignData() {
+  const exportCampaign = useStore((s) => s.exportCampaign);
+  const importCampaign = useStore((s) => s.importCampaign);
+  const [importing, setImporting] = useState(false);
+
+  const doExport = async () => {
+    try {
+      const json = await exportCampaign();
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `auto-dm-campaign-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      useStore.getState().showToast("Campaign exported");
+    } catch (e) {
+      useStore.getState().setError(String(e));
+    }
+  };
+
+  const doImport = async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setImporting(true);
+      try {
+        const text = await file.text();
+        await importCampaign(text);
+      } catch (e) {
+        useStore.getState().setError(String(e));
+      } finally {
+        setImporting(false);
+      }
+    };
+    input.click();
+  };
+
+  return (
+    <section className="panel">
+      <h2>Campaign Data</h2>
+      <div className="row">
+        <button onClick={() => void doExport()}>Export Campaign</button>
+        <button onClick={() => void doImport()} disabled={importing}>
+          {importing ? "Importing…" : "Import Campaign"}
+        </button>
+      </div>
+      <p className="muted">Export saves all characters, monsters, scenes, and logs as JSON. Import overwrites current data.</p>
+    </section>
+  );
+}
