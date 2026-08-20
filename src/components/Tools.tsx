@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
+import { save, open } from "@tauri-apps/plugin-dialog";
+import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
 
 export function DiceRoller() {
   const rollHistory = useStore((s) => s.rollHistory);
@@ -492,13 +494,13 @@ export function CampaignData() {
   const doExport = async () => {
     try {
       const json = await exportCampaign();
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `auto-dm-campaign-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const filePath = await save({
+        title: "Export Campaign Data",
+        defaultPath: `auto-dm-campaign-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: "JSON Campaign Files", extensions: ["json"] }],
+      });
+      if (!filePath) return;
+      await writeTextFile(filePath, json);
       useStore.getState().showToast("Campaign exported");
     } catch (e) {
       useStore.getState().setError(String(e));
@@ -506,26 +508,24 @@ export function CampaignData() {
   };
 
   const doImport = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
+    try {
+      const filePath = await open({
+        title: "Import Campaign Data",
+        filters: [{ name: "JSON Campaign Files", extensions: ["json"] }],
+        multiple: false,
+      });
+      if (!filePath) return;
       setImporting(true);
-      try {
-        const text = await file.text();
-        await importCampaign(text);
-      } catch (e) {
-        useStore.getState().setError(String(e));
-      } finally {
-        setImporting(false);
-      }
-    };
-    input.click();
+      const text = await readTextFile(filePath);
+      await importCampaign(text);
+    } catch (e) {
+      useStore.getState().setError(String(e));
+    } finally {
+      setImporting(false);
+    }
   };
 
-  const generateSummary = () => {
+  const generateSummary = async () => {
     const scene = scenes.find((sc) => sc.id === activeSceneId);
     const sceneLogs = logs;
     const combatLogs = sceneLogs.filter((l) => l.content.includes("damage") || l.content.includes("DEFEATED") || l.content.includes("attack"));
@@ -556,13 +556,13 @@ export function CampaignData() {
     }
 
     const md = lines.join("\n");
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `session-summary-${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const filePath = await save({
+      title: "Export Session Summary",
+      defaultPath: `session-summary-${new Date().toISOString().slice(0, 10)}.md`,
+      filters: [{ name: "Markdown Files", extensions: ["md"] }],
+    });
+    if (!filePath) return;
+    await writeTextFile(filePath, md);
     useStore.getState().showToast("Session summary exported");
   };
 
@@ -574,7 +574,7 @@ export function CampaignData() {
         <button onClick={() => void doImport()} disabled={importing}>
           {importing ? "Importing…" : "Import Campaign"}
         </button>
-        <button onClick={generateSummary}>Session Summary</button>
+        <button onClick={() => void generateSummary()}>Session Summary</button>
       </div>
       <p className="muted">Export saves all data as JSON. Session Summary generates a Markdown digest of the current scene's logs.</p>
     </section>

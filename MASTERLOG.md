@@ -280,6 +280,11 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 - **Window size** — 1280x800 default (was 800x600)
 - **Bundle targets** — narrowed from `"all"` to `["nsis"]`
 
+### UX Polish
+- **Native file dialogs** — Export/Import Campaign and Session Summary now use OS-native save/open dialogs via `@tauri-apps/plugin-dialog` + `@tauri-apps/plugin-fs` (replaced web-style Blob/download/input)
+- **Window state persistence** — `tauri-plugin-window-state` remembers window size/position across launches
+- **Settings store** — `tauri-plugin-store` available for future key-value persistence
+
 ---
 
 ## Frontend Features
