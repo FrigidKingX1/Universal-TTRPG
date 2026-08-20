@@ -4,18 +4,37 @@ pub mod db;
 use auto_dm_core::llm::{DmPipeline, LlmBackend, StubLlmBackend};
 use auto_dm_core::memory::CampaignMemory;
 use auto_dm_core::ollama::OllamaLlmBackend;
-use db::{open_pool, run_migrations, AppState, SqliteRepository};
+use db::{backup_before_migrate, open_pool, run_migrations, AppState, SqliteRepository};
+use std::panic;
 use std::sync::Mutex;
 use tauri::Manager;
+use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
+
+fn setup_panic_hook() {
+    panic::set_hook(Box::new(|info| {
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_else(|| "unknown location".to_string());
+        let payload = if let Some(s) = info.payload().downcast_ref::<&str>() {
+            s.to_string()
+        } else if let Some(s) = info.payload().downcast_ref::<String>() {
+            s.clone()
+        } else {
+            "Box<Any> panic payload".to_string()
+        };
+        log::error!("CRITICAL PANIC at [{location}]: {payload}");
+    }));
+}
 
 /// Try to start the `ollama serve` child process. Returns the Child handle
 /// if successfully spawned, or None if Ollama was already reachable.
 fn try_start_ollama() -> Option<std::process::Child> {
     if OllamaLlmBackend::reachable() {
-        println!("Auto-DM: Ollama already running");
+        log::info!("Ollama already running");
         return None;
     }
-    println!("Auto-DM: attempting to start `ollama serve`...");
+    log::info!("Attempting to start `ollama serve`...");
     match std::process::Command::new("ollama")
         .arg("serve")
         .stdout(std::process::Stdio::null())
@@ -23,11 +42,11 @@ fn try_start_ollama() -> Option<std::process::Child> {
         .spawn()
     {
         Ok(child) => {
-            println!("Auto-DM: ollama serve started (pid {})", child.id());
+            log::info!("ollama serve started (pid {})", child.id());
             Some(child)
         }
         Err(e) => {
-            println!("Auto-DM: failed to start ollama serve: {e}");
+            log::warn!("Failed to start ollama serve: {e}");
             None
         }
     }
@@ -37,18 +56,44 @@ fn try_start_ollama() -> Option<std::process::Child> {
 /// otherwise fall back to the deterministic stub so the app is always usable.
 fn choose_dm_backend() -> Box<dyn LlmBackend> {
     if OllamaLlmBackend::reachable() {
-        println!("Auto-DM: using Ollama backend @ localhost:11434");
+        log::info!("Using Ollama backend @ localhost:11434");
         Box::new(OllamaLlmBackend::new(None))
     } else {
-        println!("Auto-DM: Ollama not reachable; using stub backend");
+        log::warn!("Ollama not reachable; using stub backend");
         Box::new(StubLlmBackend)
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    setup_panic_hook();
+
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("auto_dm".into()),
+                    }),
+                    Target::new(TargetKind::Stdout),
+                ])
+                .timezone_strategy(TimezoneStrategy::UseLocal)
+                .max_file_size(2_000_000)
+                .build(),
+        );
+
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    builder
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_dir)?;
@@ -56,6 +101,7 @@ pub fn run() {
 
             let pool = tauri::async_runtime::block_on(async {
                 let pool = open_pool(&db_path).await?;
+                backup_before_migrate(&pool).await;
                 run_migrations(&pool).await?;
                 Ok::<_, Box<dyn std::error::Error>>(pool)
             })?;
@@ -69,6 +115,8 @@ pub fn run() {
                 ollama_child: Mutex::new(ollama_child),
                 current_model: Mutex::new("llama3.2".to_string()),
             });
+
+            log::info!("Auto-DM started successfully");
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -76,7 +124,7 @@ pub fn run() {
                 if let Some(state) = window.try_state::<AppState>() {
                     if let Ok(mut child) = state.ollama_child.lock() {
                         if let Some(ref mut c) = *child {
-                            println!("Auto-DM: killing ollama serve (pid {})", c.id());
+                            log::info!("Killing ollama serve (pid {})", c.id());
                             let _ = c.kill();
                         }
                     }

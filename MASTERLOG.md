@@ -268,6 +268,18 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 - Death save buttons only shown for player characters (not stat blocks)
 - `addNpcCharacter` now correctly parses legacy `string[]` knows into `NpcKnowledge[]` format
 
+### Production Readiness (Items 1-5)
+- **WAL mode** already enabled via `SqliteJournalMode::Wal`; added `PRAGMA synchronous = NORMAL` for safe-fast pairing
+- **Pre-migration backup** via `backup_before_migrate()` — snapshots DB before schema changes
+- **`tauri-plugin-single-instance`** — prevents multi-process SQLite corruption; focuses existing window on re-launch
+- **`tauri-plugin-log`** — rotating diagnostic logs to `$LOCALAPPDATA` + stdout; replaces all `println!` in lib.rs
+- **Rust panic hook** — logs `CRITICAL PANIC` with file/line/column to diagnostic log before process exit
+- **CSP lockdown** — `connect-src` scoped to `'self'` + Ollama loopback (`127.0.0.1:11434`, `localhost:11434`)
+- **NSIS installer** — `webviewInstallMode: downloadBootstrapper` ensures WebView2 is fetched if missing
+- **Capabilities audit** — `default.json` grants `core:default`, `opener:default`, `log:default` only
+- **Window size** — 1280x800 default (was 800x600)
+- **Bundle targets** — narrowed from `"all"` to `["nsis"]`
+
 ---
 
 ## Frontend Features

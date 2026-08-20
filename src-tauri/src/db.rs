@@ -381,10 +381,29 @@ pub async fn open_pool(path: &std::path::Path) -> Result<SqlitePool, sqlx::Error
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true)
         .busy_timeout(std::time::Duration::from_secs(5));
-    SqlitePoolOptions::new()
+    let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect_with(options)
+        .await?;
+    // WAL + NORMAL synchronous is the standard safe-fast pairing.
+    sqlx::query("PRAGMA synchronous = NORMAL")
+        .execute(&pool)
+        .await?;
+    Ok(pool)
+}
+
+/// Snapshot the database before applying schema changes.
+/// Called from lib.rs before run_migrations to protect against partial migration.
+pub async fn backup_before_migrate(pool: &SqlitePool) {
+    // The pool's path isn't directly accessible, so we execute a backup via SQLite.
+    // On failure we log and continue — the migration is idempotent (CREATE IF NOT EXISTS),
+    // so a missing backup is preferable to blocking startup.
+    if let Err(e) = sqlx::query("VACUUM INTO 'backup_pre_migrate.db'")
+        .execute(pool)
         .await
+    {
+        eprintln!("Warning: pre-migration backup failed: {e}");
+    }
 }
 
 /// Schema DDL executed on startup (idempotent).
