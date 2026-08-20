@@ -93,9 +93,11 @@ export function Combat() {
           const pct = Math.max(0, Math.min(100, (hp.current / Math.max(1, hp.max)) * 100));
           const barClass = hp.current <= 0 ? "dead" : hp.current < hp.max * 0.25 ? "critical" : hp.current < hp.max * 0.5 ? "wounded" : "healthy";
           const isChar = "identity" in e.value;
+          const initEntry = initiativeOrder.find((i) => i.combatant_id === e.value.id);
           return (
             <div key={e.key} className="combatant-card">
               <div className="card-row">
+                {initEntry && <span className="init-badge">#{initiativeOrder.indexOf(initEntry) + 1}</span>}
                 <strong>{e.name}</strong>
                 <span className="muted">AC {getArmorClass(e.value)}</span>
                 {hp.status && <span className="badge">{hp.status}</span>}

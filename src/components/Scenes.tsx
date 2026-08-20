@@ -59,6 +59,7 @@ export function Scenes() {
               </button>
             </div>
             {sc.id === activeSceneId && <SceneSummaryEditor scene={sc} />}
+            {sc.id === activeSceneId && <SceneCfEditor scene={sc} />}
           </li>
         ))}
       </ul>
@@ -93,6 +94,40 @@ function SceneSummaryEditor({ scene }: { scene: { id: string; summary_text?: str
       />
       <button onClick={() => void save()} disabled={saving}>
         {saving ? "Saving…" : "Save Summary"}
+      </button>
+    </div>
+  );
+}
+
+function SceneCfEditor({ scene }: { scene: { id: string; chaos_factor: number } }) {
+  const [cf, setCf] = useState(scene.chaos_factor);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await backend.updateSceneChaosFactor(scene.id, cf);
+    } catch {
+      // best-effort
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="sheet cf-editor">
+      <label className="attr">
+        <span>CF</span>
+        <input
+          type="number"
+          min={1}
+          max={9}
+          value={cf}
+          onChange={(e) => setCf(Number(e.currentTarget.value))}
+        />
+      </label>
+      <button onClick={() => void save()} disabled={saving || cf === scene.chaos_factor}>
+        {saving ? "Saving…" : "Update CF"}
       </button>
     </div>
   );

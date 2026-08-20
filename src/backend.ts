@@ -54,6 +54,8 @@ export const backend = {
   deleteScene: (id: string) => invoke<boolean>("delete_scene", { id }),
   updateSceneSummary: (id: string, summary: string | null) =>
     invoke<void>("update_scene_summary", { id, summary }),
+  updateSceneChaosFactor: (id: string, chaosFactor: number) =>
+    invoke<void>("update_scene_chaos_factor", { id, chaosFactor }),
 
   // Log
   appendLog: (sceneId: string, speaker: string, content: string) =>
@@ -101,6 +103,8 @@ export const backend = {
 
   // Ollama
   ollamaModels: () => invoke<string[]>("ollama_models"),
+  getOllamaModel: () => invoke<string>("get_ollama_model"),
+  setOllamaModel: (model: string) => invoke<void>("set_ollama_model", { model }),
   ingestMemory: (speaker: string, content: string) =>
     invoke<void>("ingest_memory", { speaker, content }),
 };

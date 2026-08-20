@@ -70,12 +70,15 @@ pub struct LogEntry {
 /// Application state shared with Tauri commands.
 pub struct AppState {
     pub repo: SqliteRepository,
-    /// The DM loop. Backends are swappable; `StubLlmBackend` is used for MVP.
-    pub dm: DmPipeline<Box<dyn LlmBackend>>,
+    /// The DM loop, swappable at runtime when the model changes.
+    /// Uses tokio::sync::Mutex so the guard can cross .await boundaries.
+    pub dm: tokio::sync::Mutex<Option<DmPipeline<Box<dyn LlmBackend>>>>,
     /// In-memory ring buffer of recent campaign events for LLM context.
     pub memory: Mutex<CampaignMemory>,
     /// Handle to the Ollama child process, if we started it.
     pub ollama_child: Mutex<Option<std::process::Child>>,
+    /// Currently selected Ollama model name.
+    pub current_model: Mutex<String>,
 }
 
 /// Data access contract. Implemented over SQLite for the MVP; a SQLCipher
@@ -103,6 +106,7 @@ pub trait Repository: Send + Sync {
     async fn set_active_scene(&self, id: &str) -> Result<(), DbError>;
     async fn delete_scene(&self, id: &str) -> Result<bool, DbError>;
     async fn update_scene_summary(&self, id: &str, summary: Option<&str>) -> Result<(), DbError>;
+    async fn update_scene_chaos_factor(&self, id: &str, chaos_factor: i32) -> Result<(), DbError>;
 
     async fn append_log(
         &self,
@@ -438,6 +442,15 @@ impl Repository for SqliteRepository {
     async fn update_scene_summary(&self, id: &str, summary: Option<&str>) -> Result<(), DbError> {
         sqlx::query("UPDATE campaign_scenes SET summary_text = ? WHERE id = ?")
             .bind(summary)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn update_scene_chaos_factor(&self, id: &str, chaos_factor: i32) -> Result<(), DbError> {
+        sqlx::query("UPDATE campaign_scenes SET chaos_factor = ? WHERE id = ?")
+            .bind(chaos_factor)
             .bind(id)
             .execute(&self.pool)
             .await?;

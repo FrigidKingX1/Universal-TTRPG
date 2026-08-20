@@ -541,3 +541,28 @@ select:focus {
 .ollama-status.offline {
   border-color: var(--border);
 }
+
+.init-badge {
+  background: var(--accent);
+  color: #0b0d10;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 1.4rem;
+  text-align: center;
+}
+
+.cf-editor {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cf-editor .attr {
+  margin: 0;
+}
+
+.cf-editor .attr input {
+  width: 3.5rem;
+}

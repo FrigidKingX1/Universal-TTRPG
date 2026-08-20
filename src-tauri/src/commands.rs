@@ -158,6 +158,19 @@ pub async fn update_scene_summary(
         .map_err(err)
 }
 
+#[tauri::command]
+pub async fn update_scene_chaos_factor(
+    state: State<'_, AppState>,
+    id: String,
+    chaos_factor: i32,
+) -> CmdResult<()> {
+    state
+        .repo
+        .update_scene_chaos_factor(&id, chaos_factor)
+        .await
+        .map_err(err)
+}
+
 // ---------- Log --------------------------------------------------------
 
 #[tauri::command]
@@ -363,7 +376,15 @@ pub async fn dm_resolve(
             request.memory_context = Some(mem.to_context(20));
         }
     }
-    let response = state.dm.resolve_action(&request).await.map_err(err)?;
+    let response = state
+        .dm
+        .lock()
+        .await
+        .as_ref()
+        .ok_or_else(|| "DM backend not initialized".to_string())?
+        .resolve_action(&request)
+        .await
+        .map_err(err)?;
     emit(&app, "dm:response", &response);
     Ok(response)
 }
@@ -551,6 +572,28 @@ pub fn ping() -> String {
 #[tauri::command]
 pub async fn ollama_models() -> CmdResult<Vec<String>> {
     auto_dm_core::ollama::list_models().await.map_err(err)
+}
+
+/// Get the currently selected Ollama model name.
+#[tauri::command]
+pub async fn get_ollama_model(state: State<'_, AppState>) -> CmdResult<String> {
+    let model = state.current_model.lock().map_err(err)?;
+    Ok(model.clone())
+}
+
+/// Switch the Ollama model used by the DM backend. Rebuilds the pipeline.
+#[tauri::command]
+pub async fn set_ollama_model(state: State<'_, AppState>, model: String) -> CmdResult<()> {
+    {
+        let mut current = state.current_model.lock().map_err(err)?;
+        *current = model.clone();
+    }
+    // Rebuild the DM pipeline with the new model.
+    let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
+        Box::new(auto_dm_core::ollama::OllamaLlmBackend::new(Some(model)));
+    let mut dm = state.dm.lock().await;
+    *dm = Some(auto_dm_core::llm::DmPipeline::new(backend));
+    Ok(())
 }
 
 /// Push a campaign event into the local memory log (best-effort).

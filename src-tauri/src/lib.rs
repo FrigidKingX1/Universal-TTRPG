@@ -64,9 +64,10 @@ pub fn run() {
 
             app.manage(AppState {
                 repo: SqliteRepository::new(pool),
-                dm: DmPipeline::new(choose_dm_backend()),
+                dm: tokio::sync::Mutex::new(Some(DmPipeline::new(choose_dm_backend()))),
                 memory: Mutex::new(CampaignMemory::new()),
                 ollama_child: Mutex::new(ollama_child),
+                current_model: Mutex::new("llama3.2".to_string()),
             });
             Ok(())
         })
@@ -99,6 +100,7 @@ pub fn run() {
             commands::set_active_scene,
             commands::delete_scene,
             commands::update_scene_summary,
+            commands::update_scene_chaos_factor,
             commands::append_log,
             commands::list_logs,
             commands::roll_dice,
@@ -110,6 +112,8 @@ pub fn run() {
             commands::seed_defaults,
             commands::ping,
             commands::ollama_models,
+            commands::get_ollama_model,
+            commands::set_ollama_model,
             commands::ingest_memory,
         ])
         .run(tauri::generate_context!())

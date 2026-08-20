@@ -41,8 +41,9 @@ export interface AutoDmState {
   combatantStates: Record<string, CombatantState>;
 
   // Ollama status (polled from Tools tab).
-  ollama: { reachable: boolean; models: string[] };
+  ollama: { reachable: boolean; models: string[]; currentModel: string };
   pollOllamaModels: () => Promise<void>;
+  setOllamaModel: (model: string) => Promise<void>;
   ingestToMemory: (speaker: string, content: string) => Promise<void>;
 
   bootstrap: () => Promise<void>;
@@ -144,7 +145,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
   dmHistory: [],
   initiativeOrder: [],
   combatantStates: {},
-  ollama: { reachable: false, models: [] },
+  ollama: { reachable: false, models: [], currentModel: "llama3.2" },
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -263,6 +264,18 @@ export const useStore = create<AutoDmState>((set, get) => ({
     });
     set((s) => ({ lastDm: response, dmHistory: [...s.dmHistory.slice(-19), response] }));
     if (scene && response.narrative) {
+      // Auto-update scene summary with the latest narrative.
+      try {
+        const newSummary = response.narrative.slice(0, 500);
+        await backend.updateSceneSummary(scene.id, newSummary);
+        set((s) => ({
+          scenes: s.scenes.map((sc) =>
+            sc.id === scene.id ? { ...sc, summary_text: newSummary } : sc,
+          ),
+        }));
+      } catch {
+        // best-effort
+      }
       try {
         await backend.appendLog(scene.id, "Auto-DM", response.narrative);
       } catch {
@@ -281,9 +294,19 @@ export const useStore = create<AutoDmState>((set, get) => ({
   pollOllamaModels: async () => {
     try {
       const models = await backend.ollamaModels();
-      set({ ollama: { reachable: true, models } });
+      const currentModel = await backend.getOllamaModel();
+      set({ ollama: { reachable: true, models, currentModel } });
     } catch {
-      set({ ollama: { reachable: false, models: [] } });
+      set((s) => ({ ollama: { ...s.ollama, reachable: false, models: [] } }));
+    }
+  },
+
+  setOllamaModel: async (model) => {
+    try {
+      await backend.setOllamaModel(model);
+      set((s) => ({ ollama: { ...s.ollama, currentModel: model } }));
+    } catch (e) {
+      useStore.getState().setError(String(e));
     }
   },
 

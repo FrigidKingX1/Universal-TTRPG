@@ -166,6 +166,7 @@ export function DmPanel() {
   const dmHistory = useStore((s) => s.dmHistory);
   const resolveDmAction = useStore((s) => s.resolveDmAction);
   const ollamaLive = useStore((s) => s.ollama.reachable);
+  const currentModel = useStore((s) => s.ollama.currentModel);
   const activeSceneId = useStore((s) => s.activeSceneId);
   const [action, setAction] = useState("");
   const [busy, setBusy] = useState(false);
@@ -188,7 +189,7 @@ export function DmPanel() {
       <h2>
         Auto-DM{" "}
         <span className="muted">
-          ({ollamaLive ? "Ollama live" : "stub backend"})
+          ({ollamaLive ? currentModel : "stub backend"})
         </span>
       </h2>
       {!activeSceneId && (
@@ -323,6 +324,7 @@ export function SessionLog() {
 
 export function OllamaStatus() {
   const ollama = useStore((s) => s.ollama);
+  const setOllamaModel = useStore((s) => s.setOllamaModel);
 
   useEffect(() => {
     const poll = () => void useStore.getState().pollOllamaModels();
@@ -346,14 +348,25 @@ export function OllamaStatus() {
         Ollama{" "}
         <span className="badge">online</span>
       </h2>
-      <p>
-        {ollama.models.length} model{ollama.models.length !== 1 ? "s" : ""} installed
-      </p>
-      <p className="muted">
-        {ollama.models.length > 0
-          ? ollama.models.join(", ")
-          : "no models found — pull one with `ollama pull llama3.2`"}
-      </p>
+      <div className="row">
+        <label>
+          Model
+          <select
+            value={ollama.currentModel}
+            onChange={(e) => void setOllamaModel(e.currentTarget.value)}
+          >
+            {ollama.models.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </label>
+        <span className="muted">
+          {ollama.models.length} model{ollama.models.length !== 1 ? "s" : ""} installed
+        </span>
+      </div>
+      {ollama.models.length === 0 && (
+        <p className="muted">no models found — pull one with `ollama pull llama3.2`</p>
+      )}
     </section>
   );
 }
