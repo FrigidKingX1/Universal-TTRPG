@@ -430,6 +430,119 @@ impl MeaningTable {
     }
 }
 
+// ── Oracle Context — Threads & Characters integration ──────────────────
+
+/// Lightweight reference to open threads and known NPCs for Random Event enrichment.
+/// Not tied to any database — the caller builds this from whatever storage they use.
+#[derive(Debug, Clone, Default)]
+pub struct OracleContext {
+    pub open_threads: Vec<ThreadRef>,
+    pub npcs: Vec<NpcRef>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ThreadRef {
+    pub id: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct NpcRef {
+    pub id: String,
+    pub name: String,
+    pub disposition: String,
+}
+
+/// An enriched Random Event that may reference threads or NPCs from the context.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnrichedEvent {
+    pub meaning: EventMeaning,
+    /// If the event implies "New NPC", the suggested name is here.
+    pub suggested_npc_name: Option<String>,
+    /// If the event implies "Remove a Thread", the thread ID is here.
+    pub remove_thread_id: Option<String>,
+    /// If the event implies "NPC Action", the NPC name is here.
+    pub acting_npc: Option<String>,
+}
+
+impl MeaningTable {
+    /// Generate a Random Event enriched by the Oracle context. When the
+    /// Meaning Table pairs suggest an NPC or Thread event, the context
+    /// provides concrete entities to anchor the narrative.
+    pub fn random_event_with_context(
+        &self,
+        rng: &mut ChaCha8Rng,
+        ctx: &OracleContext,
+    ) -> EnrichedEvent {
+        let meaning = self.random_event(rng);
+
+        let mut suggested_npc_name = None;
+        let mut remove_thread_id = None;
+        let mut acting_npc = None;
+
+        // Heuristic: if the action implies NPC involvement and we have NPCs, pick one.
+        let action_lower = meaning.action.to_lowercase();
+        let npc_actions = ["betray", "attack", "approach", "abandon", "help"];
+        if npc_actions.iter().any(|a| action_lower.contains(a)) && !ctx.npcs.is_empty() {
+            let pick = &ctx.npcs[rng.gen_range(0..ctx.npcs.len())];
+            acting_npc = Some(pick.name.clone());
+        }
+
+        // Heuristic: if the subject is "ally" or "enemy" and we have NPCs, suggest a new one.
+        let subject_lower = meaning.subject.to_lowercase();
+        if (subject_lower.contains("ally") || subject_lower.contains("new")) && !ctx.npcs.is_empty()
+        {
+            // Generate a simple suggested name from the meaning table words.
+            suggested_npc_name = Some(format!("{} {}", meaning.descriptor, meaning.action));
+        }
+
+        // Heuristic: if action is "abandon" or subject contains "thread"/"secret",
+        // and we have open threads, pick one to potentially remove.
+        if (action_lower.contains("abandon")
+            || subject_lower.contains("secret")
+            || subject_lower.contains("truth"))
+            && !ctx.open_threads.is_empty()
+        {
+            let pick = &ctx.open_threads[rng.gen_range(0..ctx.open_threads.len())];
+            remove_thread_id = Some(pick.id.clone());
+        }
+
+        EnrichedEvent {
+            meaning,
+            suggested_npc_name,
+            remove_thread_id,
+            acting_npc,
+        }
+    }
+}
+
+// ── Scene Test ─────────────────────────────────────────────────────────
+
+/// Outcome of a Mythic Scene Test.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SceneOutcome {
+    AsExpected,
+    Altered,
+    Interrupted,
+}
+
+/// Perform a Mythic Scene Test. Roll d10 against the current Chaos Factor:
+/// - Roll ≤ CF/2 → Interrupted
+/// - Roll ≤ CF → Altered
+/// - Roll > CF → AsExpected
+pub fn scene_test(chaos_factor: u8, rng: &mut ChaCha8Rng) -> SceneOutcome {
+    let roll: u8 = rng.gen_range(1..=10);
+    let cf = chaos_factor.clamp(1, 9);
+    if roll <= cf / 2 {
+        SceneOutcome::Interrupted
+    } else if roll <= cf {
+        SceneOutcome::Altered
+    } else {
+        SceneOutcome::AsExpected
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -526,5 +639,93 @@ mod tests {
         assert!(t.subject.len() >= 40);
         assert!(t.descriptor.len() >= 40);
         assert!(t.focus.len() >= 40);
+    }
+
+    #[test]
+    fn scene_test_produces_valid_outcomes() {
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        // Run many times — should always produce a valid variant.
+        for _ in 0..100 {
+            let outcome = scene_test(5, &mut rng);
+            assert!(matches!(
+                outcome,
+                SceneOutcome::AsExpected | SceneOutcome::Altered | SceneOutcome::Interrupted
+            ));
+        }
+    }
+
+    #[test]
+    fn scene_test_low_cf_skews_as_expected() {
+        let mut rng = ChaCha8Rng::seed_from_u64(99);
+        let mut as_expected = 0;
+        for _ in 0..200 {
+            if scene_test(2, &mut rng) == SceneOutcome::AsExpected {
+                as_expected += 1;
+            }
+        }
+        // With CF 2, "AsExpected" requires roll > 2, so ~80% of the time.
+        assert!(
+            as_expected > 100,
+            "Expected mostly AsExpected, got {as_expected}"
+        );
+    }
+
+    #[test]
+    fn enriched_event_with_empty_context() {
+        let table = MeaningTable::default_table();
+        let mut rng = ChaCha8Rng::seed_from_u64(7);
+        let ctx = OracleContext::default();
+        let event = table.random_event_with_context(&mut rng, &ctx);
+        assert!(!event.meaning.action.is_empty());
+        assert!(event.suggested_npc_name.is_none());
+        assert!(event.remove_thread_id.is_none());
+        assert!(event.acting_npc.is_none());
+    }
+
+    #[test]
+    fn enriched_event_with_threads_and_npcs() {
+        let table = MeaningTable::default_table();
+        let mut rng = ChaCha8Rng::seed_from_u64(7);
+        let ctx = OracleContext {
+            open_threads: vec![
+                ThreadRef {
+                    id: "t1".into(),
+                    description: "Find the sword".into(),
+                },
+                ThreadRef {
+                    id: "t2".into(),
+                    description: "Rescue the captive".into(),
+                },
+            ],
+            npcs: vec![
+                NpcRef {
+                    id: "n1".into(),
+                    name: "Bartender".into(),
+                    disposition: "friendly".into(),
+                },
+                NpcRef {
+                    id: "n2".into(),
+                    name: "Guard Captain".into(),
+                    disposition: "hostile".into(),
+                },
+            ],
+        };
+        // Run many events — at least some should reference context entities.
+        let mut had_npc_ref = false;
+        let mut had_thread_ref = false;
+        for _ in 0..50 {
+            let event = table.random_event_with_context(&mut rng, &ctx);
+            if event.acting_npc.is_some() || event.suggested_npc_name.is_some() {
+                had_npc_ref = true;
+            }
+            if event.remove_thread_id.is_some() {
+                had_thread_ref = true;
+            }
+        }
+        // With 2 threads and 2 NPCs, some events should reference them.
+        assert!(
+            had_npc_ref || had_thread_ref,
+            "Expected at least some context references"
+        );
     }
 }

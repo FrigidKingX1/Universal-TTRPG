@@ -138,6 +138,26 @@ export const backend = {
     invoke<void>("save_combat_state", { sceneId, stateJson }),
   loadCombatState: (sceneId: string) =>
     invoke<string | null>("load_combat_state", { sceneId }),
+
+  // Plot Threads
+  saveThread: (description: string, status: string, openedSceneId: string, resolvedSceneId?: string) =>
+    invoke<ThreadRow>("save_thread", { description, status, openedSceneId, resolvedSceneId }),
+  updateThreadStatus: (id: string, status: string, resolvedSceneId?: string) =>
+    invoke<void>("update_thread_status", { id, status, resolvedSceneId }),
+  listThreads: () =>
+    invoke<ThreadRow[]>("list_threads"),
+  deleteThread: (id: string) =>
+    invoke<boolean>("delete_thread", { id }),
+
+  // NPC Characters
+  saveNpcCharacter: (name: string, disposition: string, alive: boolean, location?: string, knowsJson?: string, notes?: string, lastSeenSceneId?: string) =>
+    invoke<NpcCharacterRow>("save_npc_character", { name, disposition, alive, location, knowsJson: knowsJson ?? "[]", notes, lastSeenSceneId }),
+  updateNpcCharacter: (id: string, disposition?: string, alive?: boolean, location?: string, knowsJson?: string, notes?: string, lastSeenSceneId?: string) =>
+    invoke<void>("update_npc_character", { id, disposition, alive, location, knowsJson, notes, lastSeenSceneId }),
+  listNpcCharacters: () =>
+    invoke<NpcCharacterRow[]>("list_npc_characters"),
+  deleteNpcCharacter: (id: string) =>
+    invoke<boolean>("delete_npc_character", { id }),
 };
 
 export interface CampaignExport {
@@ -148,6 +168,8 @@ export interface CampaignExport {
   logs: LogEntry[];
   loot: LootRow[];
   npc_notes: NpcNoteRow[];
+  plot_threads: ThreadRow[];
+  npc_characters: NpcCharacterRow[];
 }
 
 export interface LootRow {
@@ -167,6 +189,27 @@ export interface NpcNoteRow {
   relation: string;
   note: string;
   timestamp: string;
+}
+
+export interface ThreadRow {
+  id: string;
+  description: string;
+  status: string;
+  opened_scene_id: string;
+  resolved_scene_id: string | null;
+  created_at: string;
+}
+
+export interface NpcCharacterRow {
+  id: string;
+  name: string;
+  disposition: string;
+  alive: boolean;
+  location: string | null;
+  knows_json: string;
+  notes: string | null;
+  last_seen_scene_id: string | null;
+  created_at: string;
 }
 
 export type CombatEvents = {

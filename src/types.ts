@@ -248,3 +248,29 @@ export interface CombatantState {
   hit_points: number;
   status?: string;
 }
+
+// ── Oracle / Mythic — Thread & NPC Character Lists ──────────────────────
+
+export type ThreadStatus = "open" | "resolved" | "abandoned";
+export type Disposition = "hostile" | "unfriendly" | "neutral" | "friendly" | "helpful";
+
+export interface PlotThread {
+  id: string;
+  description: string;
+  status: ThreadStatus;
+  opened_scene_id: string;
+  resolved_scene_id?: string;
+  created_at: string;
+}
+
+export interface NpcCharacter {
+  id: string;
+  name: string;
+  disposition: Disposition;
+  alive: boolean;
+  location?: string;
+  knows: string[];
+  notes?: string;
+  last_seen_scene_id?: string;
+  created_at: string;
+}

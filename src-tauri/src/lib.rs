@@ -127,6 +127,14 @@ pub fn run() {
             commands::save_combat_state,
             commands::load_combat_state,
             commands::roll_monster_loot,
+            commands::save_thread,
+            commands::update_thread_status,
+            commands::list_threads,
+            commands::delete_thread,
+            commands::save_npc_character,
+            commands::update_npc_character,
+            commands::list_npc_characters,
+            commands::delete_npc_character,
         ])
         .run(tauri::generate_context!())
         .expect("fatal: Tauri runtime failed to start");

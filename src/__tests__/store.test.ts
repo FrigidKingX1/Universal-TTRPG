@@ -48,6 +48,22 @@ vi.mock("../backend", () => ({
     deleteNpcNote: vi.fn().mockResolvedValue(true),
     saveCombatState: vi.fn().mockResolvedValue(undefined),
     loadCombatState: vi.fn().mockResolvedValue(null),
+
+    // Plot Threads
+    saveThread: vi.fn().mockImplementation((_desc: string, status: string, _sid: string) =>
+      Promise.resolve({ id: "thread-" + Math.random().toString(36).slice(2), description: _desc, status, opened_scene_id: _sid, resolved_scene_id: null, created_at: new Date().toISOString() })
+    ),
+    updateThreadStatus: vi.fn().mockResolvedValue(undefined),
+    listThreads: vi.fn().mockResolvedValue([]),
+    deleteThread: vi.fn().mockResolvedValue(true),
+
+    // NPC Characters
+    saveNpcCharacter: vi.fn().mockImplementation((name: string, disposition: string) =>
+      Promise.resolve({ id: "npc-" + Math.random().toString(36).slice(2), name, disposition, alive: true, location: null, knows_json: "[]", notes: null, last_seen_scene_id: null, created_at: new Date().toISOString() })
+    ),
+    updateNpcCharacter: vi.fn().mockResolvedValue(undefined),
+    listNpcCharacters: vi.fn().mockResolvedValue([]),
+    deleteNpcCharacter: vi.fn().mockResolvedValue(true),
   },
 }));
 
@@ -295,6 +311,68 @@ describe("Store pure logic", () => {
       useStore.setState({ activeSceneId: "s1", npcNotes: [{ id: "n1", npcName: "Guard", relation: "Enemy", note: "Watches the gate", timestamp: "" }] });
       await useStore.getState().deleteNpcNote("n1");
       expect(useStore.getState().npcNotes).toHaveLength(0);
+    });
+  });
+
+  describe("Plot Threads", () => {
+    it("adds a thread", async () => {
+      useStore.setState({ activeSceneId: "s1" });
+      await useStore.getState().addThread("Who is the assassin?");
+      expect(useStore.getState().plotThreads).toHaveLength(1);
+      expect(useStore.getState().plotThreads[0].description).toBe("Who is the assassin?");
+      expect(useStore.getState().plotThreads[0].status).toBe("open");
+    });
+
+    it("resolves a thread", async () => {
+      useStore.setState({ activeSceneId: "s1", plotThreads: [{ id: "t1", description: "Find the sword", status: "open", opened_scene_id: "s1", created_at: "" }] });
+      await useStore.getState().resolveThread("t1");
+      expect(useStore.getState().plotThreads[0].status).toBe("resolved");
+    });
+
+    it("abandons a thread", async () => {
+      useStore.setState({ activeSceneId: "s1", plotThreads: [{ id: "t1", description: "Rescue the captive", status: "open", opened_scene_id: "s1", created_at: "" }] });
+      await useStore.getState().abandonThread("t1");
+      expect(useStore.getState().plotThreads[0].status).toBe("abandoned");
+    });
+
+    it("deletes a thread", async () => {
+      useStore.setState({ activeSceneId: "s1", plotThreads: [{ id: "t1", description: "Old thread", status: "open", opened_scene_id: "s1", created_at: "" }] });
+      await useStore.getState().deleteThread("t1");
+      expect(useStore.getState().plotThreads).toHaveLength(0);
+    });
+  });
+
+  describe("NPC Characters", () => {
+    it("adds an NPC character", async () => {
+      await useStore.getState().addNpcCharacter("Bartender", "friendly");
+      expect(useStore.getState().npcCharacters).toHaveLength(1);
+      expect(useStore.getState().npcCharacters[0].name).toBe("Bartender");
+      expect(useStore.getState().npcCharacters[0].disposition).toBe("friendly");
+      expect(useStore.getState().npcCharacters[0].alive).toBe(true);
+    });
+
+    it("updates disposition", async () => {
+      useStore.setState({ npcCharacters: [{ id: "n1", name: "Guard", disposition: "neutral", alive: true, knows: [], created_at: "" }] });
+      await useStore.getState().updateNpcDisposition("n1", "hostile");
+      expect(useStore.getState().npcCharacters[0].disposition).toBe("hostile");
+    });
+
+    it("marks NPC dead", async () => {
+      useStore.setState({ npcCharacters: [{ id: "n1", name: "Guard", disposition: "neutral", alive: true, knows: [], created_at: "" }] });
+      await useStore.getState().markNpcDead("n1");
+      expect(useStore.getState().npcCharacters[0].alive).toBe(false);
+    });
+
+    it("adds knowledge to NPC", async () => {
+      useStore.setState({ npcCharacters: [{ id: "n1", name: "Bartender", disposition: "friendly", alive: true, knows: ["secret tunnel"], created_at: "" }] });
+      await useStore.getState().addNpcKnowledge("n1", "guard rotation");
+      expect(useStore.getState().npcCharacters[0].knows).toEqual(["secret tunnel", "guard rotation"]);
+    });
+
+    it("deletes NPC character", async () => {
+      useStore.setState({ npcCharacters: [{ id: "n1", name: "Guard", disposition: "neutral", alive: true, knows: [], created_at: "" }] });
+      await useStore.getState().deleteNpcCharacter("n1");
+      expect(useStore.getState().npcCharacters).toHaveLength(0);
     });
   });
 

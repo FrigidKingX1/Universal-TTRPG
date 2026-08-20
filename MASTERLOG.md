@@ -4,7 +4,7 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — 17 commits, 83 passing tests, fully functional core loop.
+**Status:** Active development — 18 commits, 102 passing tests, fully functional core loop.
 
 ---
 
@@ -17,7 +17,7 @@ Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant
 │  Characters · Bestiary · Combat · Scenes · Tools     │
 ├─────────────────────────────────────────────────────┤
 │              Tauri v2 Bridge (IPC)                    │
-│  commands.rs — 27+ invoke commands                    │
+│  commands.rs — 35+ invoke commands                    │
 │  db.rs — SQLite persistence (AppState)               │
 │  lib.rs — Ollama lifecycle, app init                  │
 ├─────────────────────────────────────────────────────┤
@@ -110,6 +110,8 @@ auto-dm/
 | `df3ef8d` | Flesh out Round 8: rest mechanic, remove combatant, HP roll, scene complete |
 | `ce9afb2` | Flesh out Round 9: 13 Vitest tests, export/import, death saves, undo HP |
 | `c357f25` | Flesh out Round 10: combat persistence, loot, NPC notes, keyboard shortcuts |
+| `dd232a6` | Flesh out Round 11: SQLite persistence for loot/notes/combat, batch HP, loot tables, combat summary |
+| `layer1` | Layer 1: Plot Threads + NPC Characters lists, Oracle enrichment, Scene Tests |
 
 ---
 
@@ -123,13 +125,16 @@ engine::tests        — 11 tests (combat, healing, initiative, prerequisites, l
 intent::tests        — 5 tests (parser, degradation, stripped JSON)
 llm::tests           — 9 tests (pipeline, DC clamping, stub backend)
 memory::tests        — 4 tests (ring buffer, context generation)
-oracle::tests        — 10 tests (fate chart, IE, chaos adjustment)
-db::tests            — 2 tests (migrations, CRUD)
+oracle::tests        — 14 tests (fate chart, IE, chaos adjustment, scene tests, enriched events)
+models::tests        — 5 tests (thread serialization, NPC defaults, disposition labels)
+db::tests            — 3 tests (migrations, CRUD, threads + NPC characters)
 ```
 
-### Frontend Tests (21)
+### Frontend Tests (30)
 - Characters, Bestiary, Combat, Scenes, Tools components
 - Store: combat persistence, loot CRUD, NPC notes, character cloning
+- Plot Threads: add, resolve, abandon, delete
+- NPC Characters: add, update disposition, mark dead, add knowledge, delete
 - num_predict clamping, multi-condition toggling, tab switching
 
 ---
@@ -157,6 +162,9 @@ db::tests            — 2 tests (migrations, CRUD)
 - Chaos Factor: 1-9 scale
 - Exceptional results (Yes+ or No-)
 - 73 Action words + 61 Subject words for event meaning tables
+- **Threads/Characters List integration** — EnrichedEvent references open threads and known NPCs
+- **Scene Test** — d10 vs CF: AsExpected / Altered / Interrupted
+- **OracleContext** — lightweight thread/NPC references for Random Event enrichment
 
 ### Intent Parser (`core/src/intent.rs`)
 - Parses LLM JSON responses into 7 intent types:
@@ -293,17 +301,17 @@ npx vite build
 
 | Category | Files | Lines (approx) |
 |----------|-------|-----------------|
-| Core engine (Rust) | 9 | ~1,500 |
-| Tauri backend (Rust) | 4 | ~950 |
-| Frontend (TS/TSX) | 10 | ~2,400 |
-| CSS | 1 | ~950 |
-| **Total source** | **24** | **~5,800** |
+| Core engine (Rust) | 9 | ~1,700 |
+| Tauri backend (Rust) | 4 | ~1,200 |
+| Frontend (TS/TSX) | 10 | ~2,800 |
+| CSS | 1 | ~1,000 |
+| **Total source** | **24** | **~6,700** |
 
 ---
 
 ## Current State (as of latest commit)
 
-- 83 tests passing (62 Rust + 21 frontend)
+- 102 tests passing (72 Rust + 30 frontend)
 - Clippy clean (zero warnings)
 - TS + Vite build clean
 - All core gameplay loops functional:
@@ -323,3 +331,7 @@ npx vite build
   - Keyboard shortcuts (1-5 tabs, Esc dismiss)
   - Export/Import campaign (JSON with loot + notes)
   - Session summary generator
+  - **Plot Threads list** (Mythic Oracle — open/resolve/abandon)
+  - **NPC Characters list** (disposition, knowledge, location tracking)
+  - **Oracle enrichment** (Random Events reference Threads and Characters)
+  - **Scene Tests** (Mythic scene-open test based on Chaos Factor)

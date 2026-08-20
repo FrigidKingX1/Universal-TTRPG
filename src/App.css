@@ -146,6 +146,12 @@ button:disabled {
   font-weight: 600;
 }
 
+.disp-hostile { background: #c0392b; color: #fff; }
+.disp-unfriendly { background: #d35400; color: #fff; }
+.disp-neutral { background: #7f8c8d; color: #fff; }
+.disp-friendly { background: #27ae60; color: #fff; }
+.disp-helpful { background: #2980b9; color: #fff; }
+
 .banner {
   padding: 0.5rem 0.8rem;
   border-radius: 6px;

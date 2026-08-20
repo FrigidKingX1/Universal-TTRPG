@@ -146,6 +146,49 @@ pub trait Repository: Send + Sync {
     // Combat state persistence
     async fn save_combat_state(&self, scene_id: &str, state_json: &str) -> Result<(), DbError>;
     async fn load_combat_state(&self, scene_id: &str) -> Result<Option<String>, DbError>;
+
+    // Plot Threads
+    async fn save_thread(
+        &self,
+        description: &str,
+        status: &str,
+        opened_scene_id: &str,
+        resolved_scene_id: Option<&str>,
+    ) -> Result<ThreadRow, DbError>;
+    async fn update_thread_status(
+        &self,
+        id: &str,
+        status: &str,
+        resolved_scene_id: Option<&str>,
+    ) -> Result<(), DbError>;
+    async fn list_threads(&self) -> Result<Vec<ThreadRow>, DbError>;
+    async fn delete_thread(&self, id: &str) -> Result<bool, DbError>;
+
+    // NPC Characters
+    #[allow(clippy::too_many_arguments)]
+    async fn save_npc_character(
+        &self,
+        name: &str,
+        disposition: &str,
+        alive: bool,
+        location: Option<&str>,
+        knows_json: &str,
+        notes: Option<&str>,
+        last_seen_scene_id: Option<&str>,
+    ) -> Result<NpcCharacterRow, DbError>;
+    #[allow(clippy::too_many_arguments)]
+    async fn update_npc_character(
+        &self,
+        id: &str,
+        disposition: Option<&str>,
+        alive: Option<bool>,
+        location: Option<&str>,
+        knows_json: Option<&str>,
+        notes: Option<&str>,
+        last_seen_scene_id: Option<&str>,
+    ) -> Result<(), DbError>;
+    async fn list_npc_characters(&self) -> Result<Vec<NpcCharacterRow>, DbError>;
+    async fn delete_npc_character(&self, id: &str) -> Result<bool, DbError>;
 }
 
 /// A loot entry (items dropped by monsters, assigned to characters).
@@ -179,7 +222,32 @@ pub struct CombatStateRow {
     pub updated_at: String,
 }
 
-/// CampaignExport now includes loot and notes for full round-trip.
+/// A plot thread row in SQLite.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ThreadRow {
+    pub id: String,
+    pub description: String,
+    pub status: String,
+    pub opened_scene_id: String,
+    pub resolved_scene_id: Option<String>,
+    pub created_at: String,
+}
+
+/// An NPC character row in SQLite.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NpcCharacterRow {
+    pub id: String,
+    pub name: String,
+    pub disposition: String,
+    pub alive: bool,
+    pub location: Option<String>,
+    pub knows_json: String,
+    pub notes: Option<String>,
+    pub last_seen_scene_id: Option<String>,
+    pub created_at: String,
+}
+
+/// CampaignExport now includes loot, notes, threads, and NPC characters for full round-trip.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CampaignExport {
     pub characters: Vec<CharacterProfile>,
@@ -191,6 +259,10 @@ pub struct CampaignExport {
     pub loot: Vec<LootRow>,
     #[serde(default)]
     pub npc_notes: Vec<NpcNoteRow>,
+    #[serde(default)]
+    pub plot_threads: Vec<ThreadRow>,
+    #[serde(default)]
+    pub npc_characters: Vec<NpcCharacterRow>,
 }
 
 /// SQLite-backed repository using an async connection pool.
@@ -282,6 +354,25 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
             scene_id TEXT PRIMARY KEY REFERENCES campaign_scenes(id) ON DELETE CASCADE,
             state_json TEXT NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS plot_threads (
+            id TEXT PRIMARY KEY,
+            description TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'open',
+            opened_scene_id TEXT NOT NULL,
+            resolved_scene_id TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS npc_characters (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            disposition TEXT NOT NULL DEFAULT 'neutral',
+            alive BOOLEAN NOT NULL DEFAULT TRUE,
+            location TEXT,
+            knows_json TEXT NOT NULL DEFAULT '[]',
+            notes TEXT,
+            last_seen_scene_id TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
     ];
     let mut tx = pool.begin().await?;
@@ -629,6 +720,8 @@ impl Repository for SqliteRepository {
             let notes = self.list_npc_notes(&scene.id).await.unwrap_or_default();
             all_notes.extend(notes);
         }
+        let plot_threads = self.list_threads().await.unwrap_or_default();
+        let npc_characters = self.list_npc_characters().await.unwrap_or_default();
         Ok(CampaignExport {
             characters,
             actions,
@@ -637,6 +730,8 @@ impl Repository for SqliteRepository {
             logs,
             loot: all_loot,
             npc_notes: all_notes,
+            plot_threads,
+            npc_characters,
         })
     }
 
@@ -702,6 +797,39 @@ impl Repository for SqliteRepository {
             .bind(&note.relation)
             .bind(&note.note)
             .bind(&note.timestamp)
+            .execute(&self.pool)
+            .await?;
+        }
+        // Import plot threads
+        for thread in &data.plot_threads {
+            sqlx::query(
+                "INSERT OR IGNORE INTO plot_threads (id, description, status, opened_scene_id, resolved_scene_id, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&thread.id)
+            .bind(&thread.description)
+            .bind(&thread.status)
+            .bind(&thread.opened_scene_id)
+            .bind(&thread.resolved_scene_id)
+            .bind(&thread.created_at)
+            .execute(&self.pool)
+            .await?;
+        }
+        // Import NPC characters
+        for npc in &data.npc_characters {
+            sqlx::query(
+                "INSERT OR IGNORE INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&npc.id)
+            .bind(&npc.name)
+            .bind(&npc.disposition)
+            .bind(npc.alive)
+            .bind(&npc.location)
+            .bind(&npc.knows_json)
+            .bind(&npc.notes)
+            .bind(&npc.last_seen_scene_id)
+            .bind(&npc.created_at)
             .execute(&self.pool)
             .await?;
         }
@@ -872,6 +1000,214 @@ impl Repository for SqliteRepository {
                 .await?;
         Ok(row.map(|(json,)| json))
     }
+
+    // ── Plot Threads ────────────────────────────────────────────────────
+
+    async fn save_thread(
+        &self,
+        description: &str,
+        status: &str,
+        opened_scene_id: &str,
+        resolved_scene_id: Option<&str>,
+    ) -> Result<ThreadRow, DbError> {
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO plot_threads (id, description, status, opened_scene_id, resolved_scene_id)
+             VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(description)
+        .bind(status)
+        .bind(opened_scene_id)
+        .bind(resolved_scene_id)
+        .execute(&self.pool)
+        .await?;
+        Ok(ThreadRow {
+            id,
+            description: description.to_string(),
+            status: status.to_string(),
+            opened_scene_id: opened_scene_id.to_string(),
+            resolved_scene_id: resolved_scene_id.map(|s| s.to_string()),
+            created_at: chrono::Utc::now().to_rfc3339(),
+        })
+    }
+
+    async fn update_thread_status(
+        &self,
+        id: &str,
+        status: &str,
+        resolved_scene_id: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query("UPDATE plot_threads SET status = ?, resolved_scene_id = ? WHERE id = ?")
+            .bind(status)
+            .bind(resolved_scene_id)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn list_threads(&self) -> Result<Vec<ThreadRow>, DbError> {
+        let rows: Vec<(String, String, String, String, Option<String>, String)> = sqlx::query_as(
+            "SELECT id, description, status, opened_scene_id, resolved_scene_id, created_at
+             FROM plot_threads ORDER BY created_at ASC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(id, description, status, opened_scene_id, resolved_scene_id, created_at)| {
+                    ThreadRow {
+                        id,
+                        description,
+                        status,
+                        opened_scene_id,
+                        resolved_scene_id,
+                        created_at,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    async fn delete_thread(&self, id: &str) -> Result<bool, DbError> {
+        let r = sqlx::query("DELETE FROM plot_threads WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(r.rows_affected() > 0)
+    }
+
+    // ── NPC Characters ─────────────────────────────────────────────────
+
+    #[allow(clippy::too_many_arguments)]
+    async fn save_npc_character(
+        &self,
+        name: &str,
+        disposition: &str,
+        alive: bool,
+        location: Option<&str>,
+        knows_json: &str,
+        notes: Option<&str>,
+        last_seen_scene_id: Option<&str>,
+    ) -> Result<NpcCharacterRow, DbError> {
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(name)
+        .bind(disposition)
+        .bind(alive)
+        .bind(location)
+        .bind(knows_json)
+        .bind(notes)
+        .bind(last_seen_scene_id)
+        .execute(&self.pool)
+        .await?;
+        Ok(NpcCharacterRow {
+            id,
+            name: name.to_string(),
+            disposition: disposition.to_string(),
+            alive,
+            location: location.map(|s| s.to_string()),
+            knows_json: knows_json.to_string(),
+            notes: notes.map(|s| s.to_string()),
+            last_seen_scene_id: last_seen_scene_id.map(|s| s.to_string()),
+            created_at: chrono::Utc::now().to_rfc3339(),
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn update_npc_character(
+        &self,
+        id: &str,
+        disposition: Option<&str>,
+        alive: Option<bool>,
+        location: Option<&str>,
+        knows_json: Option<&str>,
+        notes: Option<&str>,
+        last_seen_scene_id: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE npc_characters SET
+                disposition = COALESCE(?, disposition),
+                alive = COALESCE(?, alive),
+                location = COALESCE(?, location),
+                knows_json = COALESCE(?, knows_json),
+                notes = COALESCE(?, notes),
+                last_seen_scene_id = COALESCE(?, last_seen_scene_id)
+             WHERE id = ?",
+        )
+        .bind(disposition)
+        .bind(alive)
+        .bind(location)
+        .bind(knows_json)
+        .bind(notes)
+        .bind(last_seen_scene_id)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn list_npc_characters(&self) -> Result<Vec<NpcCharacterRow>, DbError> {
+        type NpcRow = (
+            String,
+            String,
+            String,
+            bool,
+            Option<String>,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+        );
+        let rows: Vec<NpcRow> = sqlx::query_as(
+            "SELECT id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at
+             FROM npc_characters ORDER BY created_at ASC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(
+                    id,
+                    name,
+                    disposition,
+                    alive,
+                    location,
+                    knows_json,
+                    notes,
+                    last_seen_scene_id,
+                    created_at,
+                )| {
+                    NpcCharacterRow {
+                        id,
+                        name,
+                        disposition,
+                        alive,
+                        location,
+                        knows_json,
+                        notes,
+                        last_seen_scene_id,
+                        created_at,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    async fn delete_npc_character(&self, id: &str) -> Result<bool, DbError> {
+        let r = sqlx::query("DELETE FROM npc_characters WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(r.rows_affected() > 0)
+    }
 }
 
 #[cfg(test)]
@@ -953,5 +1289,82 @@ mod tests {
         let logs = repo.list_logs(&s1.id, 10).await.expect("logs");
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].content, "The gates groan open.");
+    }
+
+    #[tokio::test]
+    async fn thread_and_npc_character_crud() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect("sqlite::memory:")
+            .await
+            .expect("pool");
+        run_migrations(&pool).await.expect("migrations");
+        let repo = SqliteRepository { pool };
+
+        // Create a scene to reference
+        let s = repo.create_scene("Test", 5).await.expect("scene");
+
+        // Thread CRUD
+        let thread = repo
+            .save_thread("Who is the assassin?", "open", &s.id, None)
+            .await
+            .expect("save thread");
+        assert_eq!(thread.description, "Who is the assassin?");
+        assert_eq!(thread.status, "open");
+
+        let threads = repo.list_threads().await.expect("list threads");
+        assert_eq!(threads.len(), 1);
+
+        repo.update_thread_status(&thread.id, "resolved", Some(&s.id))
+            .await
+            .expect("update thread");
+        let threads = repo.list_threads().await.expect("list threads");
+        assert_eq!(threads[0].status, "resolved");
+        assert_eq!(threads[0].resolved_scene_id.as_deref(), Some(s.id.as_str()));
+
+        repo.delete_thread(&thread.id).await.expect("delete thread");
+        let threads = repo.list_threads().await.expect("list threads");
+        assert!(threads.is_empty());
+
+        // NPC Character CRUD
+        let npc = repo
+            .save_npc_character(
+                "Bartender",
+                "friendly",
+                true,
+                Some("Tavern"),
+                "[]",
+                Some("Knows the underground"),
+                None,
+            )
+            .await
+            .expect("save npc");
+        assert_eq!(npc.name, "Bartender");
+        assert_eq!(npc.disposition, "friendly");
+
+        let npcs = repo.list_npc_characters().await.expect("list npcs");
+        assert_eq!(npcs.len(), 1);
+
+        repo.update_npc_character(
+            &npc.id,
+            Some("neutral"),
+            Some(true),
+            None,
+            None,
+            Some("Knows everything"),
+            Some(&s.id),
+        )
+        .await
+        .expect("update npc");
+        let npcs = repo.list_npc_characters().await.expect("list npcs");
+        assert_eq!(npcs[0].disposition, "neutral");
+        assert_eq!(npcs[0].notes.as_deref(), Some("Knows everything"));
+        assert_eq!(npcs[0].last_seen_scene_id.as_deref(), Some(s.id.as_str()));
+
+        repo.delete_npc_character(&npc.id)
+            .await
+            .expect("delete npc");
+        let npcs = repo.list_npc_characters().await.expect("list npcs");
+        assert!(npcs.is_empty());
     }
 }

@@ -299,3 +299,139 @@ pub struct HitPoints {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub formula: Option<String>,
 }
+
+// ── Oracle / Mythic — Thread & NPC Character Lists ────────────────────────
+
+/// Status of a plot thread.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ThreadStatus {
+    Open,
+    Resolved,
+    Abandoned,
+}
+
+/// NPC disposition toward the player character.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Disposition {
+    Hostile,
+    Unfriendly,
+    Neutral,
+    Friendly,
+    Helpful,
+}
+
+impl Disposition {
+    pub fn label(self) -> &'static str {
+        match self {
+            Disposition::Hostile => "Hostile",
+            Disposition::Unfriendly => "Unfriendly",
+            Disposition::Neutral => "Neutral",
+            Disposition::Friendly => "Friendly",
+            Disposition::Helpful => "Helpful",
+        }
+    }
+}
+
+/// A single open plot thread tracked by the Mythic Oracle.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PlotThread {
+    pub id: String,
+    pub description: String,
+    pub status: ThreadStatus,
+    pub opened_scene_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_scene_id: Option<String>,
+    pub created_at: String,
+}
+
+/// An NPC character tracked in the Mythic Characters List.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NpcCharacter {
+    pub id: String,
+    pub name: String,
+    pub disposition: Disposition,
+    #[serde(default)]
+    pub alive: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+    /// Facts this NPC is aware of.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub knows: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_seen_scene_id: Option<String>,
+    pub created_at: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn thread_status_roundtrips() {
+        let thread = PlotThread {
+            id: "t1".into(),
+            description: "Who is the assassin?".into(),
+            status: ThreadStatus::Open,
+            opened_scene_id: "s1".into(),
+            resolved_scene_id: None,
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_string(&thread).unwrap();
+        let de: PlotThread = serde_json::from_str(&json).unwrap();
+        assert_eq!(thread, de);
+    }
+
+    #[test]
+    fn thread_status_resolved_serializes() {
+        let thread = PlotThread {
+            id: "t2".into(),
+            description: "Find the treasure".into(),
+            status: ThreadStatus::Resolved,
+            opened_scene_id: "s1".into(),
+            resolved_scene_id: Some("s3".into()),
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_value(&thread).unwrap();
+        assert_eq!(json["status"], "resolved");
+        assert_eq!(json["resolved_scene_id"], "s3");
+    }
+
+    #[test]
+    fn disposition_label() {
+        assert_eq!(Disposition::Hostile.label(), "Hostile");
+        assert_eq!(Disposition::Friendly.label(), "Friendly");
+        assert_eq!(Disposition::Neutral.label(), "Neutral");
+    }
+
+    #[test]
+    fn npc_character_roundtrips() {
+        let npc = NpcCharacter {
+            id: "n1".into(),
+            name: "Bartender".into(),
+            disposition: Disposition::Friendly,
+            alive: true,
+            location: Some("Tavern".into()),
+            knows: vec!["Secret tunnel".into()],
+            notes: Some("Knows the underground".into()),
+            last_seen_scene_id: None,
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_string(&npc).unwrap();
+        let de: NpcCharacter = serde_json::from_str(&json).unwrap();
+        assert_eq!(npc, de);
+    }
+
+    #[test]
+    fn npc_character_defaults() {
+        let json = r#"{"id":"n2","name":"Guard","disposition":"unfriendly","alive":true,"created_at":"2026-01-01T00:00:00Z"}"#;
+        let npc: NpcCharacter = serde_json::from_str(json).unwrap();
+        assert!(npc.knows.is_empty());
+        assert!(npc.notes.is_none());
+        assert!(npc.location.is_none());
+        assert!(npc.last_seen_scene_id.is_none());
+    }
+}

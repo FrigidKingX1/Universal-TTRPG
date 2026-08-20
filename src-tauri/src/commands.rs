@@ -772,3 +772,125 @@ pub async fn roll_monster_loot(
     }
     Ok(results)
 }
+
+// ── Plot Threads ────────────────────────────────────────────────────────
+
+/// Create a new plot thread.
+#[tauri::command]
+pub async fn save_thread(
+    state: State<'_, AppState>,
+    description: String,
+    status: String,
+    opened_scene_id: String,
+    resolved_scene_id: Option<String>,
+) -> CmdResult<crate::db::ThreadRow> {
+    state
+        .repo
+        .save_thread(
+            &description,
+            &status,
+            &opened_scene_id,
+            resolved_scene_id.as_deref(),
+        )
+        .await
+        .map_err(err)
+}
+
+/// Update a thread's status.
+#[tauri::command]
+pub async fn update_thread_status(
+    state: State<'_, AppState>,
+    id: String,
+    status: String,
+    resolved_scene_id: Option<String>,
+) -> CmdResult<()> {
+    state
+        .repo
+        .update_thread_status(&id, &status, resolved_scene_id.as_deref())
+        .await
+        .map_err(err)
+}
+
+/// List all plot threads.
+#[tauri::command]
+pub async fn list_threads(state: State<'_, AppState>) -> CmdResult<Vec<crate::db::ThreadRow>> {
+    state.repo.list_threads().await.map_err(err)
+}
+
+/// Delete a plot thread.
+#[tauri::command]
+pub async fn delete_thread(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+    state.repo.delete_thread(&id).await.map_err(err)
+}
+
+// ── NPC Characters ─────────────────────────────────────────────────────
+
+/// Create a new NPC character.
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+pub async fn save_npc_character(
+    state: State<'_, AppState>,
+    name: String,
+    disposition: String,
+    alive: bool,
+    location: Option<String>,
+    knows_json: String,
+    notes: Option<String>,
+    last_seen_scene_id: Option<String>,
+) -> CmdResult<crate::db::NpcCharacterRow> {
+    state
+        .repo
+        .save_npc_character(
+            &name,
+            &disposition,
+            alive,
+            location.as_deref(),
+            &knows_json,
+            notes.as_deref(),
+            last_seen_scene_id.as_deref(),
+        )
+        .await
+        .map_err(err)
+}
+
+/// Update an NPC character.
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+pub async fn update_npc_character(
+    state: State<'_, AppState>,
+    id: String,
+    disposition: Option<String>,
+    alive: Option<bool>,
+    location: Option<String>,
+    knows_json: Option<String>,
+    notes: Option<String>,
+    last_seen_scene_id: Option<String>,
+) -> CmdResult<()> {
+    state
+        .repo
+        .update_npc_character(
+            &id,
+            disposition.as_deref(),
+            alive,
+            location.as_deref(),
+            knows_json.as_deref(),
+            notes.as_deref(),
+            last_seen_scene_id.as_deref(),
+        )
+        .await
+        .map_err(err)
+}
+
+/// List all NPC characters.
+#[tauri::command]
+pub async fn list_npc_characters(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<crate::db::NpcCharacterRow>> {
+    state.repo.list_npc_characters().await.map_err(err)
+}
+
+/// Delete an NPC character.
+#[tauri::command]
+pub async fn delete_npc_character(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+    state.repo.delete_npc_character(&id).await.map_err(err)
+}

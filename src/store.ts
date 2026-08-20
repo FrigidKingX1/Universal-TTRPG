@@ -5,12 +5,15 @@ import type {
   ActionDefinition,
   CharacterProfile,
   CombatantState,
+  Disposition,
   EncounterStatBlock,
   EngineOutcome,
   EventMeaning,
   FateCheckResponse,
   InitiativeEntry,
   LogEntry,
+  NpcCharacter,
+  PlotThread,
   PrerequisiteCheck,
   RollResponse,
   Scene,
@@ -128,6 +131,23 @@ export interface AutoDmState {
   npcNotes: NpcNote[];
   addNpcNote: (npcName: string, relation: string, note: string) => Promise<void>;
   deleteNpcNote: (id: string) => Promise<void>;
+
+  // Plot Threads (Mythic Oracle)
+  plotThreads: PlotThread[];
+  addThread: (description: string) => Promise<void>;
+  resolveThread: (id: string) => Promise<void>;
+  abandonThread: (id: string) => Promise<void>;
+  deleteThread: (id: string) => Promise<void>;
+
+  // NPC Characters (Mythic Oracle)
+  npcCharacters: NpcCharacter[];
+  addNpcCharacter: (name: string, disposition: Disposition) => Promise<void>;
+  updateNpcDisposition: (id: string, disposition: Disposition) => Promise<void>;
+  updateNpcLocation: (id: string, location: string) => Promise<void>;
+  updateNpcNotes: (id: string, notes: string) => Promise<void>;
+  addNpcKnowledge: (id: string, fact: string) => Promise<void>;
+  markNpcDead: (id: string) => Promise<void>;
+  deleteNpcCharacter: (id: string) => Promise<void>;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -204,6 +224,8 @@ export const useStore = create<AutoDmState>((set, get) => ({
   ollama: { reachable: false, models: [], currentModel: "llama3.2", numPredict: 512 },
   loot: [],
   npcNotes: [],
+  plotThreads: [],
+  npcCharacters: [],
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -225,6 +247,8 @@ export const useStore = create<AutoDmState>((set, get) => ({
       let combatState: Partial<AutoDmState> = {};
       let loot: LootEntry[] = [];
       let npcNotes: NpcNote[] = [];
+      let plotThreads: PlotThread[] = [];
+      let npcCharacters: NpcCharacter[] = [];
       if (activeSceneId) {
         try {
           const saved = await backend.loadCombatState(activeSceneId);
@@ -253,6 +277,33 @@ export const useStore = create<AutoDmState>((set, get) => ({
           npcNotes = rows.map((r) => ({ id: r.id, npcName: r.npc_name, relation: r.relation, note: r.note, timestamp: r.timestamp }));
         } catch { /* best-effort */ }
       }
+      // Load plot threads (campaign-wide, not per-scene).
+      try {
+        const rows = await backend.listThreads();
+        plotThreads = rows.map((r) => ({
+          id: r.id,
+          description: r.description,
+          status: r.status as PlotThread["status"],
+          opened_scene_id: r.opened_scene_id,
+          resolved_scene_id: r.resolved_scene_id ?? undefined,
+          created_at: r.created_at,
+        }));
+      } catch { /* best-effort */ }
+      // Load NPC characters (campaign-wide).
+      try {
+        const rows = await backend.listNpcCharacters();
+        npcCharacters = rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          disposition: r.disposition as Disposition,
+          alive: r.alive,
+          location: r.location ?? undefined,
+          knows: (() => { try { return JSON.parse(r.knows_json) as string[]; } catch { return []; } })(),
+          notes: r.notes ?? undefined,
+          last_seen_scene_id: r.last_seen_scene_id ?? undefined,
+          created_at: r.created_at,
+        }));
+      } catch { /* best-effort */ }
       set({
         characters,
         actions,
@@ -264,6 +315,8 @@ export const useStore = create<AutoDmState>((set, get) => ({
         ...combatState,
         loot,
         npcNotes,
+        plotThreads,
+        npcCharacters,
       });
     } catch (e) {
       set({ loading: false, error: String(e) });
@@ -697,6 +750,169 @@ export const useStore = create<AutoDmState>((set, get) => ({
     try {
       await backend.deleteNpcNote(id);
       set((s) => ({ npcNotes: s.npcNotes.filter((n) => n.id !== id) }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  // ── Plot Threads ──────────────────────────────────────────────────────
+
+  addThread: async (description) => {
+    const sceneId = get().activeSceneId;
+    if (!sceneId) { get().showToast("No active scene"); return; }
+    try {
+      const row = await backend.saveThread(description, "open", sceneId);
+      const thread: PlotThread = {
+        id: row.id,
+        description: row.description,
+        status: row.status as PlotThread["status"],
+        opened_scene_id: row.opened_scene_id,
+        resolved_scene_id: row.resolved_scene_id ?? undefined,
+        created_at: row.created_at,
+      };
+      set((s) => ({ plotThreads: [...s.plotThreads, thread] }));
+      get().showToast(`Thread opened: ${description}`);
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  resolveThread: async (id) => {
+    const sceneId = get().activeSceneId;
+    try {
+      await backend.updateThreadStatus(id, "resolved", sceneId ?? undefined);
+      set((s) => ({
+        plotThreads: s.plotThreads.map((t) =>
+          t.id === id ? { ...t, status: "resolved" as const, resolved_scene_id: sceneId ?? undefined } : t
+        ),
+      }));
+      get().showToast("Thread resolved");
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  abandonThread: async (id) => {
+    try {
+      await backend.updateThreadStatus(id, "abandoned");
+      set((s) => ({
+        plotThreads: s.plotThreads.map((t) =>
+          t.id === id ? { ...t, status: "abandoned" as const } : t
+        ),
+      }));
+      get().showToast("Thread abandoned");
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  deleteThread: async (id) => {
+    try {
+      await backend.deleteThread(id);
+      set((s) => ({ plotThreads: s.plotThreads.filter((t) => t.id !== id) }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  // ── NPC Characters ────────────────────────────────────────────────────
+
+  addNpcCharacter: async (name, disposition) => {
+    const sceneId = get().activeSceneId;
+    try {
+      const row = await backend.saveNpcCharacter(name, disposition, true, undefined, "[]", undefined, sceneId ?? undefined);
+      const npc: NpcCharacter = {
+        id: row.id,
+        name: row.name,
+        disposition: row.disposition as Disposition,
+        alive: row.alive,
+        location: row.location ?? undefined,
+        knows: (() => { try { return JSON.parse(row.knows_json) as string[]; } catch { return []; } })(),
+        notes: row.notes ?? undefined,
+        last_seen_scene_id: row.last_seen_scene_id ?? undefined,
+        created_at: row.created_at,
+      };
+      set((s) => ({ npcCharacters: [...s.npcCharacters, npc] }));
+      get().showToast(`NPC added: ${name}`);
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  updateNpcDisposition: async (id, disposition) => {
+    try {
+      await backend.updateNpcCharacter(id, disposition);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, disposition } : n
+        ),
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  updateNpcLocation: async (id, location) => {
+    try {
+      await backend.updateNpcCharacter(id, undefined, undefined, location);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, location } : n
+        ),
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  updateNpcNotes: async (id, notes) => {
+    try {
+      await backend.updateNpcCharacter(id, undefined, undefined, undefined, undefined, notes);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, notes } : n
+        ),
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  addNpcKnowledge: async (id, fact) => {
+    const npc = get().npcCharacters.find((n) => n.id === id);
+    if (!npc) return;
+    const newKnows = [...npc.knows, fact];
+    const knowsJson = JSON.stringify(newKnows);
+    try {
+      await backend.updateNpcCharacter(id, undefined, undefined, undefined, knowsJson);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, knows: newKnows } : n
+        ),
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  markNpcDead: async (id) => {
+    try {
+      await backend.updateNpcCharacter(id, undefined, false);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, alive: false } : n
+        ),
+      }));
+      get().showToast("NPC marked as dead");
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  deleteNpcCharacter: async (id) => {
+    try {
+      await backend.deleteNpcCharacter(id);
+      set((s) => ({ npcCharacters: s.npcCharacters.filter((n) => n.id !== id) }));
     } catch (e) {
       get().showToast(`Error: ${e}`);
     }
