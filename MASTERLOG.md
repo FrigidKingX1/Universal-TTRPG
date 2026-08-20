@@ -4,7 +4,7 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — 21 commits, 115 passing tests, fully functional core loop.
+**Status:** Active development — 22 commits, 118 passing tests, fully functional core loop.
 
 ---
 
@@ -212,6 +212,14 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 - **1 DB test**: full CRUD lifecycle (create → list → tick → tick → advance → reset → list → delete)
 - **Column naming**: tick_current/tick_max to avoid SQLite reserved keyword conflicts
 
+### Layer 4 — NPC Memory Enhancement
+- **NpcKnowledge struct**: structured knowledge entries with `text`, `scene_id`, `timestamp` fields
+- **Backward compat deserializer**: `deserialize_knows()` auto-converts old `["string"]` format to new structured format
+- **Auto-tagging**: `addNpcKnowledge` automatically tags with active scene ID and ISO timestamp
+- **Remove knowledge**: new `removeNpcKnowledge` action + UI button per entry
+- **Frontend rendering**: knowledge badges show scene name + date, with per-entry delete button
+- **2 model tests**: legacy format deserialization, structured format roundtrip
+
 ---
 
 ## Frontend Features
@@ -341,7 +349,7 @@ npx vite build
 
 ## Current State (as of latest commit)
 
-- 115 tests passing (85 Rust + 30 frontend)
+- 118 tests passing (87 Rust + 31 frontend)
 - Clippy clean (zero warnings)
 - TS + Vite build clean
 - All core gameplay loops functional:

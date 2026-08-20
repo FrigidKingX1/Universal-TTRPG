@@ -364,9 +364,20 @@ describe("Store pure logic", () => {
     });
 
     it("adds knowledge to NPC", async () => {
-      useStore.setState({ npcCharacters: [{ id: "n1", name: "Bartender", disposition: "friendly", alive: true, knows: ["secret tunnel"], created_at: "" }] });
+      useStore.setState({ npcCharacters: [{ id: "n1", name: "Bartender", disposition: "friendly", alive: true, knows: [{ text: "secret tunnel" }], created_at: "" }] });
       await useStore.getState().addNpcKnowledge("n1", "guard rotation");
-      expect(useStore.getState().npcCharacters[0].knows).toEqual(["secret tunnel", "guard rotation"]);
+      expect(useStore.getState().npcCharacters[0].knows).toHaveLength(2);
+      expect(useStore.getState().npcCharacters[0].knows[0].text).toBe("secret tunnel");
+      expect(useStore.getState().npcCharacters[0].knows[1].text).toBe("guard rotation");
+      expect(useStore.getState().npcCharacters[0].knows[1].scene_id).toBeNull();
+      expect(useStore.getState().npcCharacters[0].knows[1].timestamp).toBeTruthy();
+    });
+
+    it("removes knowledge from NPC", async () => {
+      useStore.setState({ npcCharacters: [{ id: "n1", name: "Bartender", disposition: "friendly", alive: true, knows: [{ text: "secret tunnel" }, { text: "guard rotation" }], created_at: "" }] });
+      await useStore.getState().removeNpcKnowledge("n1", 0);
+      expect(useStore.getState().npcCharacters[0].knows).toHaveLength(1);
+      expect(useStore.getState().npcCharacters[0].knows[0].text).toBe("guard rotation");
     });
 
     it("deletes NPC character", async () => {

@@ -265,13 +265,19 @@ export interface PlotThread {
   created_at: string;
 }
 
+export interface NpcKnowledge {
+  text: string;
+  scene_id?: string | null;
+  timestamp?: string | null;
+}
+
 export interface NpcCharacter {
   id: string;
   name: string;
   disposition: Disposition;
   alive: boolean;
   location?: string | null;
-  knows: string[];
+  knows: NpcKnowledge[];
   notes?: string | null;
   last_seen_scene_id?: string | null;
   created_at: string;

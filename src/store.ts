@@ -147,6 +147,7 @@ export interface AutoDmState {
   updateNpcLocation: (id: string, location: string) => Promise<void>;
   updateNpcNotes: (id: string, notes: string) => Promise<void>;
   addNpcKnowledge: (id: string, fact: string) => Promise<void>;
+  removeNpcKnowledge: (id: string, index: number) => Promise<void>;
   markNpcDead: (id: string) => Promise<void>;
   deleteNpcCharacter: (id: string) => Promise<void>;
 
@@ -308,7 +309,15 @@ export const useStore = create<AutoDmState>((set, get) => ({
           disposition: r.disposition as Disposition,
           alive: r.alive,
           location: r.location ?? undefined,
-          knows: (() => { try { return JSON.parse(r.knows_json) as string[]; } catch { return []; } })(),
+          knows: (() => {
+            try {
+              const raw = JSON.parse(r.knows_json);
+              if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === "string") {
+                return raw.map((s: string) => ({ text: s } as import("./types").NpcKnowledge));
+              }
+              return raw as import("./types").NpcKnowledge[];
+            } catch { return []; }
+          })(),
           notes: r.notes ?? undefined,
           last_seen_scene_id: r.last_seen_scene_id ?? undefined,
           created_at: r.created_at,
@@ -908,7 +917,29 @@ export const useStore = create<AutoDmState>((set, get) => ({
   addNpcKnowledge: async (id, fact) => {
     const npc = get().npcCharacters.find((n) => n.id === id);
     if (!npc) return;
-    const newKnows = [...npc.knows, fact];
+    const entry: import("./types").NpcKnowledge = {
+      text: fact,
+      scene_id: get().activeSceneId,
+      timestamp: new Date().toISOString(),
+    };
+    const newKnows = [...npc.knows, entry];
+    const knowsJson = JSON.stringify(newKnows);
+    try {
+      await backend.updateNpcCharacter(id, undefined, undefined, undefined, knowsJson);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, knows: newKnows } : n
+        ),
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  removeNpcKnowledge: async (id, index) => {
+    const npc = get().npcCharacters.find((n) => n.id === id);
+    if (!npc) return;
+    const newKnows = npc.knows.filter((_, i) => i !== index);
     const knowsJson = JSON.stringify(newKnows);
     try {
       await backend.updateNpcCharacter(id, undefined, undefined, undefined, knowsJson);

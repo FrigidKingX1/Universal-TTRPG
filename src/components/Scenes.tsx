@@ -297,6 +297,7 @@ function NpcCharactersPanel() {
   const updateNpcLocation = useStore((s) => s.updateNpcLocation);
   const updateNpcNotes = useStore((s) => s.updateNpcNotes);
   const addNpcKnowledge = useStore((s) => s.addNpcKnowledge);
+  const removeNpcKnowledge = useStore((s) => s.removeNpcKnowledge);
   const markNpcDead = useStore((s) => s.markNpcDead);
   const deleteNpcCharacter = useStore((s) => s.deleteNpcCharacter);
   const scenes = useStore((s) => s.scenes);
@@ -371,7 +372,19 @@ function NpcCharactersPanel() {
             {npc.knows.length > 0 && (
               <div style={{ fontSize: "0.8rem", margin: "0.2rem 0" }}>
                 <span className="muted">Knows: </span>
-                {npc.knows.map((k, i) => <span key={i} className="badge" style={{ marginRight: "0.2rem" }}>{k}</span>)}
+                {npc.knows.map((k, i) => (
+                  <span key={i} className="badge" style={{ marginRight: "0.2rem", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    {k.text}
+                    {k.scene_id && <span className="muted" style={{ fontSize: "0.65rem" }}>@{sceneTitle(k.scene_id)}</span>}
+                    {k.timestamp && <span className="muted" style={{ fontSize: "0.65rem" }}>{new Date(k.timestamp).toLocaleDateString()}</span>}
+                    <button
+                      className="muted"
+                      style={{ fontSize: "0.6rem", padding: 0, lineHeight: 1, cursor: "pointer" }}
+                      onClick={() => void removeNpcKnowledge(npc.id, i)}
+                      title="Remove knowledge"
+                    >×</button>
+                  </span>
+                ))}
               </div>
             )}
 

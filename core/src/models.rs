@@ -462,6 +462,16 @@ pub struct PlotThread {
     pub created_at: String,
 }
 
+/// A single knowledge entry held by an NPC, with optional scene context and timestamp.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NpcKnowledge {
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scene_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<String>,
+}
+
 /// An NPC character tracked in the Mythic Characters List.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NpcCharacter {
@@ -472,14 +482,44 @@ pub struct NpcCharacter {
     pub alive: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub location: Option<String>,
-    /// Facts this NPC is aware of.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub knows: Vec<String>,
+    /// Facts this NPC is aware of, with optional scene context.
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_knows"
+    )]
+    pub knows: Vec<NpcKnowledge>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_seen_scene_id: Option<String>,
     pub created_at: String,
+}
+
+/// Deserialize `knows` from either the old `["string"]` format or the new `[{text, ...}]` format.
+fn deserialize_knows<'de, D>(deserializer: D) -> Result<Vec<NpcKnowledge>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum KnowsFormat {
+        Legacy(Vec<String>),
+        Structured(Vec<NpcKnowledge>),
+    }
+
+    let raw: KnowsFormat = Deserialize::deserialize(deserializer)?;
+    match raw {
+        KnowsFormat::Legacy(strings) => Ok(strings
+            .into_iter()
+            .map(|s| NpcKnowledge {
+                text: s,
+                scene_id: None,
+                timestamp: None,
+            })
+            .collect()),
+        KnowsFormat::Structured(v) => Ok(v),
+    }
 }
 
 #[cfg(test)]
@@ -531,7 +571,11 @@ mod tests {
             disposition: Disposition::Friendly,
             alive: true,
             location: Some("Tavern".into()),
-            knows: vec!["Secret tunnel".into()],
+            knows: vec![NpcKnowledge {
+                text: "Secret tunnel".into(),
+                scene_id: None,
+                timestamp: None,
+            }],
             notes: Some("Knows the underground".into()),
             last_seen_scene_id: None,
             created_at: "2026-01-01T00:00:00Z".into(),
@@ -637,5 +681,51 @@ mod tests {
         let json = serde_json::to_string(&clock).unwrap();
         let de: DoomClock = serde_json::from_str(&json).unwrap();
         assert_eq!(clock, de);
+    }
+
+    #[test]
+    fn npc_knowledge_legacy_format_deserializes() {
+        let json = r#"{"id":"n1","name":"Guard","disposition":"neutral","alive":true,"created_at":"2026-01-01T00:00:00Z","knows":["secret tunnel","guard rotation"]}"#;
+        let npc: NpcCharacter = serde_json::from_str(json).unwrap();
+        assert_eq!(npc.knows.len(), 2);
+        assert_eq!(npc.knows[0].text, "secret tunnel");
+        assert!(npc.knows[0].scene_id.is_none());
+        assert!(npc.knows[0].timestamp.is_none());
+        assert_eq!(npc.knows[1].text, "guard rotation");
+    }
+
+    #[test]
+    fn npc_knowledge_structured_format_roundtrips() {
+        let npc = NpcCharacter {
+            id: "n2".into(),
+            name: "Merchant".into(),
+            disposition: Disposition::Friendly,
+            alive: true,
+            location: None,
+            knows: vec![
+                NpcKnowledge {
+                    text: "Has a secret stash".into(),
+                    scene_id: Some("s1".into()),
+                    timestamp: Some("2026-03-01T12:00:00Z".into()),
+                },
+                NpcKnowledge {
+                    text: "OWes money to the guild".into(),
+                    scene_id: None,
+                    timestamp: None,
+                },
+            ],
+            notes: None,
+            last_seen_scene_id: None,
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_string(&npc).unwrap();
+        let de: NpcCharacter = serde_json::from_str(&json).unwrap();
+        assert_eq!(npc, de);
+        assert_eq!(de.knows[0].scene_id.as_deref(), Some("s1"));
+        assert_eq!(
+            de.knows[0].timestamp.as_deref(),
+            Some("2026-03-01T12:00:00Z")
+        );
+        assert!(de.knows[1].scene_id.is_none());
     }
 }
