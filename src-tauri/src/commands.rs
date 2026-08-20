@@ -523,6 +523,186 @@ pub async fn delete_doom_clock(state: State<'_, AppState>, id: String) -> CmdRes
         .map_err(|e| e.to_string())
 }
 
+// ---------- Exploration --------------------------------------------------
+
+#[derive(Serialize)]
+pub struct ExplorationZoneResponse {
+    pub id: String,
+    pub name: String,
+    pub zone_type: String,
+    pub description: Option<String>,
+    pub danger_level: u32,
+    pub mapped: bool,
+}
+
+#[derive(Serialize)]
+pub struct ExplorationNodeResponse {
+    pub id: String,
+    pub zone_id: String,
+    pub name: String,
+    pub discovered: bool,
+    pub safe: bool,
+    pub description: Option<String>,
+    pub connections: Vec<String>,
+    pub contents: Vec<String>,
+    pub notes: Option<String>,
+}
+
+#[tauri::command]
+pub async fn create_exploration_zone(
+    state: State<'_, AppState>,
+    name: String,
+    zone_type: String,
+    description: Option<String>,
+    danger_level: Option<u32>,
+) -> CmdResult<ExplorationZoneResponse> {
+    let id = uuid::Uuid::new_v4().to_string();
+    state
+        .repo
+        .save_exploration_zone(
+            &id,
+            &name,
+            &zone_type,
+            description.as_deref(),
+            danger_level.unwrap_or(0),
+            false,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(ExplorationZoneResponse {
+        id,
+        name,
+        zone_type,
+        description,
+        danger_level: danger_level.unwrap_or(0),
+        mapped: false,
+    })
+}
+
+#[tauri::command]
+pub async fn list_exploration_zones(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<ExplorationZoneResponse>> {
+    let rows = state
+        .repo
+        .list_exploration_zones()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|r| ExplorationZoneResponse {
+            id: r.id,
+            name: r.name,
+            zone_type: r.zone_type,
+            description: r.description,
+            danger_level: r.danger_level,
+            mapped: r.mapped,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn delete_exploration_zone(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+    state
+        .repo
+        .delete_exploration_zone(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_exploration_node(
+    state: State<'_, AppState>,
+    zone_id: String,
+    name: String,
+    description: Option<String>,
+) -> CmdResult<ExplorationNodeResponse> {
+    let id = uuid::Uuid::new_v4().to_string();
+    state
+        .repo
+        .save_exploration_node(&id, &zone_id, &name, description.as_deref(), "[]", "[]")
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(ExplorationNodeResponse {
+        id,
+        zone_id,
+        name,
+        discovered: false,
+        safe: false,
+        description,
+        connections: vec![],
+        contents: vec![],
+        notes: None,
+    })
+}
+
+#[tauri::command]
+pub async fn list_exploration_nodes(
+    state: State<'_, AppState>,
+    zone_id: String,
+) -> CmdResult<Vec<ExplorationNodeResponse>> {
+    let rows = state
+        .repo
+        .list_exploration_nodes(&zone_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            let connections: Vec<String> =
+                serde_json::from_str(&r.connections_json).unwrap_or_default();
+            let contents: Vec<String> = serde_json::from_str(&r.contents_json).unwrap_or_default();
+            ExplorationNodeResponse {
+                id: r.id,
+                zone_id: r.zone_id,
+                name: r.name,
+                discovered: r.discovered,
+                safe: r.safe,
+                description: r.description,
+                connections,
+                contents,
+                notes: r.notes,
+            }
+        })
+        .collect())
+}
+
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+pub async fn update_exploration_node(
+    state: State<'_, AppState>,
+    id: String,
+    discovered: Option<bool>,
+    safe: Option<bool>,
+    description: Option<String>,
+    connections_json: Option<String>,
+    contents_json: Option<String>,
+    notes: Option<String>,
+) -> CmdResult<()> {
+    state
+        .repo
+        .update_exploration_node(
+            &id,
+            discovered,
+            safe,
+            description.as_deref(),
+            connections_json.as_deref(),
+            contents_json.as_deref(),
+            notes.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_exploration_node(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+    state
+        .repo
+        .delete_exploration_node(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // ---------- Combat -----------------------------------------------------
 
 #[tauri::command]

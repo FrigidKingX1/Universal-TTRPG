@@ -292,3 +292,24 @@ export interface DoomClock {
   scene_id?: string | null;
   active: boolean;
 }
+
+export interface ExplorationZone {
+  id: string;
+  name: string;
+  zone_type: "hex" | "point" | "dungeon";
+  description?: string | null;
+  danger_level: number;
+  mapped: boolean;
+}
+
+export interface ExplorationNode {
+  id: string;
+  zone_id: string;
+  name: string;
+  discovered: boolean;
+  safe: boolean;
+  description?: string | null;
+  connections: string[];
+  contents: string[];
+  notes?: string | null;
+}

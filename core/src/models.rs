@@ -522,6 +522,74 @@ where
     }
 }
 
+/// Type of exploration zone.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ZoneType {
+    Hex,
+    Point,
+    Dungeon,
+}
+
+impl std::fmt::Display for ZoneType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ZoneType::Hex => write!(f, "hex"),
+            ZoneType::Point => write!(f, "point"),
+            ZoneType::Dungeon => write!(f, "dungeon"),
+        }
+    }
+}
+
+impl ZoneType {
+    pub fn from_str_opt(s: &str) -> Option<Self> {
+        match s {
+            "hex" => Some(ZoneType::Hex),
+            "point" => Some(ZoneType::Point),
+            "dungeon" => Some(ZoneType::Dungeon),
+            _ => None,
+        }
+    }
+}
+
+/// An explorable region (hex map, dungeon, region).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExplorationZone {
+    pub id: String,
+    pub name: String,
+    pub zone_type: ZoneType,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub danger_level: u32,
+    #[serde(default)]
+    pub mapped: bool,
+    pub created_at: String,
+}
+
+/// A single location within an exploration zone.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExplorationNode {
+    pub id: String,
+    pub zone_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub discovered: bool,
+    #[serde(default)]
+    pub safe: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// IDs of connected nodes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub connections: Vec<String>,
+    /// Contents: loot, NPCs, hazards.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contents: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    pub created_at: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -727,5 +795,50 @@ mod tests {
             Some("2026-03-01T12:00:00Z")
         );
         assert!(de.knows[1].scene_id.is_none());
+    }
+
+    #[test]
+    fn zone_type_display_and_parse() {
+        assert_eq!(ZoneType::Hex.to_string(), "hex");
+        assert_eq!(ZoneType::Point.to_string(), "point");
+        assert_eq!(ZoneType::Dungeon.to_string(), "dungeon");
+        assert_eq!(ZoneType::from_str_opt("hex"), Some(ZoneType::Hex));
+        assert_eq!(ZoneType::from_str_opt("dungeon"), Some(ZoneType::Dungeon));
+        assert_eq!(ZoneType::from_str_opt("bogus"), None);
+    }
+
+    #[test]
+    fn exploration_zone_roundtrips() {
+        let zone = ExplorationZone {
+            id: "z1".into(),
+            name: "Darkwood Forest".into(),
+            zone_type: ZoneType::Hex,
+            description: Some("A dense, ancient forest".into()),
+            danger_level: 3,
+            mapped: false,
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_string(&zone).unwrap();
+        let de: ExplorationZone = serde_json::from_str(&json).unwrap();
+        assert_eq!(zone, de);
+    }
+
+    #[test]
+    fn exploration_node_roundtrips() {
+        let node = ExplorationNode {
+            id: "n1".into(),
+            zone_id: "z1".into(),
+            name: "Ruined Tower".into(),
+            discovered: true,
+            safe: false,
+            description: Some("Crumbling stone tower, overgrown with vines".into()),
+            connections: vec!["n2".into(), "n3".into()],
+            contents: vec!["Ancient chest".into(), "Owl bear nest".into()],
+            notes: Some("Traps on ground floor".into()),
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_string(&node).unwrap();
+        let de: ExplorationNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(node, de);
     }
 }

@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import type { Disposition } from "../types";
 
 const DISPOSITIONS: Disposition[] = ["hostile", "unfriendly", "neutral", "friendly", "helpful"];
+const ZONE_TYPES = ["hex", "point", "dungeon"] as const;
 
 export function Scenes() {
   const scenes = useStore((s) => s.scenes);
@@ -17,6 +18,7 @@ export function Scenes() {
   const [showThreads, setShowThreads] = useState(false);
   const [showNpcs, setShowNpcs] = useState(false);
   const [showClocks, setShowClocks] = useState(false);
+  const [showExploration, setShowExploration] = useState(false);
 
   return (
     <section className="panel">
@@ -109,6 +111,14 @@ export function Scenes() {
           {showClocks ? "▼" : "▶"} Doom Clocks
         </button>
         {showClocks && <DoomClocksPanel />}
+      </div>
+
+      {/* ── Exploration ──────────────────────────────────────────── */}
+      <div style={{ marginTop: "0.75rem" }}>
+        <button className="muted" onClick={() => setShowExploration(!showExploration)} style={{ fontSize: "0.85rem" }}>
+          {showExploration ? "▼" : "▶"} Exploration
+        </button>
+        {showExploration && <ExplorationPanel />}
       </div>
     </section>
   );
@@ -495,6 +505,155 @@ function DoomClocksPanel() {
             {clock.current === 0 && (
               <div className="exceptional" style={{ fontSize: "0.85rem", marginTop: "0.3rem", fontWeight: "bold" }}>
                 ⚠ CLOCK EXPIRED — {clock.consequence}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function ExplorationPanel() {
+  const zones = useStore((s) => s.explorationZones);
+  const nodes = useStore((s) => s.explorationNodes);
+  const activeZoneId = useStore((s) => s.activeZoneId);
+  const setActiveZone = useStore((s) => s.setActiveZone);
+  const addExplorationZone = useStore((s) => s.addExplorationZone);
+  const deleteExplorationZone = useStore((s) => s.deleteExplorationZone);
+  const addExplorationNode = useStore((s) => s.addExplorationNode);
+  const updateExplorationNode = useStore((s) => s.updateExplorationNode);
+  const deleteExplorationNode = useStore((s) => s.deleteExplorationNode);
+
+  const [zoneName, setZoneName] = useState("");
+  const [zoneType, setZoneType] = useState<string>("hex");
+  const [zoneDesc, setZoneDesc] = useState("");
+  const [nodeName, setNodeName] = useState("");
+  const [nodeDesc, setNodeDesc] = useState("");
+  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
+  const [editContents, setEditContents] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+
+  const addZone = () => {
+    if (!zoneName.trim()) return;
+    void addExplorationZone(zoneName.trim(), zoneType, zoneDesc.trim() || undefined);
+    setZoneName(""); setZoneDesc("");
+  };
+
+  const addNode = (zid: string) => {
+    if (!nodeName.trim()) return;
+    void addExplorationNode(zid, nodeName.trim(), nodeDesc.trim() || undefined);
+    setNodeName(""); setNodeDesc("");
+  };
+
+  const startEditNode = (n: typeof nodes[0]) => {
+    setExpandedNodeId(n.id);
+    setEditContents(n.contents.join(", "));
+    setEditNotes(n.notes ?? "");
+  };
+
+  return (
+    <div className="sheet" style={{ marginTop: "0.5rem" }}>
+      <h4 style={{ margin: "0 0 0.4rem" }}>Exploration Zones</h4>
+      <form className="row" onSubmit={(e) => { e.preventDefault(); addZone(); }}>
+        <input value={zoneName} onChange={(e) => setZoneName(e.currentTarget.value)} placeholder="Zone name" style={{ flex: 1 }} />
+        <select value={zoneType} onChange={(e) => setZoneType(e.currentTarget.value)}>
+          {ZONE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <input value={zoneDesc} onChange={(e) => setZoneDesc(e.currentTarget.value)} placeholder="Description" style={{ flex: 1 }} />
+        <button type="submit" disabled={!zoneName.trim()}>Add Zone</button>
+      </form>
+
+      {zones.length === 0 && <p className="muted" style={{ marginTop: "0.25rem" }}>No exploration zones yet.</p>}
+
+      <ul className="card-list" style={{ marginTop: "0.5rem" }}>
+        {zones.map((z) => (
+          <li key={z.id} className="card" style={{ padding: "0.5rem 0.6rem" }}>
+            <div className="card-row">
+              <strong
+                style={{ cursor: "pointer", textDecoration: activeZoneId === z.id ? "underline" : "none" }}
+                onClick={() => setActiveZone(activeZoneId === z.id ? null : z.id)}
+              >{z.name}</strong>
+              <span className="badge">{z.zone_type}</span>
+              {z.danger_level > 0 && <span className="badge" style={{ background: "#a33" }}>Danger {z.danger_level}</span>}
+              {z.mapped && <span className="badge" style={{ background: "#3a3" }}>Mapped</span>}
+              <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void deleteExplorationZone(z.id)}>×</button>
+            </div>
+            {z.description && <p className="muted" style={{ fontSize: "0.75rem", margin: "0.15rem 0" }}>{z.description}</p>}
+
+            {activeZoneId === z.id && (
+              <div style={{ marginTop: "0.4rem" }}>
+                <form className="row" onSubmit={(e) => { e.preventDefault(); addNode(z.id); }}>
+                  <input value={nodeName} onChange={(e) => setNodeName(e.currentTarget.value)} placeholder="Node name" style={{ flex: 1 }} />
+                  <input value={nodeDesc} onChange={(e) => setNodeDesc(e.currentTarget.value)} placeholder="Description" style={{ flex: 1 }} />
+                  <button type="submit" disabled={!nodeName.trim()}>Add Node</button>
+                </form>
+
+                {nodes.length === 0 && <p className="muted" style={{ fontSize: "0.75rem" }}>No nodes yet.</p>}
+
+                <ul className="card-list" style={{ marginTop: "0.3rem" }}>
+                  {nodes.map((n) => (
+                    <li key={n.id} className="card" style={{ padding: "0.3rem 0.5rem" }}>
+                      <div className="card-row">
+                        <strong style={{ fontSize: "0.8rem", opacity: n.discovered ? 1 : 0.5 }}>
+                          {n.name} {!n.discovered && <span className="muted">(hidden)</span>}
+                        </strong>
+                        {n.safe && <span className="badge" style={{ fontSize: "0.65rem", background: "#3a3" }}>safe</span>}
+                        {!n.safe && <span className="badge" style={{ fontSize: "0.65rem", background: "#a33" }}>danger</span>}
+                        <button
+                          style={{ fontSize: "0.7rem" }}
+                          onClick={() => void updateExplorationNode(n.id, { discovered: true })}
+                          disabled={n.discovered}
+                        >Discover</button>
+                        <button
+                          style={{ fontSize: "0.7rem" }}
+                          onClick={() => expandedNodeId === n.id ? setExpandedNodeId(null) : startEditNode(n)}
+                        >{expandedNodeId === n.id ? "Close" : "Edit"}</button>
+                        <button
+                          className="danger"
+                          style={{ fontSize: "0.7rem" }}
+                          onClick={() => void deleteExplorationNode(n.id)}
+                        >×</button>
+                      </div>
+                      {n.description && <p className="muted" style={{ fontSize: "0.7rem", margin: "0.1rem 0" }}>{n.description}</p>}
+                      {n.contents.length > 0 && (
+                        <p style={{ fontSize: "0.7rem", margin: "0.1rem 0" }}>
+                          <span className="muted">Contents: </span>
+                          {n.contents.map((c, i) => <span key={i} className="badge" style={{ fontSize: "0.65rem", marginRight: "0.2rem" }}>{c}</span>)}
+                        </p>
+                      )}
+                      {expandedNodeId === n.id && (
+                        <div style={{ marginTop: "0.3rem", display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                          <label style={{ fontSize: "0.75rem" }}>
+                            Safe?
+                            <select value={n.safe ? "true" : "false"} onChange={(e) => void updateExplorationNode(n.id, { safe: e.currentTarget.value === "true" })}>
+                              <option value="true">Safe</option>
+                              <option value="false">Dangerous</option>
+                            </select>
+                          </label>
+                          <input
+                            value={editContents}
+                            onChange={(e) => setEditContents(e.currentTarget.value)}
+                            placeholder="Contents (comma-separated)"
+                            style={{ fontSize: "0.75rem" }}
+                            onBlur={() => {
+                              const newContents = editContents.split(",").map((s) => s.trim()).filter(Boolean);
+                              void updateExplorationNode(n.id, { contents: newContents });
+                            }}
+                          />
+                          <textarea
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.currentTarget.value)}
+                            placeholder="Notes..."
+                            rows={2}
+                            style={{ fontSize: "0.75rem" }}
+                            onBlur={() => void updateExplorationNode(n.id, { notes: editNotes })}
+                          />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </li>

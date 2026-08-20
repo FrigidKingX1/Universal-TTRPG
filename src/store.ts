@@ -10,6 +10,8 @@ import type {
   EncounterStatBlock,
   EngineOutcome,
   EventMeaning,
+  ExplorationNode,
+  ExplorationZone,
   FateCheckResponse,
   InitiativeEntry,
   LogEntry,
@@ -158,6 +160,17 @@ export interface AutoDmState {
   advanceDoomClock: (id: string, ticks: number) => Promise<void>;
   resetDoomClock: (id: string) => Promise<void>;
   deleteDoomClock: (id: string) => Promise<void>;
+
+  // Exploration
+  explorationZones: ExplorationZone[];
+  explorationNodes: ExplorationNode[];
+  activeZoneId: string | null;
+  setActiveZone: (id: string | null) => void;
+  addExplorationZone: (name: string, zoneType: string, description?: string, dangerLevel?: number) => Promise<void>;
+  deleteExplorationZone: (id: string) => Promise<void>;
+  addExplorationNode: (zoneId: string, name: string, description?: string) => Promise<void>;
+  updateExplorationNode: (id: string, opts: { discovered?: boolean; safe?: boolean; description?: string; connections?: string[]; contents?: string[]; notes?: string }) => Promise<void>;
+  deleteExplorationNode: (id: string) => Promise<void>;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -237,6 +250,9 @@ export const useStore = create<AutoDmState>((set, get) => ({
   plotThreads: [],
   npcCharacters: [],
   doomClocks: [],
+  explorationZones: [],
+  explorationNodes: [],
+  activeZoneId: null,
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -328,6 +344,11 @@ export const useStore = create<AutoDmState>((set, get) => ({
       try {
         doomClocks = await backend.listDoomClocks();
       } catch { /* best-effort */ }
+      // Load exploration zones.
+      let explorationZones: ExplorationZone[] = [];
+      try {
+        explorationZones = await backend.listExplorationZones();
+      } catch { /* best-effort */ }
       set({
         characters,
         actions,
@@ -342,6 +363,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
         plotThreads,
         npcCharacters,
         doomClocks,
+        explorationZones,
       });
     } catch (e) {
       set({ loading: false, error: String(e) });
@@ -1040,6 +1062,64 @@ export const useStore = create<AutoDmState>((set, get) => ({
     try {
       await backend.deleteDoomClock(id);
       set((s) => ({ doomClocks: s.doomClocks.filter((c) => c.id !== id) }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  // Exploration
+  setActiveZone: (id) => {
+    set({ activeZoneId: id, explorationNodes: [] });
+    if (id) {
+      void backend.listExplorationNodes(id).then((nodes) => set({ explorationNodes: nodes })).catch(() => {});
+    }
+  },
+  addExplorationZone: async (name, zoneType, description, dangerLevel) => {
+    try {
+      const zone = await backend.createExplorationZone(name, zoneType, description, dangerLevel);
+      set((s) => ({ explorationZones: [...s.explorationZones, zone] }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+  deleteExplorationZone: async (id) => {
+    try {
+      await backend.deleteExplorationZone(id);
+      set((s) => ({
+        explorationZones: s.explorationZones.filter((z) => z.id !== id),
+        activeZoneId: s.activeZoneId === id ? null : s.activeZoneId,
+        explorationNodes: s.activeZoneId === id ? [] : s.explorationNodes,
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+  addExplorationNode: async (zoneId, name, description) => {
+    try {
+      const node = await backend.createExplorationNode(zoneId, name, description);
+      set((s) => ({ explorationNodes: [...s.explorationNodes, node] }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+  updateExplorationNode: async (id, opts) => {
+    try {
+      const connectionsJson = opts.connections ? JSON.stringify(opts.connections) : undefined;
+      const contentsJson = opts.contents ? JSON.stringify(opts.contents) : undefined;
+      await backend.updateExplorationNode(id, opts.discovered, opts.safe, opts.description, connectionsJson, contentsJson, opts.notes);
+      set((s) => ({
+        explorationNodes: s.explorationNodes.map((n) =>
+          n.id === id ? { ...n, ...opts, ...(connectionsJson ? { connections: opts.connections! } : {}), ...(contentsJson ? { contents: opts.contents! } : {}) } : n
+        ),
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+  deleteExplorationNode: async (id) => {
+    try {
+      await backend.deleteExplorationNode(id);
+      set((s) => ({ explorationNodes: s.explorationNodes.filter((n) => n.id !== id) }));
     } catch (e) {
       get().showToast(`Error: ${e}`);
     }

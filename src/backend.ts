@@ -101,6 +101,30 @@ export const backend = {
   deleteDoomClock: (id: string) =>
     invoke<boolean>("delete_doom_clock", { id }),
 
+  // Exploration
+  createExplorationZone: (name: string, zoneType: string, description?: string, dangerLevel?: number) =>
+    invoke<{ id: string; name: string; zone_type: string; description: string | null; danger_level: number; mapped: boolean }>(
+      "create_exploration_zone", { name, zoneType, description, dangerLevel },
+    ),
+  listExplorationZones: () =>
+    invoke<{ id: string; name: string; zone_type: string; description: string | null; danger_level: number; mapped: boolean }[]>(
+      "list_exploration_zones",
+    ),
+  deleteExplorationZone: (id: string) =>
+    invoke<boolean>("delete_exploration_zone", { id }),
+  createExplorationNode: (zoneId: string, name: string, description?: string) =>
+    invoke<{ id: string; zone_id: string; name: string; discovered: boolean; safe: boolean; description: string | null; connections: string[]; contents: string[]; notes: string | null }>(
+      "create_exploration_node", { zoneId, name, description },
+    ),
+  listExplorationNodes: (zoneId: string) =>
+    invoke<{ id: string; zone_id: string; name: string; discovered: boolean; safe: boolean; description: string | null; connections: string[]; contents: string[]; notes: string | null }[]>(
+      "list_exploration_nodes", { zoneId },
+    ),
+  updateExplorationNode: (id: string, discovered?: boolean, safe?: boolean, description?: string, connectionsJson?: string, contentsJson?: string, notes?: string) =>
+    invoke<void>("update_exploration_node", { id, discovered, safe, description, connectionsJson, contentsJson, notes }),
+  deleteExplorationNode: (id: string) =>
+    invoke<boolean>("delete_exploration_node", { id }),
+
   // Combat
   combatAttack: (
     attacker: CharacterProfile | EncounterStatBlock,

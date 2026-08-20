@@ -209,6 +209,44 @@ pub trait Repository: Send + Sync {
         -> Result<Option<(u32, u32)>, DbError>;
     async fn reset_doom_clock(&self, id: &str) -> Result<(), DbError>;
     async fn delete_doom_clock(&self, id: &str) -> Result<bool, DbError>;
+
+    async fn save_exploration_zone(
+        &self,
+        id: &str,
+        name: &str,
+        zone_type: &str,
+        description: Option<&str>,
+        danger_level: u32,
+        mapped: bool,
+    ) -> Result<(), DbError>;
+    async fn list_exploration_zones(&self) -> Result<Vec<ExplorationZoneRow>, DbError>;
+    async fn delete_exploration_zone(&self, id: &str) -> Result<bool, DbError>;
+
+    async fn save_exploration_node(
+        &self,
+        id: &str,
+        zone_id: &str,
+        name: &str,
+        description: Option<&str>,
+        connections_json: &str,
+        contents_json: &str,
+    ) -> Result<(), DbError>;
+    async fn list_exploration_nodes(
+        &self,
+        zone_id: &str,
+    ) -> Result<Vec<ExplorationNodeRow>, DbError>;
+    #[allow(clippy::too_many_arguments)]
+    async fn update_exploration_node(
+        &self,
+        id: &str,
+        discovered: Option<bool>,
+        safe: Option<bool>,
+        description: Option<&str>,
+        connections_json: Option<&str>,
+        contents_json: Option<&str>,
+        notes: Option<&str>,
+    ) -> Result<(), DbError>;
+    async fn delete_exploration_node(&self, id: &str) -> Result<bool, DbError>;
 }
 
 /// A loot entry (items dropped by monsters, assigned to characters).
@@ -275,6 +313,29 @@ pub struct DoomClockRow {
     pub consequence: String,
     pub scene_id: Option<String>,
     pub active: bool,
+    pub created_at: String,
+}
+
+pub struct ExplorationZoneRow {
+    pub id: String,
+    pub name: String,
+    pub zone_type: String,
+    pub description: Option<String>,
+    pub danger_level: u32,
+    pub mapped: bool,
+    pub created_at: String,
+}
+
+pub struct ExplorationNodeRow {
+    pub id: String,
+    pub zone_id: String,
+    pub name: String,
+    pub discovered: bool,
+    pub safe: bool,
+    pub description: Option<String>,
+    pub connections_json: String,
+    pub contents_json: String,
+    pub notes: Option<String>,
     pub created_at: String,
 }
 
@@ -417,6 +478,27 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
             consequence TEXT NOT NULL,
             scene_id TEXT,
             active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS exploration_zones (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            zone_type TEXT NOT NULL,
+            description TEXT,
+            danger_level INTEGER NOT NULL DEFAULT 0,
+            mapped BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+        "CREATE TABLE IF NOT EXISTS exploration_nodes (
+            id TEXT PRIMARY KEY,
+            zone_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            discovered BOOLEAN NOT NULL DEFAULT FALSE,
+            safe BOOLEAN NOT NULL DEFAULT FALSE,
+            description TEXT,
+            connections_json TEXT NOT NULL DEFAULT '[]',
+            contents_json TEXT NOT NULL DEFAULT '[]',
+            notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
     ];
@@ -1377,6 +1459,150 @@ impl Repository for SqliteRepository {
             .await?;
         Ok(r.rows_affected() > 0)
     }
+
+    async fn save_exploration_zone(
+        &self,
+        id: &str,
+        name: &str,
+        zone_type: &str,
+        description: Option<&str>,
+        danger_level: u32,
+        mapped: bool,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO exploration_zones (id, name, zone_type, description, danger_level, mapped)
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(id)
+        .bind(name)
+        .bind(zone_type)
+        .bind(description)
+        .bind(danger_level as i64)
+        .bind(mapped)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn list_exploration_zones(&self) -> Result<Vec<ExplorationZoneRow>, DbError> {
+        let rows = sqlx::query("SELECT id, name, zone_type, description, danger_level, mapped, created_at FROM exploration_zones ORDER BY created_at")
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(|row| {
+                let dl: i64 = row.try_get("danger_level").unwrap_or(0);
+                ExplorationZoneRow {
+                    id: row.try_get("id").unwrap_or_default(),
+                    name: row.try_get("name").unwrap_or_default(),
+                    zone_type: row.try_get("zone_type").unwrap_or_default(),
+                    description: row.try_get("description").ok().flatten(),
+                    danger_level: dl as u32,
+                    mapped: row.try_get("mapped").unwrap_or(true),
+                    created_at: row.try_get("created_at").unwrap_or_default(),
+                }
+            })
+            .collect())
+    }
+
+    async fn delete_exploration_zone(&self, id: &str) -> Result<bool, DbError> {
+        sqlx::query("DELETE FROM exploration_nodes WHERE zone_id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        let r = sqlx::query("DELETE FROM exploration_zones WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(r.rows_affected() > 0)
+    }
+
+    async fn save_exploration_node(
+        &self,
+        id: &str,
+        zone_id: &str,
+        name: &str,
+        description: Option<&str>,
+        connections_json: &str,
+        contents_json: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO exploration_nodes (id, zone_id, name, description, connections_json, contents_json)
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(id).bind(zone_id).bind(name).bind(description)
+        .bind(connections_json).bind(contents_json)
+        .execute(&self.pool).await?;
+        Ok(())
+    }
+
+    async fn list_exploration_nodes(
+        &self,
+        zone_id: &str,
+    ) -> Result<Vec<ExplorationNodeRow>, DbError> {
+        let rows = sqlx::query("SELECT id, zone_id, name, discovered, safe, description, connections_json, contents_json, notes, created_at FROM exploration_nodes WHERE zone_id = ? ORDER BY created_at")
+            .bind(zone_id).fetch_all(&self.pool).await?;
+        Ok(rows
+            .into_iter()
+            .map(|row| ExplorationNodeRow {
+                id: row.try_get("id").unwrap_or_default(),
+                zone_id: row.try_get("zone_id").unwrap_or_default(),
+                name: row.try_get("name").unwrap_or_default(),
+                discovered: row.try_get("discovered").unwrap_or(true),
+                safe: row.try_get("safe").unwrap_or(true),
+                description: row.try_get("description").ok().flatten(),
+                connections_json: row
+                    .try_get("connections_json")
+                    .unwrap_or_else(|_| "[]".to_string()),
+                contents_json: row
+                    .try_get("contents_json")
+                    .unwrap_or_else(|_| "[]".to_string()),
+                notes: row.try_get("notes").ok().flatten(),
+                created_at: row.try_get("created_at").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn update_exploration_node(
+        &self,
+        id: &str,
+        discovered: Option<bool>,
+        safe: Option<bool>,
+        description: Option<&str>,
+        connections_json: Option<&str>,
+        contents_json: Option<&str>,
+        notes: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE exploration_nodes SET
+                discovered = COALESCE(?, discovered),
+                safe = COALESCE(?, safe),
+                description = COALESCE(?, description),
+                connections_json = COALESCE(?, connections_json),
+                contents_json = COALESCE(?, contents_json),
+                notes = COALESCE(?, notes)
+             WHERE id = ?",
+        )
+        .bind(discovered)
+        .bind(safe)
+        .bind(description)
+        .bind(connections_json)
+        .bind(contents_json)
+        .bind(notes)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn delete_exploration_node(&self, id: &str) -> Result<bool, DbError> {
+        let r = sqlx::query("DELETE FROM exploration_nodes WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(r.rows_affected() > 0)
+    }
 }
 
 #[cfg(test)]
@@ -1618,5 +1844,91 @@ mod tests {
         assert!(repo.delete_doom_clock("dc1").await.expect("delete"));
         let clocks = repo.list_doom_clocks().await.expect("list");
         assert!(clocks.is_empty());
+    }
+
+    #[tokio::test]
+    async fn exploration_zone_and_node_crud() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("connect");
+        run_migrations(&pool).await.expect("migrate");
+        let repo = SqliteRepository::new(pool);
+
+        // Create zone
+        repo.save_exploration_zone("z1", "Darkwood", "hex", Some("Dense forest"), 3, false)
+            .await
+            .expect("save zone");
+        let zones = repo.list_exploration_zones().await.expect("list zones");
+        assert_eq!(zones.len(), 1);
+        assert_eq!(zones[0].name, "Darkwood");
+        assert_eq!(zones[0].zone_type, "hex");
+        assert_eq!(zones[0].danger_level, 3);
+
+        // Create nodes
+        repo.save_exploration_node(
+            "n1",
+            "z1",
+            "Ruined Tower",
+            Some("Crumbling stone"),
+            "[]",
+            "[]",
+        )
+        .await
+        .expect("save node");
+        repo.save_exploration_node("n2", "z1", "Ancient Bridge", None, "[]", "[]")
+            .await
+            .expect("save node");
+        let nodes = repo.list_exploration_nodes("z1").await.expect("list nodes");
+        assert_eq!(nodes.len(), 2);
+        assert!(!nodes[0].discovered);
+
+        // Update node
+        repo.update_exploration_node(
+            "n1",
+            Some(true),
+            Some(false),
+            None,
+            Some("[]"),
+            None,
+            Some("Has traps"),
+        )
+        .await
+        .expect("update node");
+        let nodes = repo
+            .list_exploration_nodes("z1")
+            .await
+            .expect("list nodes after update");
+        let n1 = nodes.iter().find(|n| n.id == "n1").unwrap();
+        assert!(n1.discovered);
+        assert!(!n1.safe);
+        assert_eq!(n1.notes.as_deref(), Some("Has traps"));
+
+        // Delete node
+        assert!(repo
+            .delete_exploration_node("n2")
+            .await
+            .expect("delete node"));
+        let nodes = repo
+            .list_exploration_nodes("z1")
+            .await
+            .expect("list nodes after delete");
+        assert_eq!(nodes.len(), 1);
+
+        // Delete zone cascades
+        assert!(repo
+            .delete_exploration_zone("z1")
+            .await
+            .expect("delete zone"));
+        assert!(repo
+            .list_exploration_nodes("z1")
+            .await
+            .expect("list")
+            .is_empty());
+        assert!(repo
+            .list_exploration_zones()
+            .await
+            .expect("list zones")
+            .is_empty());
     }
 }

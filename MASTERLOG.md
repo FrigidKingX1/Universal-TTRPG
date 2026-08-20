@@ -4,7 +4,7 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — 22 commits, 118 passing tests, fully functional core loop.
+**Status:** Active development — 23 commits, 122 passing tests, fully functional core loop.
 
 ---
 
@@ -220,6 +220,18 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 - **Frontend rendering**: knowledge badges show scene name + date, with per-entry delete button
 - **2 model tests**: legacy format deserialization, structured format roundtrip
 
+### Layer 5 — Exploration Zones & Nodes
+- **ExplorationZone model**: hex/point/dungeon zone types with name, description, danger_level, mapped flag
+- **ExplorationNode model**: locations within zones with discovered/safe flags, connections, contents, notes
+- **ZoneType enum**: `from_str_opt()` and `Display` trait
+- **SQLite persistence**: `exploration_zones` and `exploration_nodes` tables
+- **Repository CRUD**: save, list, delete zones; save, list, update, delete nodes (cascading deletes)
+- **7 Tauri commands**: create/list/delete zones, create/list/update/delete nodes
+- **Frontend**: ZoneType enum, ExplorationZone/Node types, backend wrappers, Zustand store with activeZoneId
+- **ExplorationPanel UI**: zone list with expand/collapse, node CRUD, discover/edit/delete, contents/notes editor
+- **3 model tests**: ZoneType parse/display, zone roundtrip, node roundtrip
+- **1 DB test**: full zone+node CRUD lifecycle with cascade delete
+
 ---
 
 ## Frontend Features
@@ -349,7 +361,7 @@ npx vite build
 
 ## Current State (as of latest commit)
 
-- 118 tests passing (87 Rust + 31 frontend)
+- 122 tests passing (91 Rust + 31 frontend)
 - Clippy clean (zero warnings)
 - TS + Vite build clean
 - All core gameplay loops functional:
