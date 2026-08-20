@@ -423,6 +423,7 @@ export function SessionLog() {
 export function OllamaStatus() {
   const ollama = useStore((s) => s.ollama);
   const setOllamaModel = useStore((s) => s.setOllamaModel);
+  const setNumPredict = useStore((s) => s.setNumPredict);
 
   useEffect(() => {
     const poll = () => void useStore.getState().pollOllamaModels();
@@ -458,6 +459,17 @@ export function OllamaStatus() {
             ))}
           </select>
         </label>
+        <label>
+          Max Tokens
+          <select
+            value={ollama.numPredict}
+            onChange={(e) => setNumPredict(Number(e.currentTarget.value))}
+          >
+            {[128, 256, 512, 768, 1024, 1536, 2048].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </label>
         <span className="muted">
           {ollama.models.length} model{ollama.models.length !== 1 ? "s" : ""} installed
         </span>
@@ -472,6 +484,9 @@ export function OllamaStatus() {
 export function CampaignData() {
   const exportCampaign = useStore((s) => s.exportCampaign);
   const importCampaign = useStore((s) => s.importCampaign);
+  const logs = useStore((s) => s.logs);
+  const scenes = useStore((s) => s.scenes);
+  const activeSceneId = useStore((s) => s.activeSceneId);
   const [importing, setImporting] = useState(false);
 
   const doExport = async () => {
@@ -510,6 +525,47 @@ export function CampaignData() {
     input.click();
   };
 
+  const generateSummary = () => {
+    const scene = scenes.find((sc) => sc.id === activeSceneId);
+    const sceneLogs = logs;
+    const combatLogs = sceneLogs.filter((l) => l.content.includes("damage") || l.content.includes("DEFEATED") || l.content.includes("attack"));
+    const dmLogs = sceneLogs.filter((l) => l.speaker === "Auto-DM" || l.speaker === "Narrator");
+    const playerLogs = sceneLogs.filter((l) => l.speaker === "Player" || l.speaker === "Narrator");
+
+    const lines: string[] = [];
+    lines.push(`# Session Summary — ${scene?.title ?? "Untitled Scene"}`);
+    lines.push(`**Date:** ${new Date().toLocaleDateString()}`);
+    lines.push(`**Scene:** #${scene?.scene_number ?? "?"} (CF ${scene?.chaos_factor ?? "?"})`);
+    lines.push("");
+    if (scene?.summary_text) {
+      lines.push(`## Scene Summary\n${scene.summary_text}`);
+      lines.push("");
+    }
+    lines.push(`## Key Events (${sceneLogs.length} total entries)`);
+    if (dmLogs.length > 0) {
+      lines.push("\n### DM Narration");
+      dmLogs.slice(-10).forEach((l) => lines.push(`- ${l.content.slice(0, 200)}`));
+    }
+    if (playerLogs.length > 0) {
+      lines.push("\n### Player Actions");
+      playerLogs.slice(-10).forEach((l) => lines.push(`- ${l.content}`));
+    }
+    if (combatLogs.length > 0) {
+      lines.push(`\n### Combat (${combatLogs.length} combat-related entries)`);
+      combatLogs.slice(-10).forEach((l) => lines.push(`- ${l.content.slice(0, 200)}`));
+    }
+
+    const md = lines.join("\n");
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `session-summary-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    useStore.getState().showToast("Session summary exported");
+  };
+
   return (
     <section className="panel">
       <h2>Campaign Data</h2>
@@ -518,8 +574,63 @@ export function CampaignData() {
         <button onClick={() => void doImport()} disabled={importing}>
           {importing ? "Importing…" : "Import Campaign"}
         </button>
+        <button onClick={generateSummary}>Session Summary</button>
       </div>
-      <p className="muted">Export saves all characters, monsters, scenes, and logs as JSON. Import overwrites current data.</p>
+      <p className="muted">Export saves all data as JSON. Session Summary generates a Markdown digest of the current scene's logs.</p>
+    </section>
+  );
+}
+
+export function NpcNotesPanel() {
+  const npcNotes = useStore((s) => s.npcNotes);
+  const addNpcNote = useStore((s) => s.addNpcNote);
+  const deleteNpcNote = useStore((s) => s.deleteNpcNote);
+  const [npcName, setNpcName] = useState("");
+  const [relation, setRelation] = useState("");
+  const [note, setNote] = useState("");
+
+  const RELATIONS = ["Ally", "Enemy", "Neutral", "Employer", "Rival", "Mentor", "Contact", "Unknown"];
+
+  const add = () => {
+    if (!npcName.trim() || !note.trim()) return;
+    addNpcNote(npcName.trim(), relation || "Unknown", note.trim());
+    setNpcName("");
+    setNote("");
+  };
+
+  const grouped = npcNotes.reduce<Record<string, typeof npcNotes>>((acc, n) => {
+    (acc[n.npcName] = acc[n.npcName] ?? []).push(n);
+    return acc;
+  }, {});
+
+  return (
+    <section className="panel">
+      <h2>NPC Notes</h2>
+      <div className="row">
+        <input value={npcName} onChange={(e) => setNpcName(e.currentTarget.value)} placeholder="NPC name" />
+        <select value={relation} onChange={(e) => setRelation(e.currentTarget.value)}>
+          <option value="">Relation</option>
+          {RELATIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+      <div className="row">
+        <input value={note} onChange={(e) => setNote(e.currentTarget.value)} placeholder="Note about this NPC…" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
+        <button onClick={add} disabled={!npcName.trim() || !note.trim()}>Add</button>
+      </div>
+      {Object.entries(grouped).map(([name, notes]) => (
+        <div key={name} className="npc-group">
+          <h4>{name}</h4>
+          {notes.map((n) => (
+            <div key={n.id} className="card-row npc-note">
+              <span className="badge">{n.relation}</span>
+              <span>{n.note}</span>
+              <span className="muted">{n.timestamp.slice(0, 10)}</span>
+              <button className="danger" onClick={() => deleteNpcNote(n.id)} style={{ fontSize: "0.7rem" }}>×</button>
+            </div>
+          ))}
+        </div>
+      ))}
+      {npcNotes.length === 0 && <p className="muted">No NPC notes yet.</p>}
     </section>
   );
 }

@@ -16,6 +16,23 @@ import type {
   Scene,
 } from "./types";
 
+export interface LootEntry {
+  id: string;
+  name: string;
+  quantity: number;
+  assignedTo: string | null;
+  sourceEntity: string;
+  timestamp: string;
+}
+
+export interface NpcNote {
+  id: string;
+  npcName: string;
+  relation: string;
+  note: string;
+  timestamp: string;
+}
+
 export interface AutoDmState {
   loading: boolean;
   error: string | null;
@@ -45,9 +62,10 @@ export interface AutoDmState {
   currentTurnIndex: number;
 
   // Ollama status (polled from Tools tab).
-  ollama: { reachable: boolean; models: string[]; currentModel: string };
+  ollama: { reachable: boolean; models: string[]; currentModel: string; numPredict: number };
   pollOllamaModels: () => Promise<void>;
   setOllamaModel: (model: string) => Promise<void>;
+  setNumPredict: (n: number) => void;
   ingestToMemory: (speaker: string, content: string) => Promise<void>;
 
   bootstrap: () => Promise<void>;
@@ -56,6 +74,7 @@ export interface AutoDmState {
   createCharacter: (name: string) => Promise<void>;
   saveCharacter: (profile: CharacterProfile) => Promise<void>;
   deleteCharacter: (id: string) => Promise<void>;
+  cloneCharacter: (id: string) => Promise<void>;
 
   saveAction: (action: ActionDefinition) => Promise<void>;
   deleteAction: (id: string) => Promise<void>;
@@ -98,6 +117,17 @@ export interface AutoDmState {
   undoLastHpChange: () => void;
   exportCampaign: () => Promise<string>;
   importCampaign: (json: string) => Promise<void>;
+
+  // Loot
+  loot: LootEntry[];
+  addLoot: (name: string, qty: number, sourceEntity: string) => void;
+  assignLoot: (lootId: string, characterId: string) => void;
+  clearLoot: () => void;
+
+  // NPC relationship notes
+  npcNotes: NpcNote[];
+  addNpcNote: (npcName: string, relation: string, note: string) => void;
+  deleteNpcNote: (id: string) => void;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -170,7 +200,9 @@ export const useStore = create<AutoDmState>((set, get) => ({
   currentTurnIndex: 0,
   deathSaves: {},
   lastHpChange: null,
-  ollama: { reachable: false, models: [], currentModel: "llama3.2" },
+  ollama: { reachable: false, models: [], currentModel: "llama3.2", numPredict: 512 },
+  loot: [],
+  npcNotes: [],
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -188,6 +220,28 @@ export const useStore = create<AutoDmState>((set, get) => ({
       const logs = activeSceneId
         ? await backend.listLogs(activeSceneId, 200)
         : [];
+      // Restore persisted combat state from localStorage.
+      let combatState: Partial<AutoDmState> = {};
+      try {
+        const saved = localStorage.getItem("auto-dm-combat");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          combatState = {
+            initiativeOrder: parsed.initiativeOrder ?? [],
+            combatantStates: parsed.combatantStates ?? {},
+            combatantConditions: parsed.combatantConditions ?? {},
+            currentRound: parsed.currentRound ?? 0,
+            currentTurnIndex: parsed.currentTurnIndex ?? 0,
+            deathSaves: parsed.deathSaves ?? {},
+          };
+        }
+        const savedLoot = localStorage.getItem("auto-dm-loot");
+        if (savedLoot) combatState.loot = JSON.parse(savedLoot);
+        const savedNotes = localStorage.getItem("auto-dm-npc-notes");
+        if (savedNotes) combatState.npcNotes = JSON.parse(savedNotes);
+      } catch {
+        // Corrupted localStorage — start fresh.
+      }
       set({
         characters,
         actions,
@@ -196,6 +250,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
         activeSceneId,
         logs,
         loading: false,
+        ...combatState,
       });
     } catch (e) {
       set({ loading: false, error: String(e) });
@@ -220,6 +275,20 @@ export const useStore = create<AutoDmState>((set, get) => ({
   deleteCharacter: async (id) => {
     await backend.deleteCharacter(id);
     set({ characters: (await backend.listCharacters()) });
+  },
+
+  cloneCharacter: async (id) => {
+    const chars = get().characters;
+    const orig = chars.find((c) => c.id === id);
+    if (!orig) return;
+    const clone: CharacterProfile = {
+      ...structuredClone(orig),
+      id: crypto.randomUUID(),
+      identity: { ...orig.identity, name: `${orig.identity.name} (copy)` },
+    };
+    await backend.saveCharacter(clone);
+    set({ characters: await backend.listCharacters() });
+    get().showToast(`Cloned "${orig.identity.name}"`);
   },
 
   saveAction: async (action) => {
@@ -320,7 +389,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
     try {
       const models = await backend.ollamaModels();
       const currentModel = await backend.getOllamaModel();
-      set({ ollama: { reachable: true, models, currentModel } });
+      set((s) => ({ ollama: { ...s.ollama, reachable: true, models, currentModel } }));
     } catch {
       set((s) => ({ ollama: { ...s.ollama, reachable: false, models: [] } }));
     }
@@ -345,9 +414,12 @@ export const useStore = create<AutoDmState>((set, get) => ({
 
   runAttack: async (attacker, target, actionId, prereq) => {
     const sceneId = get().activeSceneId ?? undefined;
+    const prevHp = get().combatantStates[target.id]?.hit_points ?? ("resource_pools" in target ? target.resource_pools.hp?.current ?? 0 : target.hit_points.current);
     const outcome = await backend.combatAttack(attacker, target, actionId, prereq ?? null, sceneId);
     set((s) => ({
       lastCombat: outcome,
+      lastHpChange: { entityId: target.id, previousHp: prevHp, newHp: outcome.target_hp_remaining },
+      combatHistory: [...s.combatHistory.slice(-19), outcome],
       combatantStates: {
         ...s.combatantStates,
         [target.id]: {
@@ -358,6 +430,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
         },
       },
     }));
+    persistCombat();
     await get().refreshLogs();
     return outcome;
   },
@@ -365,25 +438,26 @@ export const useStore = create<AutoDmState>((set, get) => ({
   rollInitiative: async (combatants, formula) => {
     const order = await backend.initiative(combatants, formula ?? "");
     set({ initiativeOrder: order, currentRound: 1, currentTurnIndex: 0 });
+    persistCombat();
   },
 
-  nextTurn: () => set((s) => {
+  nextTurn: () => { set((s) => {
     if (s.initiativeOrder.length === 0) return {};
     const nextIdx = (s.currentTurnIndex + 1) % s.initiativeOrder.length;
     const newRound = nextIdx === 0 ? s.currentRound + 1 : s.currentRound;
     return { currentTurnIndex: nextIdx, currentRound: newRound };
-  }),
+  }); persistCombat(); },
 
-  endCombat: () => set({
+  endCombat: () => { set({
     initiativeOrder: [],
     currentRound: 0,
     currentTurnIndex: 0,
     combatantStates: {},
     combatantConditions: {},
     lastCombat: null,
-  }),
+  }); persistCombat(); },
 
-  removeCombatant: (entityId) => set((s) => {
+  removeCombatant: (entityId) => { set((s) => {
     const newStates = { ...s.combatantStates };
     delete newStates[entityId];
     const newConditions = { ...s.combatantConditions };
@@ -394,7 +468,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
       combatantConditions: newConditions,
       initiativeOrder: newOrder,
     };
-  }),
+  }); persistCombat(); },
 
   longRest: async () => {
     const s = useStore.getState();
@@ -420,6 +494,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
     if (s.activeSceneId && healed > 0) {
       await backend.appendLog(s.activeSceneId, "System", `Party takes a Long Rest. ${healed} character${healed !== 1 ? "s" : ""} fully healed.`);
     }
+    persistCombat();
   },
 
   shortRest: async () => {
@@ -449,15 +524,16 @@ export const useStore = create<AutoDmState>((set, get) => ({
     if (s.activeSceneId && healed > 0) {
       await backend.appendLog(s.activeSceneId, "System", `Party takes a Short Rest. ${healed} character${healed !== 1 ? "s" : ""} recovered hit points.`);
     }
+    persistCombat();
   },
 
-  toggleCondition: (entityId, condition) => set((s) => {
+  toggleCondition: (entityId, condition) => { set((s) => {
     const current = s.combatantConditions[entityId] ?? [];
     const updated = current.includes(condition)
       ? current.filter((c) => c !== condition)
       : [...current, condition];
     return { combatantConditions: { ...s.combatantConditions, [entityId]: updated } };
-  }),
+  }); persistCombat(); },
 
   showToast: (msg) => {
     set({ toast: msg });
@@ -521,6 +597,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
       set((st) => ({ deathSaves: { ...st.deathSaves, [entityId]: newDs } }));
       get().showToast(`Death Save: ${result} (${newDs.successes}/${newDs.failures})`);
     }
+    persistCombat();
   },
 
   undoLastHpChange: () => {
@@ -551,7 +628,60 @@ export const useStore = create<AutoDmState>((set, get) => ({
     await get().bootstrap();
     get().showToast("Campaign imported");
   },
+
+  setNumPredict: (n) => set((s) => ({ ollama: { ...s.ollama, numPredict: Math.max(64, Math.min(2048, n)) } })),
+
+  // Loot
+  addLoot: (name, qty, sourceEntity) => {
+    const entry: LootEntry = { id: crypto.randomUUID(), name, quantity: qty, assignedTo: null, sourceEntity, timestamp: new Date().toISOString() };
+    set((s) => {
+      const loot = [...s.loot, entry];
+      localStorage.setItem("auto-dm-loot", JSON.stringify(loot));
+      return { loot };
+    });
+    get().showToast(`Added ${qty}× ${name} to loot`);
+  },
+  assignLoot: (lootId, characterId) => set((s) => {
+    const loot = s.loot.map((l) => l.id === lootId ? { ...l, assignedTo: characterId } : l);
+    localStorage.setItem("auto-dm-loot", JSON.stringify(loot));
+    const entry = loot.find((l) => l.id === lootId);
+    if (entry) get().showToast(`Assigned ${entry.name} to ${s.characters.find((c) => c.id === characterId)?.identity.name ?? "character"}`);
+    return { loot };
+  }),
+  clearLoot: () => {
+    localStorage.removeItem("auto-dm-loot");
+    set({ loot: [] });
+  },
+
+  // NPC relationship notes
+  addNpcNote: (npcName, relation, note) => {
+    const entry: NpcNote = { id: crypto.randomUUID(), npcName, relation, note, timestamp: new Date().toISOString() };
+    set((s) => {
+      const npcNotes = [...s.npcNotes, entry];
+      localStorage.setItem("auto-dm-npc-notes", JSON.stringify(npcNotes));
+      return { npcNotes };
+    });
+  },
+  deleteNpcNote: (id) => set((s) => {
+    const npcNotes = s.npcNotes.filter((n) => n.id !== id);
+    localStorage.setItem("auto-dm-npc-notes", JSON.stringify(npcNotes));
+    return { npcNotes };
+  }),
 }));
+
+// Persist combat state to localStorage whenever it changes.
+function persistCombat() {
+  const s = useStore.getState();
+  const data = {
+    initiativeOrder: s.initiativeOrder,
+    combatantStates: s.combatantStates,
+    combatantConditions: s.combatantConditions,
+    currentRound: s.currentRound,
+    currentTurnIndex: s.currentTurnIndex,
+    deathSaves: s.deathSaves,
+  };
+  localStorage.setItem("auto-dm-combat", JSON.stringify(data));
+}
 
 let unlisteners: UnlistenFn[] = [];
 

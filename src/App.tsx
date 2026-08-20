@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useStore, subscribeToEvents } from "./store";
 import { CharacterList, ActionList } from "./components/Characters";
 import { Bestiary } from "./components/Bestiary";
 import { Scenes } from "./components/Scenes";
 import { Combat } from "./components/Combat";
-import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, CampaignData } from "./components/Tools";
+import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, CampaignData, NpcNotesPanel } from "./components/Tools";
 import "./App.css";
 
 type Tab = "scenes" | "characters" | "bestiary" | "combat" | "tools";
@@ -36,6 +36,19 @@ function App() {
     void bootstrap();
     void subscribeToEvents();
   }, [bootstrap]);
+
+  // Keyboard shortcuts: 1-5 to switch tabs, Esc to dismiss errors/toasts
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+    const tabKeys: Record<string, Tab> = { "1": "scenes", "2": "characters", "3": "bestiary", "4": "combat", "5": "tools" };
+    if (tabKeys[e.key]) { setTab(tabKeys[e.key]); e.preventDefault(); }
+    if (e.key === "Escape") { setError(null); }
+  }, [setError]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   return (
     <main className="app">
@@ -95,6 +108,7 @@ function App() {
           <DmPanel />
           <DiceRoller />
           <OraclePanel />
+          <NpcNotesPanel />
           <SessionLog />
           <CampaignData />
         </>

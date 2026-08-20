@@ -15,6 +15,17 @@ const CONDITION_DESC: Record<string, string> = {
   Exhaustion: "6 levels. Level 1: disadvantage on ability checks. Level 2: halved speed. And worse...",
 };
 
+const CONDITION_EFFECTS: Record<string, string[]> = {
+  Poisoned: ["disadvantage on attack rolls", "disadvantage on ability checks"],
+  Prone: ["disadvantage on ranged attack rolls", "melee attacks against you gain advantage"],
+  Stunned: ["incapacitated", "auto-fail STR/DEX saves", "attacks against you gain advantage"],
+  Frightened: ["disadvantage on ability checks", "disadvantage on attack rolls while source visible"],
+  Blinded: ["auto-fail sight-based checks", "attacks against you gain advantage", "your attacks have disadvantage"],
+  Charmed: ["can't target charmer with harmful effects", "charmer has advantage on social checks"],
+  Invisible: ["attacks against you have disadvantage", "your attacks have advantage"],
+  Exhaustion: ["level 1: disadvantage on ability checks", "level 2: halved speed", "level 3: disadvantage on attacks & saves"],
+};
+
 export function Combat() {
   const characters = useStore((s) => s.characters);
   const statBlocks = useStore((s) => s.statBlocks);
@@ -38,6 +49,10 @@ export function Combat() {
   const rollDeathSave = useStore((s) => s.rollDeathSave);
   const lastHpChange = useStore((s) => s.lastHpChange);
   const undoLastHpChange = useStore((s) => s.undoLastHpChange);
+  const loot = useStore((s) => s.loot);
+  const addLoot = useStore((s) => s.addLoot);
+  const assignLoot = useStore((s) => s.assignLoot);
+  const clearLoot = useStore((s) => s.clearLoot);
 
   const [attackerKey, setAttackerKey] = useState("");
   const [targetKey, setTargetKey] = useState("");
@@ -46,6 +61,10 @@ export function Combat() {
   const [customHpAmount, setCustomHpAmount] = useState(0);
   const [customHpTarget, setCustomHpTarget] = useState("");
   const [showLog, setShowLog] = useState(false);
+  const [showLoot, setShowLoot] = useState(false);
+  const [lootName, setLootName] = useState("");
+  const [lootQty, setLootQty] = useState(1);
+  const [lootSource, setLootSource] = useState("");
 
   const entities = [
     ...characters.map((c) => ({ key: `char:${c.id}`, name: c.identity.name, value: c as CharacterProfile | EncounterStatBlock })),
@@ -199,11 +218,19 @@ export function Combat() {
                 ))}
               </div>
               <div className="condition-row">
-                {(combatantConditions[e.value.id] ?? []).map((c) => (
-                  <span key={c} className="condition-badge" title={CONDITION_DESC[c] ?? c} onClick={() => toggleCondition(e.value.id, c)}>
-                    {c} ×
-                  </span>
-                ))}
+                {(combatantConditions[e.value.id] ?? []).map((c) => {
+                  const effects = CONDITION_EFFECTS[c];
+                  return (
+                    <span
+                      key={c}
+                      className="condition-badge"
+                      title={`${CONDITION_DESC[c] ?? c}\n${effects ? "\nEffects:\n• " + effects.join("\n• ") : ""}`}
+                      onClick={() => toggleCondition(e.value.id, c)}
+                    >
+                      {c} ×
+                    </span>
+                  );
+                })}
                 <select
                   className="condition-select"
                   value=""
@@ -348,6 +375,72 @@ export function Combat() {
           )}
         </div>
       )}
+
+      {/* Loot Distribution */}
+      <div className="loot-section">
+        <button className="log-toggle" onClick={() => setShowLoot(!showLoot)}>
+          {showLoot ? "Hide" : "Show"} Loot ({loot.filter((l) => !l.assignedTo).length} unassigned)
+        </button>
+        {showLoot && (
+          <div className="loot-panel">
+            <div className="row">
+              <input
+                value={lootName}
+                onChange={(e) => setLootName(e.currentTarget.value)}
+                placeholder="Item name"
+              />
+              <input
+                type="number"
+                min={1}
+                value={lootQty}
+                onChange={(e) => setLootQty(Math.max(1, Number(e.currentTarget.value)))}
+                style={{ width: "4rem" }}
+              />
+              <label>
+                Source
+                <select value={lootSource} onChange={(e) => setLootSource(e.currentTarget.value)}>
+                  <option value="">—</option>
+                  {entities.map((en) => (
+                    <option key={en.key} value={en.key}>{en.name}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                onClick={() => { if (lootName.trim()) { addLoot(lootName.trim(), lootQty, lootSource); setLootName(""); setLootQty(1); } }}
+                disabled={!lootName.trim()}
+              >
+                Add Loot
+              </button>
+            </div>
+            {loot.length > 0 && (
+              <div className="loot-list">
+                {loot.map((l) => (
+                  <div key={l.id} className="card-row loot-entry">
+                    <span>{l.quantity}× {l.name}</span>
+                    {l.sourceEntity && <span className="muted">from {entities.find((e) => e.key === l.sourceEntity)?.name ?? "?"}</span>}
+                    {l.assignedTo ? (
+                      <span className="badge">{characters.find((c) => c.id === l.assignedTo)?.identity.name ?? "assigned"}</span>
+                    ) : (
+                      <select
+                        value=""
+                        onChange={(e) => { if (e.currentTarget.value) assignLoot(l.id, e.currentTarget.value); }}
+                      >
+                        <option value="">Assign to…</option>
+                        {characters.map((c) => (
+                          <option key={c.id} value={c.id}>{c.identity.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                ))}
+                <button className="muted" onClick={clearLoot} style={{ fontSize: "0.8rem", marginTop: "0.25rem" }}>
+                  Clear All Loot
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

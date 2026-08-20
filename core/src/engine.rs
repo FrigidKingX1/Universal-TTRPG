@@ -683,4 +683,49 @@ mod tests {
         assert_eq!(attribute_modifier(1), -5);
         assert_eq!(attribute_modifier(30), 10);
     }
+
+    #[test]
+    fn combatant_resolve_ref_fallbacks() {
+        let mut c = Combatant::from(&goblin());
+        c.bonuses.insert("initiative".to_string(), 3);
+        assert_eq!(c.resolve_ref("bonus.initiative"), Some(3));
+        assert_eq!(c.resolve_ref("bonus.missing"), None);
+        assert_eq!(c.resolve_ref("unknown.path"), None);
+        assert_eq!(c.resolve_ref("hit_points"), Some(7));
+        assert_eq!(c.resolve_ref("hp"), Some(7));
+        assert_eq!(c.resolve_ref(" armor_class "), Some(15));
+        assert_eq!(c.resolve_ref("ac"), Some(15));
+    }
+
+    #[test]
+    fn combatant_from_profile_converts_correctly() {
+        let p = profile_with_str("Fighter", 16, 12, 25);
+        let c = Combatant::from(&p);
+        assert_eq!(c.name, "Fighter");
+        assert_eq!(c.max_hit_points, 25);
+        assert_eq!(c.armor_class, 11); // 10 + DEX(1)
+        assert!(c.actions.contains(&"longsword_slash".to_string()));
+    }
+
+    #[test]
+    fn combatant_from_statblock_converts_correctly() {
+        let s = EncounterStatBlock {
+            id: "test_id".to_string(),
+            name: "Orc".to_string(),
+            challenge_rating: 0.5,
+            size: Some(crate::models::Size::Medium),
+            creature_type: Some("humanoid".to_string()),
+            alignment: Some("chaotic evil".to_string()),
+            armor_class: 13,
+            hit_points: HitPoints { current: 15, maximum: 15, formula: Some("2d8+6".to_string()) },
+            speed_feet: Some(30),
+            attributes: HashMap::from([("STR".to_string(), 16), ("DEX".to_string(), 12)]),
+            actions: vec!["greataxe".to_string()],
+        };
+        let c = Combatant::from(&s);
+        assert_eq!(c.name, "Orc");
+        assert_eq!(c.armor_class, 13);
+        assert_eq!(c.hit_points, 15);
+        assert!(c.actions.contains(&"greataxe".to_string()));
+    }
 }

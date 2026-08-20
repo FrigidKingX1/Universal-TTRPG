@@ -46,10 +46,24 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: vi.fn(),
 }));
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
+    removeItem: vi.fn((key: string) => { delete store[key]; }),
+    clear: vi.fn(() => { store = {}; }),
+  };
+})();
+Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
+
 import { useStore, newCharacter, newStatBlock } from "../store";
 
 describe("Store pure logic", () => {
   beforeEach(() => {
+    localStorageMock.clear();
+    vi.clearAllMocks();
     // Reset store to initial state
     useStore.setState({
       loading: false,
@@ -76,7 +90,11 @@ describe("Store pure logic", () => {
       combatantConditions: {},
       currentRound: 0,
       currentTurnIndex: 0,
-      ollama: { reachable: false, models: [], currentModel: "llama3.2" },
+      deathSaves: {},
+      lastHpChange: null,
+      ollama: { reachable: false, models: [], currentModel: "llama3.2", numPredict: 512 },
+      loot: [],
+      npcNotes: [],
     });
   });
 
@@ -174,6 +192,15 @@ describe("Store pure logic", () => {
       useStore.getState().toggleCondition("a", "Poisoned");
       expect(useStore.getState().combatantConditions.a).toEqual(["Stunned"]);
     });
+
+    it("toggles multiple conditions independently", () => {
+      useStore.setState({ combatantConditions: {} });
+      useStore.getState().toggleCondition("a", "Poisoned");
+      useStore.getState().toggleCondition("a", "Stunned");
+      expect(useStore.getState().combatantConditions.a).toEqual(["Poisoned", "Stunned"]);
+      useStore.getState().toggleCondition("a", "Poisoned");
+      expect(useStore.getState().combatantConditions.a).toEqual(["Stunned"]);
+    });
   });
 
   describe("showToast", () => {
@@ -198,6 +225,79 @@ describe("Store pure logic", () => {
       const s = useStore.getState();
       expect(s.lastFate?.interpretation).toBe("Yes");
       expect(s.fateHistory).toHaveLength(1);
+    });
+  });
+
+  describe("cloneCharacter", () => {
+    it("creates a copy with new id and (copy) suffix", async () => {
+      const c = newCharacter("Alice");
+      useStore.setState({ characters: [c] });
+      // Mock listCharacters to return the cloned character on second call
+      const { backend } = await import("../backend");
+      vi.mocked(backend.listCharacters).mockResolvedValueOnce([
+        c,
+        { ...c, id: "clone-id", identity: { ...c.identity, name: "Alice (copy)" } },
+      ]);
+      await useStore.getState().cloneCharacter(c.id);
+      const chars = useStore.getState().characters;
+      expect(chars).toHaveLength(2);
+      expect(chars.some((ch) => ch.identity.name === "Alice (copy)")).toBe(true);
+    });
+  });
+
+  describe("Loot", () => {
+    it("adds loot entry", () => {
+      useStore.getState().addLoot("Gold Coins", 100, "");
+      expect(useStore.getState().loot).toHaveLength(1);
+      expect(useStore.getState().loot[0].name).toBe("Gold Coins");
+      expect(useStore.getState().loot[0].quantity).toBe(100);
+    });
+
+    it("assigns loot to character", () => {
+      useStore.getState().addLoot("Magic Sword", 1, "");
+      const lootId = useStore.getState().loot[0].id;
+      useStore.getState().assignLoot(lootId, "char_1");
+      expect(useStore.getState().loot[0].assignedTo).toBe("char_1");
+    });
+
+    it("clears all loot", () => {
+      useStore.getState().addLoot("Potion", 3, "");
+      useStore.getState().clearLoot();
+      expect(useStore.getState().loot).toEqual([]);
+    });
+  });
+
+  describe("NPC Notes", () => {
+    it("adds and retrieves notes", () => {
+      useStore.getState().addNpcNote("Bartender", "Ally", "Knows the underground");
+      expect(useStore.getState().npcNotes).toHaveLength(1);
+      expect(useStore.getState().npcNotes[0].npcName).toBe("Bartender");
+      expect(useStore.getState().npcNotes[0].relation).toBe("Ally");
+    });
+
+    it("deletes notes by id", () => {
+      useStore.getState().addNpcNote("Guard", "Enemy", "Watches the gate");
+      const id = useStore.getState().npcNotes[0].id;
+      useStore.getState().deleteNpcNote(id);
+      expect(useStore.getState().npcNotes).toHaveLength(0);
+    });
+
+    it("groups notes by NPC name", () => {
+      useStore.getState().addNpcNote("Bartender", "Ally", "Friendly");
+      useStore.getState().addNpcNote("Bartender", "Contact", "Has info");
+      useStore.getState().addNpcNote("Guard", "Enemy", "Hostile");
+      expect(useStore.getState().npcNotes).toHaveLength(3);
+    });
+  });
+
+  describe("numPredict", () => {
+    it("clamps numPredict to valid range", () => {
+      useStore.getState().setNumPredict(100);
+      expect(useStore.getState().ollama.numPredict).toBe(100);
+      useStore.getState().setNumPredict(10);
+      expect(useStore.getState().ollama.numPredict).toBe(64);
+      useStore.getState().setNumPredict(9999);
+      expect(useStore.getState().ollama.numPredict).toBe(2048);
     });
   });
 });

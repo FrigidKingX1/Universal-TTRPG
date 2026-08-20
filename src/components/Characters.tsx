@@ -65,6 +65,7 @@ function QuickRollRow({ profile }: { profile: CharacterProfile }) {
 export function CharacterList() {
   const characters = useStore((s) => s.characters);
   const deleteCharacter = useStore((s) => s.deleteCharacter);
+  const cloneCharacter = useStore((s) => s.cloneCharacter);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rollingId, setRollingId] = useState<string | null>(null);
 
@@ -97,6 +98,9 @@ export function CharacterList() {
             <div className="card-row">
               <button onClick={() => setEditingId(editingId === c.id ? null : c.id)}>
                 {editingId === c.id ? "Close" : "Edit"}
+              </button>
+              <button onClick={() => void cloneCharacter(c.id)}>
+                Clone
               </button>
               <button onClick={() => setRollingId(rollingId === c.id ? null : c.id)}>
                 {rollingId === c.id ? "Hide" : "Roll"}

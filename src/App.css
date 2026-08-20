@@ -946,3 +946,57 @@ select:focus {
 .undo-btn:hover {
   background: rgba(224, 175, 104, 0.35);
 }
+
+/* Loot Section */
+.loot-section {
+  margin-top: 0.75rem;
+}
+
+.loot-panel {
+  margin-top: 0.5rem;
+}
+
+.loot-list {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.loot-entry {
+  font-size: 0.85rem;
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  background: var(--card);
+  border-radius: 4px;
+}
+
+/* NPC Notes */
+.npc-group h4 {
+  margin: 0.75rem 0 0.25rem;
+  color: var(--accent);
+}
+
+.npc-note {
+  font-size: 0.85rem;
+  gap: 0.4rem;
+  padding: 0.2rem 0.4rem;
+}
+
+/* Keyboard shortcut hint */
+.kbd-hint {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+/* Tab keyboard hints */
+.tab {
+  position: relative;
+}
+
+.tab::after {
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-left: 0.25rem;
+}
