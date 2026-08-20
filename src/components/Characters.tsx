@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { backend } from "../backend";
 import { useStore } from "../store";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
 
@@ -25,10 +26,47 @@ function NewCharacterForm() {
   );
 }
 
+function QuickRollRow({ profile }: { profile: CharacterProfile }) {
+  const [result, setResult] = useState<string | null>(null);
+  const [rolling, setRolling] = useState(false);
+
+  const roll = async (attr: string) => {
+    setRolling(true);
+    try {
+      const r = await backend.rollDice(`1d20 + @attributes.${attr}.derived_modifier`);
+      setResult(`${attr}: ${r.total} (${r.detail})`);
+    } catch (e) {
+      setResult(String(e));
+    } finally {
+      setRolling(false);
+    }
+  };
+
+  const ATTRS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+
+  return (
+    <div className="quick-roll-row">
+      <div className="roll-buttons">
+        {ATTRS.map((attr) => {
+          const attrState = profile.attributes[attr];
+          const mod = attrState?.derived_modifier ?? Math.floor(((attrState?.base_value ?? 10) - 10) / 2);
+          return (
+            <button key={attr} className="roll-btn" onClick={() => void roll(attr)} disabled={rolling}>
+              {attr} <span className="muted">({mod >= 0 ? "+" : ""}{mod})</span>
+            </button>
+          );
+        })}
+      </div>
+      {result && <span className="roll-quick-result">{result}</span>}
+    </div>
+  );
+}
+
 export function CharacterList() {
   const characters = useStore((s) => s.characters);
   const deleteCharacter = useStore((s) => s.deleteCharacter);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [rollingId, setRollingId] = useState<string | null>(null);
 
   return (
     <section className="panel">
@@ -48,10 +86,14 @@ export function CharacterList() {
               <button onClick={() => setEditingId(editingId === c.id ? null : c.id)}>
                 {editingId === c.id ? "Close" : "Edit"}
               </button>
+              <button onClick={() => setRollingId(rollingId === c.id ? null : c.id)}>
+                {rollingId === c.id ? "Hide" : "Roll"}
+              </button>
               <button className="danger" onClick={() => { if (confirm(`Delete ${c.identity.name}?`)) void deleteCharacter(c.id); }}>
                 Delete
               </button>
             </div>
+            {rollingId === c.id && <QuickRollRow profile={c} />}
             {editingId === c.id && <CharacterSheet profile={c} />}
           </li>
         ))}

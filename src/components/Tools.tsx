@@ -171,6 +171,17 @@ export function DmPanel() {
   const [action, setAction] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const suggestions = [
+    "I look around the area",
+    "I talk to the nearest NPC",
+    "I investigate the surroundings",
+    "I attempt to stealth",
+    "I rest and recover",
+    "I search for traps",
+    "I use my action to Dash",
+    "I make a Perception check",
+  ];
+
   const resolve = async () => {
     if (!action.trim()) return;
     setBusy(true);
@@ -212,6 +223,14 @@ export function DmPanel() {
           {busy ? "Resolving…" : "Resolve"}
         </button>
       </form>
+      {/* Quick action suggestions */}
+      <div className="suggestion-chips">
+        {suggestions.map((s) => (
+          <button key={s} className="suggestion-btn" onClick={() => setAction(s)} disabled={!activeSceneId || busy}>
+            {s}
+          </button>
+        ))}
+      </div>
       {lastDm && (
         <div className="dm-response">
           <div className="narrative">{lastDm.narrative}</div>
@@ -261,6 +280,7 @@ export function SessionLog() {
   const logs = useStore((s) => s.logs);
   const activeSceneId = useStore((s) => s.activeSceneId);
   const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
   const logEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new logs
@@ -277,6 +297,13 @@ export function SessionLog() {
     return "speaker-default";
   };
 
+  const filteredLogs = search.trim()
+    ? logs.filter((l) => {
+        const q = search.toLowerCase();
+        return l.content.toLowerCase().includes(q) || l.speaker.toLowerCase().includes(q);
+      })
+    : logs;
+
   const send = async () => {
     if (!activeSceneId || !draft.trim()) return;
     try {
@@ -290,15 +317,32 @@ export function SessionLog() {
   return (
     <section className="panel">
       <h2>Session Log</h2>
+      {logs.length > 5 && (
+        <div className="row log-search">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+            placeholder="Search logs…"
+          />
+          {search && (
+            <button className="muted" onClick={() => setSearch("")} style={{ fontSize: "0.8rem" }}>
+              clear
+            </button>
+          )}
+          <span className="muted" style={{ fontSize: "0.8rem" }}>
+            {filteredLogs.length}/{logs.length}
+          </span>
+        </div>
+      )}
       <div className="log">
-        {logs.map((l) => (
+        {filteredLogs.map((l) => (
           <p key={l.id} className="log-line">
             <span className="muted">[{l.timestamp.slice(11, 19)}]</span>{" "}
             <span className={speakerClass(l.speaker)}><strong>{l.speaker}:</strong></span>{" "}
             {l.content}
           </p>
         ))}
-        {logs.length === 0 && <p className="muted">Nothing logged yet.</p>}
+        {filteredLogs.length === 0 && <p className="muted">{search ? "No matching entries." : "Nothing logged yet."}</p>}
         <div ref={logEndRef} />
       </div>
       <form

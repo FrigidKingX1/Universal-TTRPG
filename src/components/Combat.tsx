@@ -8,20 +8,26 @@ export function Combat() {
   const actions = useStore((s) => s.actions);
   const runAttack = useStore((s) => s.runAttack);
   const rollInitiative = useStore((s) => s.rollInitiative);
-  const saveCharacter = useStore((s) => s.saveCharacter);
-  const saveStatBlock = useStore((s) => s.saveStatBlock);
+  const nextTurn = useStore((s) => s.nextTurn);
+  const endCombat = useStore((s) => s.endCombat);
   const lastCombat = useStore((s) => s.lastCombat);
+  const combatHistory = useStore((s) => s.combatHistory);
   const initiativeOrder = useStore((s) => s.initiativeOrder);
   const combatantStates = useStore((s) => s.combatantStates);
+  const currentRound = useStore((s) => s.currentRound);
+  const currentTurnIndex = useStore((s) => s.currentTurnIndex);
 
   const [attackerKey, setAttackerKey] = useState("");
   const [targetKey, setTargetKey] = useState("");
   const [actionId, setActionId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [customHpAmount, setCustomHpAmount] = useState(0);
+  const [customHpTarget, setCustomHpTarget] = useState("");
+  const [showLog, setShowLog] = useState(false);
 
   const entities = [
     ...characters.map((c) => ({ key: `char:${c.id}`, name: c.identity.name, value: c as CharacterProfile | EncounterStatBlock })),
-    ...statBlocks.map((b) => ({ key: `block:${b.id}`, name: b.name, value: b as CharacterProfile | EncounterStatBlock })),
+    ...statBlocks.map((b) => ({ key: `block:${b.id}`, name: b.name, value: b as EncounterStatBlock | CharacterProfile })),
   ];
 
   const resolve = (key: string) => {
@@ -34,6 +40,22 @@ export function Combat() {
     if (st) return { current: st.hit_points, max: getHitPoints(entity), status: st.status };
     return { current: getHitPoints(entity), max: getHitPoints(entity), status: undefined };
   };
+
+  // Get actions available to the selected attacker.
+  const attackerActions = (() => {
+    const attacker = resolve(attackerKey);
+    if (!attacker) return actions;
+    if ("identity" in attacker) {
+      // CharacterProfile — filter by abilities list.
+      const abilityIds = new Set(attacker.abilities);
+      const matched = actions.filter((a) => abilityIds.has(a.id));
+      return matched.length > 0 ? matched : actions;
+    }
+    // EncounterStatBlock — filter by actions list.
+    const actionIds = new Set((attacker as EncounterStatBlock).actions);
+    const matched = actions.filter((a) => actionIds.has(a.id));
+    return matched.length > 0 ? matched : actions;
+  })();
 
   const quickHpAdjust = (entity: CharacterProfile | EncounterStatBlock, isChar: boolean, amount: number) => {
     if (isChar) {
@@ -60,6 +82,15 @@ export function Combat() {
     }
   };
 
+  const applyCustomHp = () => {
+    if (!customHpTarget || customHpAmount === 0) return;
+    const entity = resolve(customHpTarget);
+    if (!entity) return;
+    const isChar = "identity" in entity;
+    quickHpAdjust(entity, isChar, customHpAmount);
+    setCustomHpAmount(0);
+  };
+
   const attack = async () => {
     const attacker = resolve(attackerKey);
     const target = resolve(targetKey);
@@ -83,9 +114,28 @@ export function Combat() {
     void rollInitiative(picks);
   };
 
+  // Find the current combatant in initiative order.
+  const currentTurnId = initiativeOrder.length > 0 ? initiativeOrder[currentTurnIndex]?.combatant_id : null;
+
   return (
     <section className="panel">
       <h2>Combat Tracker</h2>
+
+      {/* Round & Turn Tracker */}
+      {initiativeOrder.length > 0 && (
+        <div className="combat-tracker">
+          <div className="tracker-info">
+            <span className="tracker-round">Round {currentRound}</span>
+            <span className="tracker-turn muted">
+              Current: {initiativeOrder[currentTurnIndex]?.name ?? "—"}
+            </span>
+          </div>
+          <div className="tracker-actions">
+            <button onClick={nextTurn}>Next Turn</button>
+            <button className="danger" onClick={endCombat}>End Combat</button>
+          </div>
+        </div>
+      )}
 
       <div className="combat-roster">
         {entities.map((e) => {
@@ -94,13 +144,15 @@ export function Combat() {
           const barClass = hp.current <= 0 ? "dead" : hp.current < hp.max * 0.25 ? "critical" : hp.current < hp.max * 0.5 ? "wounded" : "healthy";
           const isChar = "identity" in e.value;
           const initEntry = initiativeOrder.find((i) => i.combatant_id === e.value.id);
+          const isCurrentTurn = initEntry && e.value.id === currentTurnId;
           return (
-            <div key={e.key} className="combatant-card">
+            <div key={e.key} className={`combatant-card ${isCurrentTurn ? "current-turn" : ""}`}>
               <div className="card-row">
                 {initEntry && <span className="init-badge">#{initiativeOrder.indexOf(initEntry) + 1}</span>}
                 <strong>{e.name}</strong>
                 <span className="muted">AC {getArmorClass(e.value)}</span>
                 {hp.status && <span className="badge">{hp.status}</span>}
+                {isCurrentTurn && <span className="badge turn-badge">active</span>}
               </div>
               <div className="hp-row">
                 <span>HP {hp.current}/{hp.max}</span>
@@ -124,10 +176,36 @@ export function Combat() {
         })}
       </div>
 
+      {/* Custom HP Input */}
+      <div className="row custom-hp-row">
+        <label>
+          Target
+          <select value={customHpTarget} onChange={(e) => setCustomHpTarget(e.currentTarget.value)}>
+            <option value="">—</option>
+            {entities.map((e) => (
+              <option key={e.key} value={e.key}>{e.name}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          HP
+          <input
+            type="number"
+            value={customHpAmount}
+            onChange={(e) => setCustomHpAmount(Number(e.currentTarget.value))}
+            placeholder="± amount"
+            style={{ width: "5rem" }}
+          />
+        </label>
+        <button onClick={applyCustomHp} disabled={!customHpTarget || customHpAmount === 0}>
+          {customHpAmount >= 0 ? "Heal" : "Damage"}
+        </button>
+      </div>
+
       <div className="row">
         <label>
           Attacker
-          <select value={attackerKey} onChange={(e) => setAttackerKey(e.currentTarget.value)}>
+          <select value={attackerKey} onChange={(e) => { setAttackerKey(e.currentTarget.value); setActionId(""); }}>
             <option value="">—</option>
             {entities.map((e) => {
               const hp = hpInfo(e.value);
@@ -157,7 +235,7 @@ export function Combat() {
           Action
           <select value={actionId} onChange={(e) => setActionId(e.currentTarget.value)}>
             <option value="">—</option>
-            {actions.map((a) => (
+            {attackerActions.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
@@ -170,7 +248,6 @@ export function Combat() {
           {busy ? "Rolling…" : "Attack"}
         </button>
         <button onClick={initiative}>Roll Initiative</button>
-        <HealButton />
       </div>
 
       {lastCombat && <CombatResult outcome={lastCombat} />}
@@ -179,8 +256,8 @@ export function Combat() {
         <div className="initiative-section">
           <h3>Initiative Order</h3>
           <ol className="initiative">
-            {initiativeOrder.map((e) => (
-              <li key={e.combatant_id} className="card-row">
+            {initiativeOrder.map((e, idx) => (
+              <li key={e.combatant_id} className={`card-row ${idx === currentTurnIndex ? "current-turn-row" : ""}`}>
                 <strong>{e.name}</strong>
                 <span className="muted">
                   {e.modifier >= 0 ? "+" : ""}{e.modifier}
@@ -191,7 +268,43 @@ export function Combat() {
           </ol>
         </div>
       )}
+
+      {/* Mini Combat Log */}
+      {combatHistory.length > 0 && (
+        <div className="combat-log-section">
+          <button className="log-toggle" onClick={() => setShowLog(!showLog)}>
+            {showLog ? "Hide" : "Show"} Combat Log ({combatHistory.length})
+          </button>
+          {showLog && (
+            <div className="combat-log">
+              {combatHistory.slice().reverse().map((outcome, i) => (
+                <CombatLogEntry key={i} outcome={outcome} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </section>
+  );
+}
+
+function CombatLogEntry({ outcome }: { outcome: EngineOutcome }) {
+  return (
+    <div className="combat-log-entry">
+      <span className="muted">{outcome.attack_result}</span>
+      {outcome.attack_roll != null && (
+        <span className="muted"> (rolled {outcome.attack_roll}</span>
+      )}
+      {outcome.target_ac != null && (
+        <span className="muted"> vs AC {outcome.target_ac})</span>
+      )}
+      {outcome.damage_dealt > 0 && (
+        <span> — <strong>{outcome.damage_dealt} dmg</strong></span>
+      )}
+      {outcome.target_hp_remaining <= 0 && (
+        <span className="exceptional"> — defeated!</span>
+      )}
+    </div>
   );
 }
 
@@ -207,62 +320,12 @@ function getArmorClass(entity: CharacterProfile | EncounterStatBlock): number {
   return 10;
 }
 
-function HealButton() {
-  const characters = useStore((s) => s.characters);
-  const statBlocks = useStore((s) => s.statBlocks);
-  const saveCharacter = useStore((s) => s.saveCharacter);
-  const saveStatBlock = useStore((s) => s.saveStatBlock);
-  const combatantStates = useStore((s) => s.combatantStates);
-  const [amount, setAmount] = useState(5);
+function saveCharacter(c: CharacterProfile) {
+  void useStore.getState().saveCharacter(c);
+}
 
-  const entities = [
-    ...characters.map((c) => ({ id: c.id, name: c.identity.name, isChar: true, entity: c })),
-    ...statBlocks.map((b) => ({ id: b.id, name: b.name, isChar: false, entity: b })),
-  ];
-
-  const heal = (id: string, isChar: boolean) => {
-    const st = combatantStates[id];
-    if (isChar) {
-      const c = characters.find((x) => x.id === id);
-      if (!c) return;
-      const current = st?.hit_points ?? c.resource_pools.hp?.current ?? 0;
-      const max = c.resource_pools.hp?.maximum ?? current;
-      void saveCharacter({
-        ...c,
-        resource_pools: {
-          ...c.resource_pools,
-          hp: { ...c.resource_pools.hp!, current: Math.min(max, current + amount) },
-        },
-      });
-    } else {
-      const b = statBlocks.find((x) => x.id === id);
-      if (!b) return;
-      const current = st?.hit_points ?? b.hit_points.current;
-      const max = b.hit_points.maximum;
-      void saveStatBlock({
-        ...b,
-        hit_points: { ...b.hit_points, current: Math.min(max, current + amount) },
-      });
-    }
-  };
-
-  return (
-    <div className="row" style={{ gap: "0.25rem", flexWrap: "wrap" }}>
-      <label className="muted" style={{ fontSize: "0.8rem" }}>Heal</label>
-      <input
-        type="number"
-        min={1}
-        value={amount}
-        onChange={(e) => setAmount(Math.max(1, Number(e.currentTarget.value)))}
-        style={{ width: "3.5rem" }}
-      />
-      {entities.map((e) => (
-        <button key={e.id} onClick={() => heal(e.id, e.isChar)}>
-          {e.name}
-        </button>
-      ))}
-    </div>
-  );
+function saveStatBlock(b: EncounterStatBlock) {
+  void useStore.getState().saveStatBlock(b);
 }
 
 function CombatResult({ outcome }: { outcome: EngineOutcome }) {

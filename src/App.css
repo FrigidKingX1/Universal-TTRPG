@@ -566,3 +566,161 @@ select:focus {
 .cf-editor .attr input {
   width: 3.5rem;
 }
+
+/* Combat Tracker */
+.combat-tracker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.tracker-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tracker-round {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.tracker-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.combatant-card.current-turn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.turn-badge {
+  background: #9ece6a;
+}
+
+.current-turn-row {
+  background: rgba(122, 162, 247, 0.08);
+  border-radius: 4px;
+}
+
+/* Custom HP Row */
+.custom-hp-row {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Combat Log */
+.combat-log-section {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.log-toggle {
+  font-size: 0.8rem;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.6rem;
+}
+
+.log-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.combat-log {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.combat-log-entry {
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.combat-log-entry:last-child {
+  border-bottom: none;
+}
+
+/* Quick Roll */
+.quick-roll-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 0.35rem;
+}
+
+.roll-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.roll-btn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.roll-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.roll-quick-result {
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Suggestion Chips */
+.suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.suggestion-btn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.suggestion-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Log Search */
+.log-search {
+  margin-bottom: 0.4rem;
+}
+
+.log-search input {
+  flex: 1;
+  min-width: 120px;
+}

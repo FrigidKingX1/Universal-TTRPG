@@ -39,6 +39,8 @@ export interface AutoDmState {
   dmHistory: import("./types").DmResponse[];
   initiativeOrder: InitiativeEntry[];
   combatantStates: Record<string, CombatantState>;
+  currentRound: number;
+  currentTurnIndex: number;
 
   // Ollama status (polled from Tools tab).
   ollama: { reachable: boolean; models: string[]; currentModel: string };
@@ -79,6 +81,8 @@ export interface AutoDmState {
     combatants: (CharacterProfile | EncounterStatBlock)[],
     formula?: string,
   ) => Promise<void>;
+  nextTurn: () => void;
+  endCombat: () => void;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -145,6 +149,8 @@ export const useStore = create<AutoDmState>((set, get) => ({
   dmHistory: [],
   initiativeOrder: [],
   combatantStates: {},
+  currentRound: 0,
+  currentTurnIndex: 0,
   ollama: { reachable: false, models: [], currentModel: "llama3.2" },
 
   bootstrap: async () => {
@@ -339,8 +345,23 @@ export const useStore = create<AutoDmState>((set, get) => ({
 
   rollInitiative: async (combatants, formula) => {
     const order = await backend.initiative(combatants, formula ?? "");
-    set({ initiativeOrder: order });
+    set({ initiativeOrder: order, currentRound: 1, currentTurnIndex: 0 });
   },
+
+  nextTurn: () => set((s) => {
+    if (s.initiativeOrder.length === 0) return {};
+    const nextIdx = (s.currentTurnIndex + 1) % s.initiativeOrder.length;
+    const newRound = nextIdx === 0 ? s.currentRound + 1 : s.currentRound;
+    return { currentTurnIndex: nextIdx, currentRound: newRound };
+  }),
+
+  endCombat: () => set({
+    initiativeOrder: [],
+    currentRound: 0,
+    currentTurnIndex: 0,
+    combatantStates: {},
+    lastCombat: null,
+  }),
 }));
 
 let unlisteners: UnlistenFn[] = [];
