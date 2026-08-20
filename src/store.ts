@@ -171,6 +171,13 @@ export interface AutoDmState {
   addExplorationNode: (zoneId: string, name: string, description?: string) => Promise<void>;
   updateExplorationNode: (id: string, opts: { discovered?: boolean; safe?: boolean; description?: string; connections?: string[]; contents?: string[]; notes?: string }) => Promise<void>;
   deleteExplorationNode: (id: string) => Promise<void>;
+
+  // Expedition / Travel
+  currentNodeId: string | null;
+  travelLog: { nodeId: string; nodeName: string; timestamp: string; encounter: string | null }[];
+  startExpedition: (nodeId: string) => void;
+  travelToNode: (nodeId: string) => Promise<void>;
+  endExpedition: () => void;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -253,6 +260,8 @@ export const useStore = create<AutoDmState>((set, get) => ({
   explorationZones: [],
   explorationNodes: [],
   activeZoneId: null,
+  currentNodeId: null,
+  travelLog: [],
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -1123,6 +1132,50 @@ export const useStore = create<AutoDmState>((set, get) => ({
     } catch (e) {
       get().showToast(`Error: ${e}`);
     }
+  },
+
+  // Expedition / Travel
+  startExpedition: (nodeId) => {
+    const node = get().explorationNodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    set({ currentNodeId: nodeId, travelLog: [{ nodeId, nodeName: node.name, timestamp: new Date().toISOString(), encounter: null }] });
+  },
+  travelToNode: async (nodeId) => {
+    const { currentNodeId, explorationNodes, activeZoneId } = get();
+    if (!currentNodeId || !activeZoneId) return;
+    const current = explorationNodes.find((n) => n.id === currentNodeId);
+    if (!current) return;
+    const target = explorationNodes.find((n) => n.id === nodeId);
+    if (!target) return;
+    if (!current.connections.includes(nodeId)) {
+      get().showToast("No path to that node");
+      return;
+    }
+    // Discover the target node
+    if (!target.discovered) {
+      await get().updateExplorationNode(nodeId, { discovered: true });
+    }
+    // Random encounter check: d10 vs zone danger level
+    const zone = get().explorationZones.find((z) => z.id === activeZoneId);
+    const dangerLevel = zone?.danger_level ?? 0;
+    let encounter: string | null = null;
+    if (dangerLevel > 0) {
+      const roll = Math.floor(Math.random() * 10) + 1;
+      if (roll <= dangerLevel) {
+        encounter = `Random encounter! (rolled ${roll} vs danger ${dangerLevel})`;
+        get().showToast(encounter);
+      }
+    }
+    const entry = { nodeId, nodeName: target.name, timestamp: new Date().toISOString(), encounter };
+    set((s) => ({ currentNodeId: nodeId, travelLog: [...s.travelLog, entry] }));
+  },
+  endExpedition: () => {
+    const { travelLog, activeSceneId } = get();
+    if (activeSceneId && travelLog.length > 0) {
+      const summary = travelLog.map((e) => `${e.nodeName}${e.encounter ? ` — ${e.encounter}` : ""}`).join(" → ");
+      void backend.appendLog(activeSceneId, "Expedition", `Travel: ${summary}`).catch(() => {});
+    }
+    set({ currentNodeId: null, travelLog: [] });
   },
 }));
 

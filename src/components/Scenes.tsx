@@ -518,12 +518,17 @@ export function ExplorationPanel() {
   const zones = useStore((s) => s.explorationZones);
   const nodes = useStore((s) => s.explorationNodes);
   const activeZoneId = useStore((s) => s.activeZoneId);
+  const currentNodeId = useStore((s) => s.currentNodeId);
+  const travelLog = useStore((s) => s.travelLog);
   const setActiveZone = useStore((s) => s.setActiveZone);
   const addExplorationZone = useStore((s) => s.addExplorationZone);
   const deleteExplorationZone = useStore((s) => s.deleteExplorationZone);
   const addExplorationNode = useStore((s) => s.addExplorationNode);
   const updateExplorationNode = useStore((s) => s.updateExplorationNode);
   const deleteExplorationNode = useStore((s) => s.deleteExplorationNode);
+  const startExpedition = useStore((s) => s.startExpedition);
+  const travelToNode = useStore((s) => s.travelToNode);
+  const endExpedition = useStore((s) => s.endExpedition);
 
   const [zoneName, setZoneName] = useState("");
   const [zoneType, setZoneType] = useState<string>("hex");
@@ -591,15 +596,49 @@ export function ExplorationPanel() {
 
                 {nodes.length === 0 && <p className="muted" style={{ fontSize: "0.75rem" }}>No nodes yet.</p>}
 
+                {!currentNodeId && nodes.length > 0 && (
+                  <p className="muted" style={{ fontSize: "0.75rem" }}>Click a node to start an expedition.</p>
+                )}
+                {currentNodeId && (
+                  <div style={{ fontSize: "0.75rem", margin: "0.3rem 0", padding: "0.3rem 0.5rem", background: "var(--accent-bg, #1a2a3a)", borderRadius: "4px" }}>
+                    <strong>Expedition active</strong> — at: {nodes.find((n) => n.id === currentNodeId)?.name ?? "unknown"}
+                    <button style={{ fontSize: "0.7rem", marginLeft: "0.5rem" }} onClick={() => void endExpedition()}>End Expedition</button>
+                  </div>
+                )}
+
+                {travelLog.length > 1 && (
+                  <div style={{ fontSize: "0.7rem", margin: "0.2rem 0" }}>
+                    <span className="muted">Trail: </span>
+                    {travelLog.map((e, i) => (
+                      <span key={i}>
+                        {i > 0 && " → "}
+                        <span style={{ color: e.encounter ? "#e44" : undefined }}>{e.nodeName}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <ul className="card-list" style={{ marginTop: "0.3rem" }}>
                   {nodes.map((n) => (
-                    <li key={n.id} className="card" style={{ padding: "0.3rem 0.5rem" }}>
+                    <li key={n.id} className="card" style={{ padding: "0.3rem 0.5rem", border: currentNodeId === n.id ? "1px solid var(--accent, #4a8)" : undefined }}>
                       <div className="card-row">
                         <strong style={{ fontSize: "0.8rem", opacity: n.discovered ? 1 : 0.5 }}>
                           {n.name} {!n.discovered && <span className="muted">(hidden)</span>}
                         </strong>
                         {n.safe && <span className="badge" style={{ fontSize: "0.65rem", background: "#3a3" }}>safe</span>}
                         {!n.safe && <span className="badge" style={{ fontSize: "0.65rem", background: "#a33" }}>danger</span>}
+                        {currentNodeId && currentNodeId !== n.id && nodes.find((c) => c.id === currentNodeId)?.connections.includes(n.id) && (
+                          <button
+                            style={{ fontSize: "0.7rem", fontWeight: "bold" }}
+                            onClick={() => void travelToNode(n.id)}
+                          >Travel here</button>
+                        )}
+                        {!currentNodeId && (
+                          <button
+                            style={{ fontSize: "0.7rem" }}
+                            onClick={() => startExpedition(n.id)}
+                          >Start</button>
+                        )}
                         <button
                           style={{ fontSize: "0.7rem" }}
                           onClick={() => void updateExplorationNode(n.id, { discovered: true })}
@@ -631,6 +670,23 @@ export function ExplorationPanel() {
                               <option value="false">Dangerous</option>
                             </select>
                           </label>
+                          <div style={{ fontSize: "0.75rem" }}>
+                            <span className="muted">Connections: </span>
+                            {nodes.filter((o) => o.id !== n.id).map((o) => (
+                              <label key={o.id} style={{ marginRight: "0.4rem", cursor: "pointer" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={n.connections.includes(o.id)}
+                                  onChange={() => {
+                                    const newConns = n.connections.includes(o.id)
+                                      ? n.connections.filter((c) => c !== o.id)
+                                      : [...n.connections, o.id];
+                                    void updateExplorationNode(n.id, { connections: newConns });
+                                  }}
+                                /> {o.name}
+                              </label>
+                            ))}
+                          </div>
                           <input
                             value={editContents}
                             onChange={(e) => setEditContents(e.currentTarget.value)}

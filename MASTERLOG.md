@@ -232,6 +232,15 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 - **3 model tests**: ZoneType parse/display, zone roundtrip, node roundtrip
 - **1 DB test**: full zone+node CRUD lifecycle with cascade delete
 
+### Layer 6 — Expedition & Travel
+- **Expedition state**: currentNodeId + travelLog tracking party position through exploration zones
+- **startExpedition**: begin at a node, initialize travel log
+- **travelToNode**: move to adjacent node (validates connections), auto-discovers target
+- **Random encounter check**: d10 roll vs zone danger level on each move
+- **endExpedition**: log travel summary to session log, clear state
+- **Travel UI**: trail breadcrumb display, Travel Here buttons on connected nodes, Start/End expedition
+- **Connection editor**: checkbox grid in node edit form to set connected nodes
+
 ---
 
 ## Frontend Features
