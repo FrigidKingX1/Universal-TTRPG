@@ -293,6 +293,38 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 
 ---
 
+## UI Overhaul & Launcher Shortcut
+
+### Launcher Shortcut
+- **launch-autodm.bat** — Sets up Rust/Cargo path and invokes `npm run tauri dev`
+- **launch-autodm-silent.vbs** — Silent launcher (no console window); double-click to start
+- User can pin shortcut to Start Menu/Taskbar for one-click launching
+
+### Modern Sidebar Navigation (App.tsx)
+- Replaced top-tab navigation with collapsible sidebar (240px / 60px)
+- **Ctrl+B** toggles sidebar collapse state
+- **Keyboard shortcuts**: 1-5 switch sections, Esc dismisses errors
+- Sidebar footer shows Ollama connectivity status (online/offline dot indicator)
+- Top bar displays active scene badge (#number, title, CF)
+- Settings icon button in top-right corner
+
+### Modern Dark Theme (App.css)
+- Complete color palette redesign with CSS variables:
+  - `--bg: #0a0b0f` — deeper background
+  - `--panel: #14161a` — slightly lighter for panels
+  - `--sidebar-bg: #0f1115` — distinct sidebar background
+  - Added accent hover states, shadow variables, transition timing
+- App shell layout: fixed sidebar + scrollable main content
+- Top bar with blur backdrop effect and sticky positioning
+- Enhanced button styling: hover scale effect, focus rings, consistent transitions
+- Improved panel styling: subtle hover border transitions
+- Redesigned toast notifications with smoother animations
+- Status dot indicator (green pulse for online, gray for offline)
+- Keyboard shortcut hints in sidebar footer
+- Font family tokens for monospace and sans-serif
+
+---
+
 ## Frontend Features
 
 ### Characters Tab
@@ -447,4 +479,7 @@ npx vite build
   - **Chaos Factor auto-adjust** (favor/against after scene completion)
   - **Lines & Veils safety** (hard bans + fade-to-black, injected into DM prompt)
   - **Damage Types** (12 types, resistance/vulnerability/immunity modifiers)
+- **Modern sidebar UI** — collapsible navigation with keyboard shortcuts (1-5, Esc, Ctrl+B)
+- **Launcher shortcut** — .bat + .vbs for one-click app launching
+- **Modern dark theme** — redesigned color palette with acrylic sidebar and top bar
   - **Doom Clocks** (tick-based countdown with tick/advance/reset/delete, SQLite-persisted)
