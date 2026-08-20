@@ -4,7 +4,7 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — 16 commits, 54 passing tests, fully functional core loop.
+**Status:** Active development — 16 commits, 56 passing tests, fully functional core loop.
 
 ---
 
@@ -113,14 +113,14 @@ auto-dm/
 
 ## Core Engine Tests
 
-52 tests across all modules, plus 2 integration tests in db.rs. All pass clean.
+56 tests total: 54 in core modules + 2 integration tests in db.rs. All pass clean.
 
 ```
 dice::tests          — 11 tests (expressions, refs, parens, caps, edge cases)
 engine::tests        — 9 tests (combat, healing, initiative, prerequisites)
 intent::tests        — 5 tests (narration, dice, NPC speech, garbage input)
 intent::stripped_json — 4 tests (code fences, empty input)
-llm::tests           — 7 tests (pipeline, dice roll DC, events, stub)
+llm::tests           — 9 tests (pipeline, dice roll DC, DC clamping, events, stub)
 memory::tests        — 4 tests (ring buffer, context, zero max)
 oracle::tests        — 10 tests (fate chart, chaos, events, meaning table)
 db::tests            — 2 tests (migrations, CRUD)
@@ -283,7 +283,7 @@ npx vite build
 
 ## Current State (as of df3ef8d)
 
-- 54 tests passing (52 core + 2 integration)
+- 56 tests passing (54 core + 2 integration)
 - Clippy clean (zero warnings)
 - TS + Vite build clean
 - All core gameplay loops functional:

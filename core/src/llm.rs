@@ -247,7 +247,7 @@ fn execute_intent(
             reason,
         } => {
             let mod_v = modifier.unwrap_or(0);
-            let target_dc = dc.unwrap_or(10);
+            let target_dc = clamp_dc(dc.unwrap_or(10));
             let detail = dice
                 .evaluate(&format!("1d20 + {mod_v}"))
                 .map(|r| r.detail)
@@ -280,6 +280,12 @@ fn execute_intent(
         }
     };
     (narrative, extra)
+}
+
+/// Clamp a DC to the sane range 1..=30. LLMs may invent extreme values;
+/// this prevents game-breaking DCs while keeping the LLM flexible.
+fn clamp_dc(raw: i32) -> i32 {
+    raw.clamp(1, 30)
 }
 
 /// Deterministic narrative produced when a stub backend is active.
@@ -485,6 +491,30 @@ mod tests {
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(out.mechanical_events.iter().any(|e| e.contains("DC 10")));
+    }
+
+    #[test]
+    fn dc_clamped_to_valid_range() {
+        assert_eq!(clamp_dc(0), 1);
+        assert_eq!(clamp_dc(-5), 1);
+        assert_eq!(clamp_dc(15), 15);
+        assert_eq!(clamp_dc(30), 30);
+        assert_eq!(clamp_dc(99), 30);
+    }
+
+    #[test]
+    fn pipeline_clamps_extreme_dc() {
+        let pipeline = DmPipeline::new(StaticLlmBackend(
+            r#"{"type":"dice_roll","payload":{"skill":"Luck","dc":999}}"#,
+        ));
+        let request = DmRequest {
+            scene_summary: String::new(),
+            player_action: "I try my luck.".to_string(),
+            chaos_factor: 5,
+            memory_context: None,
+        };
+        let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
+        assert!(out.mechanical_events.iter().any(|e| e.contains("DC 30")));
     }
 
     // Minimal executor for the async-trait futures in unit tests (no tokio dep).
