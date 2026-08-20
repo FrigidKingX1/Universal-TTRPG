@@ -98,6 +98,7 @@ pub fn run() {
             commands::active_scene,
             commands::set_active_scene,
             commands::delete_scene,
+            commands::update_scene_summary,
             commands::append_log,
             commands::list_logs,
             commands::roll_dice,

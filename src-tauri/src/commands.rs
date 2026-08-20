@@ -145,6 +145,19 @@ pub async fn delete_scene(state: State<'_, AppState>, id: String) -> CmdResult<b
     state.repo.delete_scene(&id).await.map_err(err)
 }
 
+#[tauri::command]
+pub async fn update_scene_summary(
+    state: State<'_, AppState>,
+    id: String,
+    summary: Option<String>,
+) -> CmdResult<()> {
+    state
+        .repo
+        .update_scene_summary(&id, summary.as_deref())
+        .await
+        .map_err(err)
+}
+
 // ---------- Log --------------------------------------------------------
 
 #[tauri::command]

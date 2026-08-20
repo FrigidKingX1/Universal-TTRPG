@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { backend } from "../backend";
 import { useStore } from "../store";
 
 export function Scenes() {
@@ -57,10 +58,42 @@ export function Scenes() {
                 Delete
               </button>
             </div>
+            {sc.id === activeSceneId && <SceneSummaryEditor scene={sc} />}
           </li>
         ))}
       </ul>
       {scenes.length === 0 && <p className="muted">No scenes yet.</p>}
     </section>
+  );
+}
+
+function SceneSummaryEditor({ scene }: { scene: { id: string; summary_text?: string | null; title: string } }) {
+  const [text, setText] = useState(scene.summary_text ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await backend.updateSceneSummary(scene.id, text.trim() || null);
+    } catch {
+      // best-effort
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="sheet">
+      <textarea
+        className="summary-input"
+        value={text}
+        onChange={(e) => setText(e.currentTarget.value)}
+        placeholder={`Describe what's happening in "${scene.title}"...`}
+        rows={3}
+      />
+      <button onClick={() => void save()} disabled={saving}>
+        {saving ? "Saving…" : "Save Summary"}
+      </button>
+    </div>
   );
 }

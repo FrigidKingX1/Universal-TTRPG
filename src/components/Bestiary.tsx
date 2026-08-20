@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useStore, newStatBlock } from "../store";
-import type { EncounterStatBlock } from "../types";
+import type { EncounterStatBlock, Size } from "../types";
 
 export function Bestiary() {
   const statBlocks = useStore((s) => s.statBlocks);
   const saveStatBlock = useStore((s) => s.saveStatBlock);
   const deleteStatBlock = useStore((s) => s.deleteStatBlock);
+  const actions = useStore((s) => s.actions);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const create = () => {
@@ -23,8 +24,14 @@ export function Bestiary() {
           <li key={b.id} className="card">
             <div className="card-row">
               <strong>{b.name}</strong>
+              <span className="muted">
+                {b.size ?? "Medium"} {b.type ?? "creature"}
+              </span>
               <span className="muted">CR {b.challenge_rating}</span>
               <span className="muted">AC {b.armor_class}</span>
+              <span className="muted">
+                HP {b.hit_points.current}/{b.hit_points.maximum}
+              </span>
               <button onClick={() => setEditingId(editingId === b.id ? null : b.id)}>
                 {editingId === b.id ? "Close" : "Edit"}
               </button>
@@ -32,7 +39,23 @@ export function Bestiary() {
                 Delete
               </button>
             </div>
-            {editingId === b.id && <StatBlockEditor block={b} />}
+            <div className="hp-bar">
+              <div
+                className={`hp-bar-fill ${
+                  b.hit_points.current <= 0
+                    ? "dead"
+                    : b.hit_points.current < b.hit_points.maximum * 0.25
+                      ? "critical"
+                      : b.hit_points.current < b.hit_points.maximum * 0.5
+                        ? "wounded"
+                        : "healthy"
+                }`}
+                style={{
+                  width: `${Math.max(0, Math.min(100, (b.hit_points.current / b.hit_points.maximum) * 100))}%`,
+                }}
+              />
+            </div>
+            {editingId === b.id && <StatBlockEditor block={b} allActions={actions} />}
           </li>
         ))}
       </ul>
@@ -41,30 +64,128 @@ export function Bestiary() {
   );
 }
 
-function StatBlockEditor({ block }: { block: EncounterStatBlock }) {
+const SIZES: Size[] = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
+
+function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; allActions: { id: string; name: string }[] }) {
   const saveStatBlock = useStore((s) => s.saveStatBlock);
-  const [hp, setHp] = useState(block.hit_points.current);
+  const [name, setName] = useState(block.name);
+  const [cr, setCr] = useState(block.challenge_rating);
+  const [size, setSize] = useState<Size>(block.size ?? "medium");
+  const [type, setType] = useState(block.type ?? "");
+  const [alignment, setAlignment] = useState(block.alignment ?? "");
   const [ac, setAc] = useState(block.armor_class);
+  const [hp, setHp] = useState(block.hit_points.current);
+  const [maxHp, setMaxHp] = useState(block.hit_points.maximum);
+  const [hpFormula, setHpFormula] = useState(block.hit_points.formula ?? "");
+  const [speed, setSpeed] = useState(block.speed_feet ?? 30);
+  const [attrs, setAttrs] = useState(block.attributes);
+  const [actions, setActions] = useState(block.actions);
 
   const save = () => {
     void saveStatBlock({
       ...block,
+      name: name.trim() || block.name,
+      challenge_rating: cr,
+      size,
+      type: type.trim() || undefined,
+      alignment: alignment.trim() || undefined,
       armor_class: ac,
-      hit_points: { ...block.hit_points, current: Math.max(0, hp), maximum: Math.max(1, hp) },
+      hit_points: {
+        current: Math.max(0, hp),
+        maximum: Math.max(1, maxHp),
+        formula: hpFormula.trim() || undefined,
+      },
+      speed_feet: speed,
+      attributes: attrs,
+      actions,
     });
   };
 
+  const toggleAction = (id: string) =>
+    setActions(actions.includes(id) ? actions.filter((a) => a !== id) : [...actions, id]);
+
   return (
     <div className="sheet">
-      <label className="attr">
-        <span>AC</span>
-        <input type="number" value={ac} onChange={(e) => setAc(Number(e.currentTarget.value))} />
-      </label>
-      <label className="attr">
-        <span>HP</span>
-        <input type="number" value={hp} onChange={(e) => setHp(Number(e.currentTarget.value))} />
-      </label>
-      <button onClick={save}>Save</button>
+      <div className="attr-grid">
+        <label className="attr">
+          <span>Name</span>
+          <input value={name} onChange={(e) => setName(e.currentTarget.value)} />
+        </label>
+        <label className="attr">
+          <span>CR</span>
+          <input type="number" min={0} step={0.25} value={cr} onChange={(e) => setCr(Number(e.currentTarget.value))} />
+        </label>
+        <label className="attr">
+          <span>Size</span>
+          <select value={size} onChange={(e) => setSize(e.currentTarget.value as Size)}>
+            {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+        <label className="attr">
+          <span>Type</span>
+          <input value={type} onChange={(e) => setType(e.currentTarget.value)} placeholder="beast, undead, etc." />
+        </label>
+        <label className="attr">
+          <span>Align</span>
+          <input value={alignment} onChange={(e) => setAlignment(e.currentTarget.value)} placeholder="neutral evil" />
+        </label>
+      </div>
+
+      <h3>Combat Stats</h3>
+      <div className="attr-grid">
+        <label className="attr">
+          <span>AC</span>
+          <input type="number" min={0} value={ac} onChange={(e) => setAc(Number(e.currentTarget.value))} />
+        </label>
+        <label className="attr">
+          <span>HP</span>
+          <input type="number" min={0} value={hp} onChange={(e) => setHp(Number(e.currentTarget.value))} />
+        </label>
+        <label className="attr">
+          <span>Max HP</span>
+          <input type="number" min={1} value={maxHp} onChange={(e) => setMaxHp(Number(e.currentTarget.value))} />
+        </label>
+        <label className="attr">
+          <span>Formula</span>
+          <input value={hpFormula} onChange={(e) => setHpFormula(e.currentTarget.value)} placeholder="2d6" />
+        </label>
+        <label className="attr">
+          <span>Speed</span>
+          <input type="number" min={0} value={speed} onChange={(e) => setSpeed(Number(e.currentTarget.value))} />
+        </label>
+      </div>
+      <div className="hp-bar">
+        <div
+          className={`hp-bar-fill ${hp <= 0 ? "dead" : hp < maxHp * 0.25 ? "critical" : hp < maxHp * 0.5 ? "wounded" : "healthy"}`}
+          style={{ width: `${Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100))}%` }}
+        />
+      </div>
+
+      <h3>Attributes</h3>
+      <div className="attr-grid">
+        {Object.entries(attrs).map(([k, v]) => (
+          <label key={k} className="attr">
+            <span>{k}</span>
+            <input type="number" value={v} onChange={(e) => setAttrs({ ...attrs, [k]: Number(e.currentTarget.value) })} />
+          </label>
+        ))}
+      </div>
+
+      <h3>Actions</h3>
+      <div className="action-chips">
+        {allActions.map((a) => (
+          <button
+            key={a.id}
+            className={actions.includes(a.id) ? "" : "muted"}
+            onClick={() => toggleAction(a.id)}
+          >
+            {actions.includes(a.id) ? "✓ " : ""}{a.name}
+          </button>
+        ))}
+        {allActions.length === 0 && <p className="muted">Create actions in the Characters tab first.</p>}
+      </div>
+
+      <button onClick={save}>Save Monster</button>
     </div>
   );
 }

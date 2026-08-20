@@ -52,6 +52,8 @@ export const backend = {
   setActiveScene: (id: string) =>
     invoke<void>("set_active_scene", { id }),
   deleteScene: (id: string) => invoke<boolean>("delete_scene", { id }),
+  updateSceneSummary: (id: string, summary: string | null) =>
+    invoke<void>("update_scene_summary", { id, summary }),
 
   // Log
   appendLog: (sceneId: string, speaker: string, content: string) =>

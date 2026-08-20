@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 
@@ -112,6 +112,7 @@ export function DmPanel() {
   const lastDm = useStore((s) => s.lastDm);
   const resolveDmAction = useStore((s) => s.resolveDmAction);
   const ollamaLive = useStore((s) => s.ollama.reachable);
+  const activeSceneId = useStore((s) => s.activeSceneId);
   const [action, setAction] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -136,6 +137,9 @@ export function DmPanel() {
           ({ollamaLive ? "Ollama live" : "stub backend"})
         </span>
       </h2>
+      {!activeSceneId && (
+        <p className="muted">Create or activate a scene to use the DM.</p>
+      )}
       <form
         className="row"
         onSubmit={(e) => {
@@ -147,23 +151,40 @@ export function DmPanel() {
           value={action}
           onChange={(e) => setAction(e.currentTarget.value)}
           placeholder="What does your character do?"
+          disabled={!activeSceneId}
         />
-        <button type="submit" disabled={busy}>
+        <button type="submit" disabled={busy || !activeSceneId}>
           {busy ? "Resolving…" : "Resolve"}
         </button>
       </form>
       {lastDm && (
-        <div className="combat-result">
-          <p>{lastDm.narrative}</p>
-          <p className="muted">
-            Fate: {lastDm.fate_interpretation} (rolled {lastDm.fate_roll} vs {lastDm.fate_target})
-          </p>
-          {lastDm.event_meaning && (
-            <p className="exceptional">
-              Random Event: {lastDm.event_meaning.action} the {lastDm.event_meaning.subject} —{" "}
-              {lastDm.event_meaning.descriptor}, {lastDm.event_meaning.focus}
+        <div className="dm-response">
+          <div className="narrative">{lastDm.narrative}</div>
+          <div className="dm-meta">
+            <p className="fate-line">
+              <strong>Fate:</strong> {lastDm.fate_interpretation}{" "}
+              <span className="muted">
+                (rolled {lastDm.fate_roll} vs {lastDm.fate_target})
+              </span>
             </p>
-          )}
+            {lastDm.mechanical_events.length > 0 && (
+              <div className="mechanical-events">
+                <strong>Mechanical Events:</strong>
+                <ul>
+                  {lastDm.mechanical_events.map((evt, i) => (
+                    <li key={i}>{evt}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {lastDm.event_meaning && (
+              <p className="exceptional">
+                Random Event: {lastDm.event_meaning.action} the {lastDm.event_meaning.subject} —{" "}
+                {lastDm.event_meaning.descriptor}, {lastDm.event_meaning.focus}
+              </p>
+            )}
+            <span className="muted">Source: {lastDm.source}</span>
+          </div>
         </div>
       )}
     </section>
@@ -174,6 +195,21 @@ export function SessionLog() {
   const logs = useStore((s) => s.logs);
   const activeSceneId = useStore((s) => s.activeSceneId);
   const [draft, setDraft] = useState("");
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom on new logs
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
+  const speakerClass = (speaker: string) => {
+    const s = speaker.toLowerCase();
+    if (s.includes("player")) return "speaker-player";
+    if (s.includes("combat")) return "speaker-combat";
+    if (s.includes("narrator") || s.includes("scene")) return "speaker-narrator";
+    if (s.includes("auto-dm") || s.includes("dm")) return "speaker-auto-dm";
+    return "speaker-default";
+  };
 
   const send = async () => {
     if (!activeSceneId || !draft.trim()) return;
@@ -192,10 +228,12 @@ export function SessionLog() {
         {logs.map((l) => (
           <p key={l.id} className="log-line">
             <span className="muted">[{l.timestamp.slice(11, 19)}]</span>{" "}
-            <strong>{l.speaker}:</strong> {l.content}
+            <span className={speakerClass(l.speaker)}><strong>{l.speaker}:</strong></span>{" "}
+            {l.content}
           </p>
         ))}
         {logs.length === 0 && <p className="muted">Nothing logged yet.</p>}
+        <div ref={logEndRef} />
       </div>
       <form
         className="row"

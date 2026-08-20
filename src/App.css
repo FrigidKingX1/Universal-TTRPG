@@ -227,3 +227,164 @@ button:disabled {
 .initiative {
   padding-left: 1.25rem;
 }
+
+.summary-input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 4rem;
+  margin-bottom: 0.5rem;
+}
+
+.summary-input:focus,
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.hp-bar {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.hp-bar-fill.healthy { background: #9ece6a; }
+.hp-bar-fill.wounded { background: #e0af68; }
+.hp-bar-fill.critical { background: var(--danger); }
+.hp-bar-fill.dead { background: #414868; }
+
+.speaker-player { color: #9ece6a; }
+.speaker-combat { color: var(--danger); }
+.speaker-narrator { color: var(--accent); }
+.speaker-auto-dm { color: #bb9af7; }
+.speaker-default { color: var(--text); }
+
+.panel > .sheet {
+  border-top: 1px solid var(--border);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted);
+}
+
+.combat-log-entry {
+  border-left: 2px solid var(--border);
+  padding-left: 0.5rem;
+  margin: 0.35rem 0;
+}
+
+.combat-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.combatant-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.hp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.hp-row .hp-bar {
+  flex: 1;
+}
+
+.initiative-section h3 {
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.initiative li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.dm-response {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.dm-response .narrative {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.dm-meta {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.fate-line {
+  margin: 0.25rem 0;
+}
+
+.mechanical-events {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.mechanical-events ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.mechanical-events li {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.action-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.action-chips button {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.ability-list {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+
+.ability-list li {
+  padding: 0.15rem 0;
+}

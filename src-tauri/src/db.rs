@@ -102,6 +102,7 @@ pub trait Repository: Send + Sync {
     async fn active_scene(&self) -> Result<Option<Scene>, DbError>;
     async fn set_active_scene(&self, id: &str) -> Result<(), DbError>;
     async fn delete_scene(&self, id: &str) -> Result<bool, DbError>;
+    async fn update_scene_summary(&self, id: &str, summary: Option<&str>) -> Result<(), DbError>;
 
     async fn append_log(
         &self,
@@ -432,6 +433,15 @@ impl Repository for SqliteRepository {
             .execute(&self.pool)
             .await?;
         Ok(res.rows_affected() > 0)
+    }
+
+    async fn update_scene_summary(&self, id: &str, summary: Option<&str>) -> Result<(), DbError> {
+        sqlx::query("UPDATE campaign_scenes SET summary_text = ? WHERE id = ?")
+            .bind(summary)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     async fn append_log(
