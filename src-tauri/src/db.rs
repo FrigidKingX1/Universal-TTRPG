@@ -153,6 +153,11 @@ pub trait Repository: Send + Sync {
     async fn append_memory(&self, speaker: &str, content: &str) -> Result<(), DbError>;
     async fn list_memory(&self, limit: i64) -> Result<Vec<(String, String)>, DbError>;
 
+    // Streaming checkpoints (fault-tolerant intermediate saves)
+    async fn save_stream_checkpoint(&self, id: &str, content: &str) -> Result<(), DbError>;
+    async fn load_stream_checkpoint(&self, id: &str) -> Result<Option<String>, DbError>;
+    async fn clear_stream_checkpoint(&self, id: &str) -> Result<(), DbError>;
+
     // Plot Threads
     async fn save_thread(
         &self,
@@ -573,6 +578,11 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
             speaker TEXT NOT NULL,
             content TEXT NOT NULL,
             seq INTEGER
+        );",
+        "CREATE TABLE IF NOT EXISTS stream_checkpoints (
+            id TEXT PRIMARY KEY,
+            content TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
         // Indexes for hot query paths (idempotent).
         "CREATE INDEX IF NOT EXISTS idx_log_entries_scene_ts ON log_entries(scene_id, timestamp);",
@@ -1345,6 +1355,38 @@ impl Repository for SqliteRepository {
         .fetch_all(&self.pool)
         .await?;
         Ok(rows)
+    }
+
+    // ── Streaming checkpoints ────────────────────────────────────────
+
+    async fn save_stream_checkpoint(&self, id: &str, content: &str) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO stream_checkpoints (id, content, updated_at)
+             VALUES (?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(id) DO UPDATE SET content = excluded.content, updated_at = CURRENT_TIMESTAMP",
+        )
+        .bind(id)
+        .bind(content)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn load_stream_checkpoint(&self, id: &str) -> Result<Option<String>, DbError> {
+        let row: Option<(String,)> =
+            sqlx::query_as("SELECT content FROM stream_checkpoints WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
+        Ok(row.map(|(c,)| c))
+    }
+
+    async fn clear_stream_checkpoint(&self, id: &str) -> Result<(), DbError> {
+        sqlx::query("DELETE FROM stream_checkpoints WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     // ── Plot Threads ────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, NpcNotesPan
 import { CampaignExport } from "./components/CampaignExport";
 import { ShortcutsHelp } from "./components/ShortcutsHelp";
 import { OnboardingOverlay } from "./components/OnboardingOverlay";
+import { Titlebar } from "./components/Titlebar";
 import { usePanelResize } from "./hooks/usePanelResize";
 import "./App.css";
 
@@ -145,7 +146,9 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
+    <>
+      <Titlebar />
+      <div className="app-shell">
       <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`} ref={sidebarRef}>
         <div className="sidebar-header">
           <img src="/icon.svg" alt="" aria-hidden="true" className="app-logo" />
@@ -240,6 +243,12 @@ function App() {
             <button onClick={() => setError(null)} aria-label="Dismiss error">✕</button>
           </div>
         )}
+        {!loading && !ollamaStatus && (
+          <div className="banner warning" role="status">
+            <span>Ollama Service Offline — AI generation uses the offline stub. Run <code>ollama serve</code> and <code>ollama run llama3.2</code> to enable full generation.</span>
+            <button onClick={() => void useStore.getState().pollOllamaModels()} aria-label="Retry Ollama connection">Retry</button>
+          </div>
+        )}
 
         {loading ? (
           <div className="loading-overlay" role="status" aria-label="Loading campaign">
@@ -297,7 +306,8 @@ function App() {
       {shortcutsOpen && (
         <ShortcutsHelp onClose={() => setShortcutsOpen(false)} />
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useStore } from "../store";
 import type { StoryLogEntry } from "../types";
 import "../App.css";
@@ -41,9 +42,24 @@ export function NarrativeStream() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  const rowVirtualizer = useVirtualizer({
+    count: storyLog.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 88,
+    overscan: 8,
+  });
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
   useEffect(() => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      // For small histories, keep the classic auto-scroll; for virtualized
+      // histories, scroll the virtualizer to the last item.
+      if (storyLog.length > 30) {
+        rowVirtualizer.scrollToIndex(storyLog.length - 1, { align: "end" });
+      } else {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
     }
   }, [storyLog, dmIntent.streamingText]);
 
@@ -100,6 +116,59 @@ export function NarrativeStream() {
             <span className="fantasy-empty-icon" aria-hidden="true">📜</span>
             <span>No tale yet — speak your first action below.</span>
             <span className="rune-divider" aria-hidden="true">◆ — ◇ — ◆</span>
+          </div>
+        ) : storyLog.length > 30 ? (
+          <div
+            style={{
+              height: `${totalSize}px`,
+              width: "100%",
+              position: "relative",
+            }}
+            role="log"
+            aria-label="Story log"
+          >
+            {virtualItems.map((virtualRow) => {
+              const entry = storyLog[virtualRow.index];
+              return (
+                <div
+                  key={entry.id}
+                  className="story-entry"
+                  data-speaker={entry.speaker}
+                  data-role={entry.role}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <div
+                    className="story-speaker"
+                    style={{ color: getSpeakerColor(entry.speaker) }}
+                    aria-label={`Speaker: ${entry.speaker}`}
+                  >
+                    {entry.speaker}
+                  </div>
+                  <div className="story-content">{entry.content}</div>
+                  <div className="story-meta">
+                    <span
+                      className="story-role"
+                      style={{ color: getRoleColor(entry.role) }}
+                      aria-label={`Role: ${entry.role}`}
+                    >
+                      {entry.role}
+                    </span>
+                    <time className="story-time" dateTime={entry.timestamp}>
+                      {new Date(entry.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="story-log" role="log" aria-label="Story log">

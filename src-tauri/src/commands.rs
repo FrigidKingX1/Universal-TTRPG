@@ -1245,20 +1245,44 @@ pub async fn process_dm_intent(
     }
 
     // Stream tokens to the UI as they arrive so the narrative appears live
-    // instead of after a long silent wait.
+    // instead of after a long silent wait. Every ~20 tokens (or on paragraph
+    // breaks) the Rust task also writes an intermediate checkpoint to SQLite
+    // so a webview crash mid-generation can be recovered without re-querying.
     let app_for_tokens = app.clone();
+    let repo_for_checkpoint = state.repo.clone();
+    let checkpoint_id = req
+        .scene_id
+        .clone()
+        .unwrap_or_else(|| "global".to_string());
     let mut token_buffer = String::new();
+    let mut token_count = 0usize;
     let response = {
         let dm = state.dm.lock().await;
         let pipeline = dm.as_ref().ok_or_else(|| "DM backend not initialized".to_string())?;
         pipeline
             .resolve_action_streaming(&req, None, &mut |token: &str| {
                 token_buffer.push_str(token);
+                token_count += 1;
+                let should_checkpoint = token_count.is_multiple_of(20) || token.contains("\n\n");
                 let _ = app_for_tokens.emit("dm:token", token);
+                if should_checkpoint {
+                    let content = token_buffer.clone();
+                    let repo = repo_for_checkpoint.clone();
+                    let id = checkpoint_id.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = repo.save_stream_checkpoint(&id, &content).await;
+                    });
+                }
             })
             .await
             .map_err(|e| e.to_string())?
     };
+
+    // Clear the checkpoint now that the full response is in hand.
+    let _ = state
+        .repo
+        .clear_stream_checkpoint(&checkpoint_id)
+        .await;
 
     let mut response = response;
     apply_session_effects(&state, &req, &mut response).await;

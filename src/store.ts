@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { backend } from "./backend";
 import type {
@@ -263,7 +264,8 @@ export function newStatBlock(name: string): EncounterStatBlock {
   };
 }
 
-export const useStore = create<AutoDmState>((set, get) => ({
+export const useStore = create<AutoDmState>()(
+  subscribeWithSelector((set, get) => ({
   loading: true,
   error: null,
   toast: null,
@@ -1467,7 +1469,28 @@ export const useStore = create<AutoDmState>((set, get) => ({
   },
 
   clearStoryLog: () => set({ storyLog: [] }),
-}));
+})));
+
+// Debounced autosave: prevents write-chatter where every Zustand mutation
+// would trigger a Tauri IPC payload. Waits 800 ms after the last relevant
+// state change before flushing to disk via exportCampaign.
+let autosaveDebounce: ReturnType<typeof setTimeout>;
+useStore.subscribe((state, prevState) => {
+  if (
+    state.characters !== prevState.characters ||
+    state.scenes !== prevState.scenes ||
+    state.plotThreads !== prevState.plotThreads ||
+    state.npcCharacters !== prevState.npcCharacters ||
+    state.doomClocks !== prevState.doomClocks ||
+    state.explorationZones !== prevState.explorationZones ||
+    state.explorationNodes !== prevState.explorationNodes
+  ) {
+    clearTimeout(autosaveDebounce);
+    autosaveDebounce = setTimeout(() => {
+      void useStore.getState().autoSave();
+    }, 800);
+  }
+});
 
 // Persist combat state to SQLite (best-effort).
 function logSpeakerToRole(speaker: string): StoryLogEntry["role"] {

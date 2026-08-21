@@ -96,6 +96,9 @@ pub fn run() {
     setup_panic_hook();
 
     let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_frame::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -199,6 +202,37 @@ pub fn run() {
                 current_model: Mutex::new(persisted_model),
                 current_num_predict: Mutex::new(persisted_num_predict),
             });
+
+            #[cfg(target_os = "windows")]
+            {
+                use tauri_plugin_frame::WebviewWindowExt;
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(e) = window.create_overlay_titlebar() {
+                        log::warn!("Failed to create overlay titlebar: {e}");
+                    }
+                }
+            }
+
+            // Global shortcut: CommandOrControl+Shift+D toggles focus to the main window.
+            #[cfg(desktop)]
+            {
+                use tauri::Emitter as _;
+                use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+                if let Err(e) = app.global_shortcut().on_shortcut(
+                    "CommandOrControl+Shift+D",
+                    |app, _shortcut, event| {
+                        if event.state == ShortcutState::Pressed {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                            let _ = app.emit("global:toggle-focus", ());
+                        }
+                    },
+                ) {
+                    log::warn!("Failed to register global shortcut: {e}");
+                }
+            }
 
             log::info!("Auto-DM started successfully");
             Ok(())
