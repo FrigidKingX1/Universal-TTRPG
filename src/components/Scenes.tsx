@@ -276,7 +276,15 @@ function ThreadsPanel() {
   const resolveThread = useStore((s) => s.resolveThread);
   const abandonThread = useStore((s) => s.abandonThread);
   const deleteThread = useStore((s) => s.deleteThread);
+  const { confirm, dialog } = useConfirmDialog();
   const [desc, setDesc] = useState("");
+
+  const requestAbandon = async (id: string, d: string) => {
+    if (await confirm({ title: "Abandon Thread", message: `Abandon "${d}"? You can still delete it after.` })) void abandonThread(id);
+  };
+  const requestDelete = async (id: string, d: string) => {
+    if (await confirm({ title: "Delete Thread", message: `Delete thread "${d}"? This cannot be undone.` })) void deleteThread(id);
+  };
 
   const openThreads = threads.filter((t) => t.status === "open");
   const closedThreads = threads.filter((t) => t.status !== "open");
@@ -297,7 +305,9 @@ function ThreadsPanel() {
       </form>
 
       {openThreads.length === 0 && closedThreads.length === 0 && (
-        <p className="muted" style={{ marginTop: "0.25rem" }}>No threads yet.</p>
+        <div className="fantasy-empty" style={{ padding: "0.6rem", marginTop: "0.4rem" }}>
+          <span>No threads yet — every tale needs a hook.</span>
+        </div>
       )}
 
       {openThreads.length > 0 && (
@@ -309,8 +319,8 @@ function ThreadsPanel() {
                 <div className="card-row">
                   <span>{t.description}</span>
                   <button className="muted" style={{ fontSize: "0.75rem" }} onClick={() => void resolveThread(t.id)}>Resolve</button>
-                  <button className="muted" style={{ fontSize: "0.75rem" }} onClick={() => void abandonThread(t.id)}>Abandon</button>
-                  <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void deleteThread(t.id)}>×</button>
+                  <button className="muted" style={{ fontSize: "0.75rem" }} onClick={() => void requestAbandon(t.id, t.description)}>Abandon</button>
+                  <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void requestDelete(t.id, t.description)}>×</button>
                 </div>
               </li>
             ))}
@@ -327,13 +337,14 @@ function ThreadsPanel() {
                 <div className="card-row">
                   <span style={{ textDecoration: "line-through" }}>{t.description}</span>
                   <span className="badge">{t.status}</span>
-                  <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void deleteThread(t.id)}>×</button>
+                  <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void requestDelete(t.id, t.description)}>×</button>
                 </div>
               </li>
             ))}
           </ul>
         </div>
       )}
+      {dialog}
     </div>
   );
 }
@@ -508,6 +519,10 @@ function DoomClocksPanel() {
   const advanceDoomClock = useStore((s) => s.advanceDoomClock);
   const resetDoomClock = useStore((s) => s.resetDoomClock);
   const deleteDoomClock = useStore((s) => s.deleteDoomClock);
+  const { confirm, dialog } = useConfirmDialog();
+  const requestDelete = async (id: string, label: string) => {
+    if (await confirm({ title: "Delete Doom Clock", message: `Delete "${label}"? This cannot be undone.` })) void deleteDoomClock(id);
+  };
 
   const [label, setLabel] = useState("");
   const [maxTicks, setMaxTicks] = useState(6);
@@ -529,7 +544,11 @@ function DoomClocksPanel() {
         <input value={consequence} onChange={(e) => setConsequence(e.currentTarget.value)} placeholder="Consequence…" style={{ flex: 3 }} />
         <button onClick={add} disabled={!label.trim() || !consequence.trim()}>Add</button>
       </div>
-      {doomClocks.length === 0 && <p className="muted" style={{ fontSize: "0.85rem" }}>No doom clocks.</p>}
+      {doomClocks.length === 0 && (
+        <div className="fantasy-empty" style={{ padding: "0.6rem" }}>
+          <span>No doom clocks — the hour is calm.</span>
+        </div>
+      )}
       <ul className="card-list">
         {doomClocks.map((clock) => (
           <li key={clock.id} className="card" style={{ opacity: clock.current === 0 ? 0.6 : 1 }}>
@@ -542,7 +561,7 @@ function DoomClocksPanel() {
                 <button onClick={() => void tickDoomClock(clock.id)} disabled={clock.current === 0} title="Advance 1 toward doom">Advance 1</button>
                 <button onClick={() => void advanceDoomClock(clock.id, 5)} disabled={clock.current === 0} title="Advance 5 toward doom">Advance 5</button>
                 <button onClick={() => void resetDoomClock(clock.id)} title="Reset">↺</button>
-                <button className="danger" onClick={() => void deleteDoomClock(clock.id)} title="Delete">×</button>
+                <button className="danger" onClick={() => void requestDelete(clock.id, clock.label)} title="Delete">×</button>
               </div>
             </div>
             <p className="muted" style={{ fontSize: "0.8rem", margin: "0.2rem 0 0" }}>
@@ -556,6 +575,7 @@ function DoomClocksPanel() {
           </li>
         ))}
       </ul>
+      {dialog}
     </div>
   );
 }
@@ -584,6 +604,14 @@ export function ExplorationPanel() {
   const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
   const [editContents, setEditContents] = useState("");
   const [editNotes, setEditNotes] = useState("");
+
+  const { confirm, dialog } = useConfirmDialog();
+  const requestDeleteZone = async (id: string, name: string) => {
+    if (await confirm({ title: "Delete Zone", message: `Delete zone "${name}" and all its nodes? This cannot be undone.` })) void deleteExplorationZone(id);
+  };
+  const requestDeleteNode = async (id: string, name: string) => {
+    if (await confirm({ title: "Delete Node", message: `Delete node "${name}"?` })) void deleteExplorationNode(id);
+  };
 
   const addZone = () => {
     if (!zoneName.trim()) return;
@@ -615,7 +643,11 @@ export function ExplorationPanel() {
         <button type="submit" disabled={!zoneName.trim()}>Add Zone</button>
       </form>
 
-      {zones.length === 0 && <p className="muted" style={{ marginTop: "0.25rem" }}>No exploration zones yet.</p>}
+      {zones.length === 0 && (
+        <div className="fantasy-empty" style={{ padding: "0.7rem", marginTop: "0.4rem" }}>
+          <span>No zones yet — chart your first region.</span>
+        </div>
+      )}
 
       <ul className="card-list" style={{ marginTop: "0.5rem" }}>
         {zones.map((z) => (
@@ -628,7 +660,7 @@ export function ExplorationPanel() {
               <span className="badge">{z.zone_type}</span>
               {z.danger_level > 0 && <span className="badge" style={{ background: "#a33" }}>Danger {z.danger_level}</span>}
               {z.mapped && <span className="badge" style={{ background: "#3a3" }}>Mapped</span>}
-              <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void deleteExplorationZone(z.id)}>×</button>
+              <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void requestDeleteZone(z.id, z.name)}>×</button>
             </div>
             {z.description && <p className="muted" style={{ fontSize: "0.75rem", margin: "0.15rem 0" }}>{z.description}</p>}
 
@@ -646,7 +678,11 @@ export function ExplorationPanel() {
                   <button type="submit" disabled={!nodeName.trim()}>Add Node</button>
                 </form>
 
-                {nodes.length === 0 && <p className="muted" style={{ fontSize: "0.75rem" }}>No nodes yet.</p>}
+                {nodes.length === 0 && (
+                  <div className="fantasy-empty" style={{ padding: "0.5rem", fontSize: "0.75rem" }}>
+                    <span>No nodes yet — add locations to this zone.</span>
+                  </div>
+                )}
 
                 {!currentNodeId && nodes.length > 0 && (
                   <p className="muted" style={{ fontSize: "0.75rem" }}>Click a node to start an expedition.</p>
@@ -703,7 +739,7 @@ export function ExplorationPanel() {
                         <button
                           className="danger"
                           style={{ fontSize: "0.7rem" }}
-                          onClick={() => void deleteExplorationNode(n.id)}
+                          onClick={() => void requestDeleteNode(n.id, n.name)}
                         >×</button>
                       </div>
                       {n.description && <p className="muted" style={{ fontSize: "0.7rem", margin: "0.1rem 0" }}>{n.description}</p>}
@@ -769,6 +805,8 @@ export function ExplorationPanel() {
           </li>
         ))}
       </ul>
+      {dialog}
     </div>
   );
 }
+

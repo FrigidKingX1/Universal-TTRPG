@@ -64,6 +64,8 @@ vi.mock("../backend", () => ({
     updateNpcCharacter: vi.fn().mockResolvedValue(undefined),
     listNpcCharacters: vi.fn().mockResolvedValue([]),
     deleteNpcCharacter: vi.fn().mockResolvedValue(true),
+    getOllamaNumPredict: vi.fn().mockResolvedValue(512),
+    setOllamaNumPredict: vi.fn().mockResolvedValue(undefined),
   },
 }));
 

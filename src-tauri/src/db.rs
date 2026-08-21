@@ -79,6 +79,8 @@ pub struct AppState {
     pub ollama_child: Mutex<Option<std::process::Child>>,
     /// Currently selected Ollama model name.
     pub current_model: Mutex<String>,
+    /// Max tokens for Ollama generation (num_predict), persisted.
+    pub current_num_predict: Mutex<u32>,
 }
 
 /// Data access contract. Implemented over SQLite for the MVP; a SQLCipher

@@ -133,6 +133,7 @@ export interface AutoDmState {
   importCampaign: (json: string) => Promise<void>;
   autoSave: () => Promise<void>;
   autoSaveTimer: ReturnType<typeof setInterval> | null;
+  lastSavedAt: string | null;
 
   // Loot
   loot: LootEntry[];
@@ -316,19 +317,44 @@ export const useStore = create<AutoDmState>((set, get) => ({
   settingsOpen: false,
   shortcutsOpen: false,
   activeNav: "campaign",
+  lastSavedAt: null as string | null,
 
   bootstrap: async () => {
     set({ loading: true, error: null });
     try {
       await backend.ping();
       await backend.seedDefaults();
-      const [characters, actions, statBlocks, scenes, active] = await Promise.all([
+      let [characters, actions, statBlocks, scenes, active] = await Promise.all([
         backend.listCharacters(),
         backend.listActions(),
         backend.listStatBlocks(),
         backend.listScenes(),
         backend.activeScene(),
       ]);
+      // Crash-recovery: if the DB is empty but a localStorage autosave
+      // exists (e.g. after a failed import or crash), offer to restore it.
+      if (scenes.length === 0 && characters.length === 0) {
+        try {
+          const autosave = localStorage.getItem("autodm-autosave");
+          if (autosave) {
+            const parsed = JSON.parse(autosave);
+            // Only restore if it looks like a real campaign (has scenes or characters).
+            if (Array.isArray(parsed.scenes) && parsed.scenes.length > 0) {
+              await backend.importCampaign(parsed);
+              [characters, actions, statBlocks, scenes, active] = await Promise.all([
+                backend.listCharacters(),
+                backend.listActions(),
+                backend.listStatBlocks(),
+                backend.listScenes(),
+                backend.activeScene(),
+              ]);
+              get().showToast("Recovered campaign from auto-save", "success", 5000);
+            }
+          }
+        } catch {
+          // Recovery is best-effort; fall through to normal empty state.
+        }
+      }
       const activeSceneId = active ? active.id : null;
       const logs = activeSceneId
         ? await backend.listLogs(activeSceneId, 200)
@@ -565,6 +591,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
       lines: [],
       veils: [],
       scene_id: s.activeSceneId ?? undefined,
+      num_predict: get().ollama.numPredict,
     });
     set((s) => ({ lastDm: response, dmHistory: [...s.dmHistory.slice(-19), response] }));
     if (scene && response.narrative) {
@@ -597,9 +624,12 @@ export const useStore = create<AutoDmState>((set, get) => ({
 
   pollOllamaModels: async () => {
     try {
-      const models = await backend.ollamaModels();
-      const currentModel = await backend.getOllamaModel();
-      set((s) => ({ ollama: { ...s.ollama, reachable: true, models, currentModel } }));
+      const [models, currentModel, numPredict] = await Promise.all([
+        backend.ollamaModels(),
+        backend.getOllamaModel(),
+        backend.getOllamaNumPredict().catch(() => 512),
+      ]);
+      set((s) => ({ ollama: { ...s.ollama, reachable: true, models, currentModel, numPredict } }));
     } catch {
       set((s) => ({ ollama: { ...s.ollama, reachable: false, models: [] } }));
     }
@@ -883,12 +913,20 @@ export const useStore = create<AutoDmState>((set, get) => ({
       const data = await backend.exportCampaign();
       const json = JSON.stringify(data);
       localStorage.setItem("autodm-autosave", json);
-    } catch {
-      // Silent fail
+      set({ lastSavedAt: new Date().toISOString() });
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("QuotaExceeded") || msg.includes("quota") || msg.includes("storage")) {
+        get().showToast("Auto-save failed: storage full — export your campaign", "warning", 6000);
+      }
     }
   },
 
-  setNumPredict: (n) => set((s) => ({ ollama: { ...s.ollama, numPredict: Math.max(64, Math.min(2048, n)) } })),
+  setNumPredict: (n) => {
+    const clamped = Math.max(64, Math.min(2048, n));
+    set((s) => ({ ollama: { ...s.ollama, numPredict: clamped } }));
+    void backend.setOllamaNumPredict(clamped).catch(() => {});
+  },
 
   // Loot
   addLoot: async (name, qty, sourceEntity) => {
@@ -1359,6 +1397,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
         lines: [],
         veils: [],
         scene_id: activeSceneId ?? undefined,
+        num_predict: get().ollama.numPredict,
       });
 
       set({ dmIntent: { loading: false, lastResponse: response, streamingText: "" } });

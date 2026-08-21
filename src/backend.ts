@@ -174,6 +174,8 @@ export const backend = {
   ollamaModels: () => invoke<string[]>("ollama_models"),
   getOllamaModel: () => invoke<string>("get_ollama_model"),
   setOllamaModel: (model: string) => invoke<void>("set_ollama_model", { model }),
+  getOllamaNumPredict: () => invoke<number>("get_ollama_num_predict"),
+  setOllamaNumPredict: (n: number) => invoke<void>("set_ollama_num_predict", { n }),
   ingestMemory: (speaker: string, content: string) =>
     invoke<void>("ingest_memory", { speaker, content }),
 

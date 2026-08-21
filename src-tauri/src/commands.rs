@@ -1386,11 +1386,36 @@ pub async fn set_ollama_model(state: State<'_, AppState>, model: String) -> CmdR
         let mut current = state.current_model.lock().map_err(err)?;
         *current = model.clone();
     }
+    // Persist so the choice survives restarts.
+    let _ = state.repo.set_setting("ollama_model", &model).await;
     // Rebuild the DM pipeline with the new model.
     let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
         Box::new(auto_dm_core::ollama::OllamaLlmBackend::new(Some(model)));
     let mut dm = state.dm.lock().await;
     *dm = Some(auto_dm_core::llm::DmPipeline::new(backend));
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_ollama_num_predict(state: State<'_, AppState>) -> CmdResult<u32> {
+    if let Ok(Some(v)) = state.repo.get_setting("ollama_num_predict").await {
+        if let Ok(n) = v.parse::<u32>() {
+            return Ok(n.clamp(64, 2048));
+        }
+    }
+    Ok(512)
+}
+
+#[tauri::command]
+pub async fn set_ollama_num_predict(state: State<'_, AppState>, n: u32) -> CmdResult<()> {
+    let clamped = n.clamp(64, 2048);
+    if let Ok(mut cur) = state.current_num_predict.lock() {
+        *cur = clamped;
+    }
+    let _ = state
+        .repo
+        .set_setting("ollama_num_predict", &clamped.to_string())
+        .await;
     Ok(())
 }
 

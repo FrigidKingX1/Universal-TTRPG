@@ -283,6 +283,12 @@ body {
   border-color: var(--border-hover);
 }
 
+.last-saved {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .active-scene-badge {
   display: flex;
   align-items: center;
@@ -437,7 +443,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.22);
 }
 
 input::placeholder, textarea::placeholder { color: var(--muted); }
@@ -537,7 +543,7 @@ button.muted:hover, button.secondary:hover {
 }
 .badge.muted { background: var(--muted); color: var(--bg); }
 .badge.active-scene {
-  background: rgba(122, 162, 247, 0.2); color: var(--accent);
+  background: rgba(201, 168, 106, 0.28); color: var(--accent);
   border: 1px solid rgba(122, 162, 247, 0.3);
 }
 
@@ -619,7 +625,7 @@ button.muted:hover, button.secondary:hover {
 }
 .combatant-card.current-turn {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.2);
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.28);
 }
 .combatant-card:hover { border-color: var(--border-hover); }
 
@@ -1401,7 +1407,7 @@ input[type="range"] {
 .form-textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.22);
 }
 .form-hint {
   color: var(--muted);
@@ -1426,7 +1432,7 @@ input[type="range"] {
 .form-select:focus, .form-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.22);
 }
 .generated-summary {
   margin-top: 1rem;
@@ -1532,7 +1538,7 @@ input[type="range"] {
   margin-top: 0.2rem;
 }
 .ac-display {
-  background: rgba(122, 162, 247, 0.15);
+  background: rgba(201, 168, 106, 0.22);
   border: 1px solid var(--accent);
   color: var(--accent);
   border-radius: 4px;
@@ -1766,7 +1772,7 @@ input[type="range"] {
 .dm-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.2);
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.28);
 }
 .dm-input:disabled {
   opacity: 0.5;

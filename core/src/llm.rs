@@ -152,6 +152,10 @@ pub struct DmRequest {
     /// SceneDelta world effects. Optional for backward compatibility.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scene_id: Option<String>,
+    /// Max tokens for this generation (Ollama num_predict). Wired from
+    /// SettingsPanel → AppState → request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub num_predict: Option<u32>,
 }
 
 impl Default for DmRequest {
@@ -164,6 +168,7 @@ impl Default for DmRequest {
             lines: Vec::new(),
             veils: Vec::new(),
             scene_id: None,
+            num_predict: None,
         }
     }
 }
@@ -277,10 +282,13 @@ impl<B: LlmBackend> DmPipeline<B> {
                 &mechanical_events,
                 request.memory_context.as_deref(),
             );
+            let num_predict = request.num_predict.map(|n| n.clamp(64, 2048));
             let raw = if let Some(cb) = on_token {
-                self.backend.complete_streaming(&sys, &prompt, Some(512), cb).await?
+                self.backend
+                    .complete_streaming(&sys, &prompt, num_predict, cb)
+                    .await?
             } else {
-                self.backend.complete(&sys, &prompt, Some(512)).await?
+                self.backend.complete(&sys, &prompt, num_predict).await?
             };
             let intent = GameIntent::from_llm_text(&raw);
             let mut dice = match seed {

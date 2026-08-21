@@ -258,6 +258,20 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
               Auto-save runs every 30 seconds while the app is open. Dice animations respect your
               system reduced-motion preference.
             </p>
+            <div className="row" style={{ marginTop: "0.5rem" }}>
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={() => {
+                  try { localStorage.removeItem("autodm.theme"); } catch {}
+                  try { localStorage.removeItem("autodm-onboarding-complete"); } catch {}
+                  updateTheme({ accent: "#c9a86a", fontSize: 14, density: "comfortable" });
+                  showToast("Appearance reset to defaults", "success");
+                }}
+              >
+                Reset appearance
+              </button>
+              <span className="muted" style={{ fontSize: "0.75rem", alignSelf: "center" }}>v0.1.0</span>
+            </div>
           </section>
 
           {testResult && (

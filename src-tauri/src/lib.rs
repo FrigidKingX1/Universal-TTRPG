@@ -73,10 +73,18 @@ fn wait_for_ollama(max_wait: std::time::Duration) -> bool {
 
 /// Select the DM narrative backend: connect to Ollama when reachable,
 /// otherwise fall back to the deterministic stub so the app is always usable.
+#[allow(dead_code)]
 fn choose_dm_backend() -> Box<dyn LlmBackend> {
+    choose_dm_backend_with(None)
+}
+
+fn choose_dm_backend_with(model: Option<String>) -> Box<dyn LlmBackend> {
     if OllamaLlmBackend::reachable() {
-        log::info!("Using Ollama backend @ localhost:11434");
-        Box::new(OllamaLlmBackend::new(None))
+        log::info!(
+            "Using Ollama backend @ localhost:11434 (model {})",
+            model.as_deref().unwrap_or("default")
+        );
+        Box::new(OllamaLlmBackend::new(model))
     } else {
         log::warn!("Ollama not reachable; using stub backend");
         Box::new(StubLlmBackend)
@@ -162,12 +170,34 @@ pub fn run() {
                 }
             });
 
+            // Restore persisted Ollama preferences (model + num_predict) so
+            // Settings survive restarts.
+            let persisted_model = tauri::async_runtime::block_on(async {
+                repo.get_setting("ollama_model")
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| "llama3.2".to_string())
+            });
+            let persisted_num_predict = tauri::async_runtime::block_on(async {
+                repo.get_setting("ollama_num_predict")
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|v| v.parse::<u32>().ok())
+                    .map(|n| n.clamp(64, 2048))
+                    .unwrap_or(512)
+            });
+
             app.manage(AppState {
                 repo,
-                dm: tokio::sync::Mutex::new(Some(DmPipeline::new(choose_dm_backend()))),
+                dm: tokio::sync::Mutex::new(Some(DmPipeline::new(choose_dm_backend_with(
+                    Some(persisted_model.clone()),
+                )))),
                 memory: Mutex::new(memory),
                 ollama_child: Mutex::new(ollama_child),
-                current_model: Mutex::new("llama3.2".to_string()),
+                current_model: Mutex::new(persisted_model),
+                current_num_predict: Mutex::new(persisted_num_predict),
             });
 
             log::info!("Auto-DM started successfully");
@@ -232,6 +262,8 @@ pub fn run() {
             commands::ollama_models,
             commands::get_ollama_model,
             commands::set_ollama_model,
+            commands::get_ollama_num_predict,
+            commands::set_ollama_num_predict,
             commands::ingest_memory,
             commands::export_campaign,
             commands::import_campaign,

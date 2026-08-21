@@ -535,7 +535,7 @@ export function Combat() {
                     )}
                   </div>
                 ))}
-                <button className="muted" onClick={clearLoot} style={{ fontSize: "0.8rem", marginTop: "0.25rem" }}>
+                <button className="muted" onClick={async () => { if (await confirm({ title: "Clear Loot", message: "Remove all unassigned loot? This cannot be undone." })) clearLoot(); }} style={{ fontSize: "0.8rem", marginTop: "0.25rem" }}>
                   Clear All Loot
                 </button>
               </div>

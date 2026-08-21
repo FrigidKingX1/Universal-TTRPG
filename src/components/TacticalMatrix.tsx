@@ -24,8 +24,9 @@ export function TacticalMatrix() {
   const renderMap = () => {
     if (!activeZone) {
       return (
-        <div className="matrix-placeholder">
-          <p>Select a zone to begin exploring.</p>
+        <div className="fantasy-empty" style={{ padding: "1rem" }}>
+          <span className="fantasy-empty-icon" aria-hidden="true">🗺️</span>
+          <span>Select a zone to begin exploring.</span>
         </div>
       );
     }
@@ -61,7 +62,9 @@ export function TacticalMatrix() {
       <div className="matrix-npcs">
         <h3>NPC Knowledge</h3>
         {statBlocks.length === 0 ? (
-          <p className="matrix-placeholder">No NPC data available.</p>
+          <div className="fantasy-empty" style={{ padding: "0.8rem" }}>
+            <span>No NPC data — add stat blocks in the Bestiary.</span>
+          </div>
         ) : (
           <div className="npc-list">
             {statBlocks.map((sb) => (
@@ -81,7 +84,9 @@ export function TacticalMatrix() {
       <div className="matrix-clocks">
         <h3>Doom Clocks</h3>
         {doomClocks.length === 0 ? (
-          <p className="matrix-placeholder">No active doom clocks.</p>
+          <div className="fantasy-empty" style={{ padding: "0.8rem" }}>
+            <span>No doom clocks — time is on your side, for now.</span>
+          </div>
         ) : (
           <div className="clock-list">
             {doomClocks.map((clock) => (
@@ -98,7 +103,9 @@ export function TacticalMatrix() {
       <div className="matrix-threads">
         <h3>Plot Threads</h3>
         {threads.length === 0 ? (
-          <p className="matrix-placeholder">No active plot threads.</p>
+          <div className="fantasy-empty" style={{ padding: "0.8rem" }}>
+            <span>No plot threads — the weave is quiet.</span>
+          </div>
         ) : (
           <div className="thread-list">
             {threads.map((thread) => (

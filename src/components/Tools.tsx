@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
 
@@ -595,6 +596,7 @@ export function NpcNotesPanel() {
   const npcNotes = useStore((s) => s.npcNotes);
   const addNpcNote = useStore((s) => s.addNpcNote);
   const deleteNpcNote = useStore((s) => s.deleteNpcNote);
+  const { confirm, dialog } = useConfirmDialog();
   const [npcName, setNpcName] = useState("");
   const [relation, setRelation] = useState("");
   const [note, setNote] = useState("");
@@ -635,12 +637,13 @@ export function NpcNotesPanel() {
               <span className="badge">{n.relation}</span>
               <span>{n.note}</span>
               <span className="muted">{n.timestamp.slice(0, 10)}</span>
-              <button className="danger" onClick={() => deleteNpcNote(n.id)} style={{ fontSize: "0.7rem" }}>×</button>
+              <button className="danger" onClick={async () => { if (await confirm({ title: "Delete Note", message: `Delete note about ${n.npcName}?` })) deleteNpcNote(n.id); }} style={{ fontSize: "0.7rem" }}>×</button>
             </div>
           ))}
         </div>
       ))}
       {npcNotes.length === 0 && <p className="muted">No NPC notes yet.</p>}
+      {dialog}
     </section>
   );
 }

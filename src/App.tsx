@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { Wand2, BookOpen, Users, Skull, Swords, Wrench, Castle, HelpCircle, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { useStore, subscribeToEvents } from "./store";
 import { CampaignWizard } from "./components/CampaignWizard";
 import { PlayerCommandDeck } from "./components/PlayerCommandDeck";
@@ -20,14 +21,37 @@ import "./App.css";
 
 type NavItem = "campaign" | "scenes" | "characters" | "bestiary" | "combat" | "tools";
 
-const NAV_ITEMS: { id: NavItem; label: string; icon: string }[] = [
-  { id: "campaign", label: "Campaign", icon: "🧙" },
-  { id: "scenes", label: "Scenes", icon: "📖" },
-  { id: "characters", label: "Characters", icon: "👥" },
-  { id: "bestiary", label: "Bestiary", icon: "🐉" },
-  { id: "combat", label: "Combat", icon: "⚔️" },
-  { id: "tools", label: "Tools", icon: "🛠️" },
+const NAV_ICONS: Record<NavItem, React.ReactNode> = {
+  campaign: <Wand2 size={18} strokeWidth={1.7} />,
+  scenes: <BookOpen size={18} strokeWidth={1.7} />,
+  characters: <Users size={18} strokeWidth={1.7} />,
+  bestiary: <Skull size={18} strokeWidth={1.7} />,
+  combat: <Swords size={18} strokeWidth={1.7} />,
+  tools: <Wrench size={18} strokeWidth={1.7} />,
+};
+
+const NAV_ITEMS: { id: NavItem; label: string }[] = [
+  { id: "campaign", label: "Campaign" },
+  { id: "scenes", label: "Scenes" },
+  { id: "characters", label: "Characters" },
+  { id: "bestiary", label: "Bestiary" },
+  { id: "combat", label: "Combat" },
+  { id: "tools", label: "Tools" },
 ];
+
+function LastSavedIndicator() {
+  const lastSavedAt = useStore((s) => s.lastSavedAt);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!lastSavedAt) return;
+    const id = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, [lastSavedAt]);
+  if (!lastSavedAt) return null;
+  const diff = Math.floor((now - new Date(lastSavedAt).getTime()) / 1000);
+  const label = diff < 60 ? "Saved just now" : diff < 3600 ? `Saved ${Math.floor(diff / 60)}m ago` : `Saved ${new Date(lastSavedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  return <span className="last-saved" title={new Date(lastSavedAt).toLocaleString()}>{label}</span>;
+}
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -134,7 +158,7 @@ function App() {
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={sidebarCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
           >
-            {sidebarCollapsed ? "▶" : "◀"}
+            {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
         </div>
 
@@ -150,7 +174,7 @@ function App() {
                 title={sidebarCollapsed ? item.label : undefined}
                 aria-current={isActive ? "page" : undefined}
               >
-                <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                <span className="nav-icon" aria-hidden="true">{NAV_ICONS[item.id]}</span>
                 {!sidebarCollapsed && (
                   <>
                     <span className="nav-label">{item.label}</span>
@@ -190,22 +214,23 @@ function App() {
               </div>
             ) : (
               <div className="no-scene-badge">
-                <span className="scene-icon">📖</span>
+                <span className="scene-icon"><BookOpen size={14} /></span>
                 <span>No active scene</span>
               </div>
             )}
           </div>
           <div className="top-bar-right">
+            <LastSavedIndicator />
             <button
               className={`mode-toggle ${appMode === "setup" ? "setup-active" : "tabletop-active"}`}
               onClick={() => setAppMode(appMode === "setup" ? "tabletop" : "setup")}
               aria-label={appMode === "setup" ? "Switch to Tabletop Mode" : "Switch to Setup Mode"}
               title={appMode === "setup" ? "Switch to Tabletop Mode" : "Switch to Setup Mode"}
             >
-              {appMode === "setup" ? "🧙 Setup" : "🏰 Tabletop"}
+              {appMode === "setup" ? <><Wand2 size={14} /> Setup</> : <><Castle size={14} /> Tabletop</>}
             </button>
-            <button className="icon-btn" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">❔</button>
-            <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings">⚙️</button>
+            <button className="icon-btn" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><HelpCircle size={16} /></button>
+            <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings"><Settings size={16} /></button>
           </div>
         </header>
 

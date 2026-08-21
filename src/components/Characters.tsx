@@ -444,7 +444,11 @@ export function ActionList() {
           </li>
         ))}
       </ul>
-      {actions.length === 0 && <p className="muted">No actions yet.</p>}
+      {actions.length === 0 && (
+        <div className="fantasy-empty" style={{ padding: "0.7rem" }}>
+          <span>No actions yet — forge your first technique.</span>
+        </div>
+      )}
       {dialog}
     </section>
   );

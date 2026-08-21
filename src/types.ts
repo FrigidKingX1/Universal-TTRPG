@@ -224,6 +224,7 @@ export interface DmRequest {
   lines?: string[];
   veils?: string[];
   scene_id?: string;
+  num_predict?: number;
 }
 
 export type GameIntent =
