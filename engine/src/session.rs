@@ -5,6 +5,7 @@
 use auto_dm_core::intent::GameIntent;
 use auto_dm_core::llm::{DmRequest, DmResponse};
 
+use crate::events::GameEvent;
 use crate::state::{GameState, Repository};
 
 /// Record a campaign event in both the in-memory ring buffer and SQLite so
@@ -17,20 +18,22 @@ pub async fn remember(state: &GameState, speaker: &str, content: &str) {
 }
 
 /// Session layer: apply world effects for intents the pure pipeline cannot
-/// resolve (it has no DB access). Mutates campaign state and appends
-/// mechanical-event lines describing what was applied.
+/// resolve (it has no DB access). Mutates campaign state, appends
+/// mechanical-event lines describing what was applied, and returns the
+/// structured [`GameEvent`]s (the future broadcast/audit stream).
 pub async fn apply_session_effects(
     state: &GameState,
     request: &DmRequest,
     response: &mut DmResponse,
-) {
+) -> Vec<GameEvent> {
+    let mut events: Vec<GameEvent> = Vec::new();
     match &response.intent {
         GameIntent::SceneDelta { delta } => {
             let (Some(scene_id), delta) = (&request.scene_id, delta) else {
-                return;
+                return events;
             };
             if delta.trim().is_empty() {
-                return;
+                return events;
             }
             // Single-row fetch instead of loading all scenes (O(1) vs O(N) parse).
             let existing = state
@@ -47,7 +50,7 @@ pub async fn apply_session_effects(
                 merged = merged.chars().skip(char_count - 2000).collect();
             }
             if state.repo.update_scene_summary(scene_id, Some(&merged)).await.is_ok() {
-                response.mechanical_events.push("Scene record updated.".to_string());
+                events.push(GameEvent::SceneUpdated { scene_id: scene_id.clone() });
             }
         }
         GameIntent::NpcSpeech { npc_id, line } => {
@@ -63,7 +66,7 @@ pub async fn apply_session_effects(
             if let Some(scene_id) = &request.scene_id {
                 let _ = state.repo.append_log(scene_id, &speaker, line, None).await;
             }
-            response.mechanical_events.push(format!("{speaker} speaks."));
+            events.push(GameEvent::NpcSpoke { speaker });
         }
         GameIntent::RuleCheck { question } => {
             // Answer from world data: look for actions / stat blocks whose
@@ -109,8 +112,50 @@ pub async fn apply_session_effects(
                 for a in answers {
                     response.mechanical_events.push(a);
                 }
+                events.push(GameEvent::RuleAnswered { question: question.clone() });
             }
+        }
+        GameIntent::AddItem { name, quantity } => {
+            let sid = request.scene_id.clone().unwrap_or_default();
+            if *quantity > 0
+                && !sid.is_empty()
+                && state.repo.save_loot(&sid, name, *quantity, "DM").await.is_ok()
+            {
+                events.push(GameEvent::ItemAdded { name: name.clone(), quantity: *quantity });
+            }
+            response.mechanical_events.push(format!("Item added to scene loot: {quantity}x {name}"));
+        }
+        GameIntent::AdvanceClock { clock_id, ticks } => {
+            let ticks_u = (*ticks).max(0) as u32;
+            let id: Option<String> = match clock_id {
+                Some(id) => Some(id.clone()),
+                None => state.repo.list_doom_clocks().await.ok().and_then(|clocks| {
+                    clocks.into_iter().find(|cl| cl.active).map(|cl| cl.id)
+                }),
+            };
+            if let Some(id) = id {
+                if let Ok(Some((current, max))) = state.repo.advance_doom_clock(&id, ticks_u).await {
+                    events.push(GameEvent::ClockAdvanced { clock_id: id, ticks: *ticks });
+                    if current == 0 {
+                        response.mechanical_events.push("DOOM CLOCK EXPIRED".to_string());
+                    } else {
+                        response.mechanical_events.push(format!("Doom clock: {current}/{max}"));
+                    }
+                }
+            }
+        }
+        GameIntent::ApplyCondition { target, condition } => {
+            // Tag-only effect for now; combat-engine integration lands in Phase B.
+            events.push(GameEvent::ConditionApplied {
+                target: target.clone(),
+                condition: condition.clone(),
+            });
+            response.mechanical_events.push(format!("Condition '{condition}' marked on {target}."));
         }
         _ => {}
     }
+    for e in &events {
+        response.mechanical_events.push(e.describe());
+    }
+    events
 }

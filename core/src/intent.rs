@@ -23,6 +23,12 @@ pub enum GameIntent {
     FateQuestion { question: String },
     /// Out-of-character chatter with the human (meta, not in-world).
     Ooc { message: String },
+    /// A world mutation: add loot/an item to the active scene's stash.
+    AddItem { name: String, quantity: i32 },
+    /// Advance a doom clock (None id = the first active clock).
+    AdvanceClock { clock_id: Option<String>, ticks: i32 },
+    /// Attach a condition tag to an actor by name or id.
+    ApplyCondition { target: String, condition: String },
 }
 
 impl GameIntent {
@@ -39,6 +45,11 @@ impl GameIntent {
             GameIntent::RuleCheck { question } => question.clone(),
             GameIntent::FateQuestion { question } => question.clone(),
             GameIntent::Ooc { message } => message.clone(),
+            GameIntent::AddItem { name, quantity } => format!("({quantity}× {name} added)"),
+            GameIntent::AdvanceClock { ticks, .. } => format!("(clock +{ticks})"),
+            GameIntent::ApplyCondition { target, condition } => {
+                format!("({target} is {condition})")
+            }
         }
     }
 
@@ -52,6 +63,9 @@ impl GameIntent {
             GameIntent::RuleCheck { .. } => "rule_check",
             GameIntent::FateQuestion { .. } => "fate_question",
             GameIntent::Ooc { .. } => "ooc",
+            GameIntent::AddItem { .. } => "add_item",
+            GameIntent::AdvanceClock { .. } => "advance_clock",
+            GameIntent::ApplyCondition { .. } => "apply_condition",
         }
     }
 
@@ -94,6 +108,18 @@ impl RawIntent {
             "rule_check" => GameIntent::RuleCheck { question: get_str(p, "question") },
             "fate_question" => GameIntent::FateQuestion { question: get_str(p, "question") },
             "ooc" => GameIntent::Ooc { message: get_str(p, "message") },
+            "add_item" => GameIntent::AddItem {
+                name: get_str(p, "name"),
+                quantity: get_i32_opt(p, "quantity").unwrap_or(1),
+            },
+            "advance_clock" => GameIntent::AdvanceClock {
+                clock_id: get_opt_str(p, "clock_id"),
+                ticks: get_i32_opt(p, "ticks").unwrap_or(1),
+            },
+            "apply_condition" => GameIntent::ApplyCondition {
+                target: get_str(p, "target"),
+                condition: get_str(p, "condition"),
+            },
             other => GameIntent::Narration { text: format!("[unknown intent: {other}]\n{}", p) },
         }
     }
@@ -196,7 +222,7 @@ pub fn game_intent_json_schema() -> serde_json::Value {
         "properties": {
             "type": {
                 "type": "string",
-                "enum": ["narration","scene_delta","npc_speech","dice_roll","rule_check","fate_question","ooc"]
+                "enum": ["narration","scene_delta","npc_speech","dice_roll","rule_check","fate_question","ooc","add_item","advance_clock","apply_condition"]
             },
             "payload": { "type": "object" }
         },

@@ -777,6 +777,9 @@ pub async fn dm_resolve(
             request.lines = lv;
         }
     }
+    if let Ok(Some(tone)) = state.repo.get_setting("tone").await {
+        request.tone = Some(tone);
+    }
     if let Ok(Some(veils_json)) = state.repo.get_setting("veils").await {
         if let Ok(vv) = serde_json::from_str::<Vec<String>>(&veils_json) {
             request.veils = vv;
@@ -789,7 +792,10 @@ pub async fn dm_resolve(
             .ok_or_else(|| "DM backend not initialized".to_string())?
     };
     let mut response = pipeline.resolve_action(&request).await.map_err(err)?;
-    apply_session_effects(&state, &request, &mut response).await;
+    let events = apply_session_effects(&state, &request, &mut response).await;
+    if !events.is_empty() {
+        emit(&app, "game:events", &events);
+    }
     emit(&app, "dm:response", &response);
     Ok(response)
 }
@@ -1187,6 +1193,9 @@ pub async fn process_dm_intent(
             req.lines = lv;
         }
     }
+    if let Ok(Some(tone)) = state.repo.get_setting("tone").await {
+        req.tone = Some(tone);
+    }
     if let Ok(Some(veils_json)) = state.repo.get_setting("veils").await {
         if let Ok(vv) = serde_json::from_str::<Vec<String>>(&veils_json) {
             req.veils = vv;
@@ -1236,7 +1245,10 @@ pub async fn process_dm_intent(
         .await;
 
     let mut response = response;
-    apply_session_effects(&state, &req, &mut response).await;
+    let events = apply_session_effects(&state, &req, &mut response).await;
+    if !events.is_empty() {
+        emit(&app, "game:events", &events);
+    }
 
     remember(&state, "Player", &req.player_action).await;
     remember(&state, "Dungeon Master", &response.narrative).await;
@@ -1330,6 +1342,23 @@ pub async fn set_ollama_num_predict(state: State<'_, GameState>, n: u32) -> CmdR
 }
 
 /// Push a campaign event into the local memory log (best-effort).
+#[tauri::command]
+pub async fn get_tone(state: State<'_, GameState>) -> CmdResult<String> {
+    Ok(state
+        .repo
+        .get_setting("tone")
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "classic".to_string()))
+}
+
+#[tauri::command]
+pub async fn set_tone(state: State<'_, GameState>, tone: String) -> CmdResult<()> {
+    let _ = state.repo.set_setting("tone", &tone).await;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn ingest_memory(
     state: State<'_, GameState>,

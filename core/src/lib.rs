@@ -1,4 +1,5 @@
 pub mod dice;
+pub mod guardrails;
 pub mod engine;
 pub mod intent;
 pub mod llm;

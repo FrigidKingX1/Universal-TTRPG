@@ -300,6 +300,8 @@ pub fn run() {
             commands::set_ollama_model,
             commands::get_ollama_num_predict,
             commands::set_ollama_num_predict,
+            commands::get_tone,
+            commands::set_tone,
             commands::ingest_memory,
             commands::export_campaign,
             commands::import_campaign,

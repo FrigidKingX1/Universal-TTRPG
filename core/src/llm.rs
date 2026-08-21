@@ -128,10 +128,7 @@ impl<T: LlmBackend + ?Sized> LlmBackend for Box<T> {
     }
 }
 
-const SYSTEM_PROMPT: &str =
-    "You are Auto-DM, a tabletop game master. Narrate consequences grounded in the mechanical \
-     facts provided. Keep responses vivid, brief (2-4 sentences), and address the player's action \
-     directly. Never invent new mechanical outcomes beyond those listed.";
+use super::guardrails::{build_system_prompt, sanitize_player_input};
 
 /// Input to the DM loop: the current scene and the player's action.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,6 +149,12 @@ pub struct DmRequest {
     /// SceneDelta world effects. Optional for backward compatibility.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scene_id: Option<String>,
+    /// Sensory state (light level / active senses) constraining description.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sensory: Option<super::guardrails::SensoryState>,
+    /// Narrative tone preset key ("classic"/"gritty"/"heroic"/"comedic"/"cosmic").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tone: Option<String>,
     /// Max tokens for this generation (Ollama num_predict). Wired from
     /// SettingsPanel → AppState → request.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -169,6 +172,8 @@ impl Default for DmRequest {
             veils: Vec::new(),
             scene_id: None,
             num_predict: None,
+            sensory: None,
+            tone: None,
         }
     }
 }
@@ -235,6 +240,10 @@ impl<B: LlmBackend> DmPipeline<B> {
         seed: Option<u64>,
         on_token: Option<&mut (dyn for<'a> FnMut(&'a str) + Send)>,
     ) -> Result<DmResponse, LlmError> {
+        // Guardrail: declarative claims become attempts, never facts.
+        let player_action = sanitize_player_input(&request.player_action);
+        let mut request = request.clone();
+        request.player_action = player_action;
         let mut oracle = match seed {
             Some(s) => MythicOracle::with_seed(request.chaos_factor, s),
             None => MythicOracle::new(request.chaos_factor),
@@ -262,21 +271,19 @@ impl<B: LlmBackend> DmPipeline<B> {
 
         let stub = self.backend.is_stub();
         // Build a dynamic system prompt that includes Lines & Veils.
-        let mut sys = SYSTEM_PROMPT.to_string();
-        if !request.lines.is_empty() {
-            sys.push_str("\n\nHARD SAFETY LINES (never describe these, no exceptions): ");
-            sys.push_str(&request.lines.join(", "));
-        }
-        if !request.veils.is_empty() {
-            sys.push_str("\n\nVEILS (these topics exist but must be faded to black / implied off-screen, never depicted in detail): ");
-            sys.push_str(&request.veils.join(", "));
-        }
+        let sys = build_system_prompt(
+            &request.lines,
+            &request.veils,
+            request.sensory.as_ref(),
+            request.tone.as_deref(),
+            request.memory_context.as_deref(),
+        );
         let (narrative, intent, source) = if stub {
-            let n = stub_narrative(request, &fate, event_meaning.as_ref());
+            let n = stub_narrative(&request, &fate, event_meaning.as_ref());
             (n.clone(), GameIntent::Narration { text: n }, "stub".to_string())
         } else {
             let prompt = build_prompt(
-                request,
+                &request,
                 &fate,
                 event_meaning.as_ref(),
                 &mechanical_events,
@@ -348,6 +355,18 @@ fn execute_intent(
         }
         GameIntent::RuleCheck { question } => {
             format!("Rule query: {question}")
+        }
+        GameIntent::AddItem { name, quantity } => {
+            extra.push(format!("Item added to scene loot: {quantity}x {name}"));
+            format!("You acquire {quantity}x {name}.")
+        }
+        GameIntent::AdvanceClock { ticks, .. } => {
+            extra.push(format!("Doom clock advanced by {ticks}."));
+            "Time marches on — a clock ticks forward.".to_string()
+        }
+        GameIntent::ApplyCondition { target, condition } => {
+            extra.push(format!("Condition '{condition}' marked on {target}."));
+            format!("{target} is now {condition}.")
         }
         GameIntent::FateQuestion { question } => {
             let f = oracle.ask_fate(Odds::FiftyFifty);

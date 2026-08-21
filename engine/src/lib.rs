@@ -6,11 +6,13 @@
 
 pub mod combat;
 pub mod error;
+pub mod events;
 pub mod session;
 pub mod state;
 
 pub use combat::combatant_from_value;
 pub use error::{DbError, EngineError};
+pub use events::GameEvent;
 pub use session::{apply_session_effects, remember};
 pub use state::{
     backup_before_migrate, open_pool, run_migrations, CampaignExport, DoomClockRow, GameState,
