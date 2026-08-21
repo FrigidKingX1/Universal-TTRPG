@@ -1502,19 +1502,24 @@ function logSpeakerToRole(speaker: string): StoryLogEntry["role"] {
   return "npc";
 }
 
+let persistCombatTimer: ReturnType<typeof setTimeout> | null = null;
 function persistCombat() {
-  const s = useStore.getState();
-  const sceneId = s.activeSceneId;
-  if (!sceneId) return;
-  const data = {
-    initiativeOrder: s.initiativeOrder,
-    combatantStates: s.combatantStates,
-    combatantConditions: s.combatantConditions,
-    currentRound: s.currentRound,
-    currentTurnIndex: s.currentTurnIndex,
-    deathSaves: s.deathSaves,
-  };
-  void backend.saveCombatState(sceneId, JSON.stringify(data));
+  if (persistCombatTimer) clearTimeout(persistCombatTimer);
+  persistCombatTimer = setTimeout(() => {
+    persistCombatTimer = null;
+    const s = useStore.getState();
+    const sceneId = s.activeSceneId;
+    if (!sceneId) return;
+    const data = {
+      initiativeOrder: s.initiativeOrder,
+      combatantStates: s.combatantStates,
+      combatantConditions: s.combatantConditions,
+      currentRound: s.currentRound,
+      currentTurnIndex: s.currentTurnIndex,
+      deathSaves: s.deathSaves,
+    };
+    void backend.saveCombatState(sceneId, JSON.stringify(data));
+  }, 300);
 }
 
 let unlisteners: UnlistenFn[] = [];

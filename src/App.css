@@ -951,7 +951,7 @@ button.rolling {
   background: rgba(10, 11, 15, 0.85);
   backdrop-filter: blur(2px);
   display: flex; align-items: center;
-  justify-content: center; z-index: 100; padding: 1rem;
+  justify-content: center; z-index: 200; padding: 1rem;
 }
 .modal {
   background: var(--panel); border: 1px solid var(--border);
@@ -1238,6 +1238,7 @@ input[type="range"] {
 /* Compact density mode */
 :root[data-density="compact"] .panel {
   gap: 0.35rem;
+  padding: 0.7rem;
 }
 
 :root[data-density="compact"] .card-list {
@@ -1249,6 +1250,11 @@ input[type="range"] {
   padding: 0.25rem 0.6rem;
   font-size: 0.82rem;
 }
+
+:root[data-density="compact"] .sidebar-nav { gap: 2px; }
+:root[data-density="compact"] .top-bar { padding: 0.4rem 0.8rem; }
+:root[data-density="compact"] .narrative-content { padding: 0.5rem; }
+:root[data-density="compact"] .card { padding: 0.4rem 0.6rem; }
 
 /* Inventory upgrades */
 .inventory-row {
@@ -1425,7 +1431,11 @@ input[type="range"] {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Unifies the earlier setup-panel padding with the tabletop flex model */
+  padding: 1.1rem;
 }
+
+.tabletop-layout .panel { padding: 0; }
 
 .panel-header {
   display: flex;
@@ -2186,17 +2196,17 @@ details > div { margin-top: 0.5rem; padding-left: 0.5rem; }
 /* Fantasy scrollbars — warm brass on dark oak */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #5c4430 #1b1614;
+  scrollbar-color: var(--border-hover) var(--panel);
 }
 
 *::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-track { background: #1b1614; }
+*::-webkit-scrollbar-track { background: var(--panel); }
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #5c4430, #3b2e22);
+  background: linear-gradient(180deg, var(--border-hover), var(--border));
   border-radius: 999px;
-  border: 1px solid #2e2418;
+  border: 1px solid var(--sidebar-border);
 }
-*::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #6e5238, #4a3828); }
+*::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--border-hover) 85%, white), var(--border-hover)); }
 
 @media (prefers-reduced-motion: reduce) {
   *,
