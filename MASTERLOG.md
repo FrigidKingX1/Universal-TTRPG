@@ -4,7 +4,10 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — 23 commits, 122 passing tests, fully functional core loop.
+**Status:** Active development — fully functional core loop. Tests: 85 core Rust + 6 Tauri SQLite + 31 frontend store = 122 passing.
+
+> **Note:** This log mixes historical design decisions with state snapshots.
+> For the authoritative current state, prefer `git log` and `README.md`.
 
 ---
 
@@ -44,7 +47,7 @@ Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant
 | State | Zustand (single store) |
 | Styling | Vanilla CSS (dark theme) |
 | Core engine | Rust (auto_dm_core crate) |
-| Persistence | SQLite via rusqlite |
+| Persistence | SQLite via sqlx (async SqlitePool, WAL) |
 | LLM backend | Ollama (local HTTP API) |
 | Build | Cargo + npm |
 
@@ -111,8 +114,7 @@ auto-dm/
 | `ce9afb2` | Flesh out Round 9: 13 Vitest tests, export/import, death saves, undo HP |
 | `c357f25` | Flesh out Round 10: combat persistence, loot, NPC notes, keyboard shortcuts |
 | `dd232a6` | Flesh out Round 11: SQLite persistence for loot/notes/combat, batch HP, loot tables, combat summary |
-| `layer1` | Layer 1: Plot Threads + NPC Characters lists, Oracle enrichment, Scene Tests |
-| `layer2` | Layer 2: Scene Test UI, CF auto-adjust, Lines & Veils, Damage Types |
+| `1d1ee88`+ | Layer 1-2: Plot Threads, NPC Characters, Oracle enrichment, Scene Tests, CF auto-adjust, Lines & Veils, Damage Types (see `git log`) |
 
 ---
 
@@ -413,7 +415,7 @@ db::tests            — 4 tests (migrations, CRUD, threads + NPC characters, se
 |----------|--------|-----------|
 | LLM Backend | Ollama (local) | Privacy, no API keys, works offline |
 | State Management | Zustand (single store) | Simple, no boilerplate, great devtools |
-| Persistence | SQLite via rusqlite | Zero-config, single-file, proven |
+| Persistence | SQLite via sqlx | Async, compile-time-checked queries, WAL |
 | Mutex Type | `tokio::sync::Mutex` for DM | Allows holding guard across `.await` |
 | DC Resolution | LLM-specified | More flexible than static DCs |
 | Target | Single EXE | Simplest distribution |
@@ -452,7 +454,7 @@ npx vite build
 
 ## Current State (as of latest commit)
 
-- 122 tests passing (91 Rust + 31 frontend)
+- 122 tests passing (85 core Rust + 6 Tauri SQLite + 31 frontend store)
 - Clippy clean (zero warnings)
 - TS + Vite build clean
 - All core gameplay loops functional:
