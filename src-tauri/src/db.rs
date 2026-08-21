@@ -423,14 +423,9 @@ pub async fn open_pool(path: &std::path::Path) -> Result<SqlitePool, sqlx::Error
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true)
         .busy_timeout(std::time::Duration::from_secs(5));
-    let pool = SqlitePoolOptions::new()
-        .max_connections(5)
-        .connect_with(options)
-        .await?;
+    let pool = SqlitePoolOptions::new().max_connections(5).connect_with(options).await?;
     // WAL + NORMAL synchronous is the standard safe-fast pairing.
-    sqlx::query("PRAGMA synchronous = NORMAL")
-        .execute(&pool)
-        .await?;
+    sqlx::query("PRAGMA synchronous = NORMAL").execute(&pool).await?;
     Ok(pool)
 }
 
@@ -629,16 +624,12 @@ impl Repository for SqliteRepository {
             sqlx::query_as("SELECT profile_json FROM characters ORDER BY created_at")
                 .fetch_all(&self.pool)
                 .await?;
-        rows.into_iter()
-            .map(|(json,)| serde_json::from_str(&json).map_err(DbError::Json))
-            .collect()
+        rows.into_iter().map(|(json,)| serde_json::from_str(&json).map_err(DbError::Json)).collect()
     }
 
     async fn delete_character(&self, id: &str) -> Result<bool, DbError> {
-        let res = sqlx::query("DELETE FROM characters WHERE id = ?")
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        let res =
+            sqlx::query("DELETE FROM characters WHERE id = ?").bind(id).execute(&self.pool).await?;
         Ok(res.rows_affected() > 0)
     }
 
@@ -678,9 +669,7 @@ impl Repository for SqliteRepository {
             sqlx::query_as("SELECT definition_json FROM action_definitions ORDER BY name")
                 .fetch_all(&self.pool)
                 .await?;
-        rows.into_iter()
-            .map(|(json,)| serde_json::from_str(&json).map_err(DbError::Json))
-            .collect()
+        rows.into_iter().map(|(json,)| serde_json::from_str(&json).map_err(DbError::Json)).collect()
     }
 
     async fn delete_action(&self, id: &str) -> Result<bool, DbError> {
@@ -726,9 +715,7 @@ impl Repository for SqliteRepository {
             sqlx::query_as("SELECT block_json FROM stat_blocks ORDER BY name")
                 .fetch_all(&self.pool)
                 .await?;
-        rows.into_iter()
-            .map(|(json,)| serde_json::from_str(&json).map_err(DbError::Json))
-            .collect()
+        rows.into_iter().map(|(json,)| serde_json::from_str(&json).map_err(DbError::Json)).collect()
     }
 
     async fn delete_stat_block(&self, id: &str) -> Result<bool, DbError> {
@@ -775,16 +762,14 @@ impl Repository for SqliteRepository {
         .await?;
         Ok(rows
             .into_iter()
-            .map(
-                |(id, scene_number, title, chaos_factor, summary_text, is_active)| Scene {
-                    id,
-                    scene_number,
-                    title,
-                    chaos_factor,
-                    summary_text,
-                    is_active: is_active != 0,
-                },
-            )
+            .map(|(id, scene_number, title, chaos_factor, summary_text, is_active)| Scene {
+                id,
+                scene_number,
+                title,
+                chaos_factor,
+                summary_text,
+                is_active: is_active != 0,
+            })
             .collect())
     }
 
@@ -795,16 +780,14 @@ impl Repository for SqliteRepository {
         )
         .fetch_optional(&self.pool)
         .await?;
-        Ok(row.map(
-            |(id, scene_number, title, chaos_factor, summary_text)| Scene {
-                id,
-                scene_number,
-                title,
-                chaos_factor,
-                summary_text,
-                is_active: true,
-            },
-        ))
+        Ok(row.map(|(id, scene_number, title, chaos_factor, summary_text)| Scene {
+            id,
+            scene_number,
+            title,
+            chaos_factor,
+            summary_text,
+            is_active: true,
+        }))
     }
 
     async fn set_active_scene(&self, id: &str) -> Result<(), DbError> {
@@ -817,9 +800,7 @@ impl Repository for SqliteRepository {
             return Err(DbError::NotFound(format!("scene `{id}`")));
         }
         let mut tx = self.pool.begin().await?;
-        sqlx::query("UPDATE campaign_scenes SET is_active = 0")
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query("UPDATE campaign_scenes SET is_active = 0").execute(&mut *tx).await?;
         sqlx::query("UPDATE campaign_scenes SET is_active = 1 WHERE id = ?")
             .bind(id)
             .execute(&mut *tx)
@@ -919,12 +900,13 @@ impl Repository for SqliteRepository {
         let stat_blocks = self.list_stat_blocks().await?;
         let scenes = self.list_scenes().await?;
         // Bulk fetches instead of per-scene loops (avoids N+1 round-trips).
-        let log_rows: Vec<(String, String, String, String, Option<String>, String)> = sqlx::query_as(
-            "SELECT id, COALESCE(scene_id, ''), speaker, content, payload_json, timestamp
+        let log_rows: Vec<(String, String, String, String, Option<String>, String)> =
+            sqlx::query_as(
+                "SELECT id, COALESCE(scene_id, ''), speaker, content, payload_json, timestamp
              FROM log_entries ORDER BY timestamp ASC",
-        )
-        .fetch_all(&self.pool)
-        .await?;
+            )
+            .fetch_all(&self.pool)
+            .await?;
         let logs: Vec<LogEntry> = log_rows
             .into_iter()
             .map(|(id, scene_id, speaker, content, payload_json, timestamp)| {
@@ -1232,17 +1214,15 @@ impl Repository for SqliteRepository {
         .await?;
         Ok(rows
             .into_iter()
-            .map(
-                |(id, name, quantity, source_entity, assigned_to, timestamp)| LootRow {
-                    id,
-                    scene_id: scene_id.to_string(),
-                    name,
-                    quantity,
-                    source_entity,
-                    assigned_to,
-                    timestamp,
-                },
-            )
+            .map(|(id, name, quantity, source_entity, assigned_to, timestamp)| LootRow {
+                id,
+                scene_id: scene_id.to_string(),
+                name,
+                quantity,
+                source_entity,
+                assigned_to,
+                timestamp,
+            })
             .collect())
     }
 
@@ -1309,10 +1289,8 @@ impl Repository for SqliteRepository {
     }
 
     async fn delete_npc_note(&self, id: &str) -> Result<bool, DbError> {
-        let res = sqlx::query("DELETE FROM npc_notes WHERE id = ?")
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        let res =
+            sqlx::query("DELETE FROM npc_notes WHERE id = ?").bind(id).execute(&self.pool).await?;
         Ok(res.rows_affected() > 0)
     }
 
@@ -1422,18 +1400,16 @@ impl Repository for SqliteRepository {
         .await?;
         Ok(rows
             .into_iter()
-            .map(
-                |(id, description, status, opened_scene_id, resolved_scene_id, created_at)| {
-                    ThreadRow {
-                        id,
-                        description,
-                        status,
-                        opened_scene_id,
-                        resolved_scene_id,
-                        created_at,
-                    }
-                },
-            )
+            .map(|(id, description, status, opened_scene_id, resolved_scene_id, created_at)| {
+                ThreadRow {
+                    id,
+                    description,
+                    status,
+                    opened_scene_id,
+                    resolved_scene_id,
+                    created_at,
+                }
+            })
             .collect())
     }
 
@@ -1795,9 +1771,7 @@ impl Repository for SqliteRepository {
                 connections_json: row
                     .try_get("connections_json")
                     .unwrap_or_else(|_| "[]".to_string()),
-                contents_json: row
-                    .try_get("contents_json")
-                    .unwrap_or_else(|_| "[]".to_string()),
+                contents_json: row.try_get("contents_json").unwrap_or_else(|_| "[]".to_string()),
                 notes: row.try_get("notes").ok().flatten(),
                 created_at: row.try_get("created_at").unwrap_or_default(),
             })
@@ -1993,11 +1967,7 @@ mod tests {
             },
             attributes: std::collections::HashMap::from([(
                 "STR".to_string(),
-                AttributeState {
-                    base_value: 16,
-                    current_value: 16,
-                    derived_modifier: Some(3),
-                },
+                AttributeState { base_value: 16, current_value: 16, derived_modifier: Some(3) },
             )]),
             resource_pools: std::collections::HashMap::new(),
             inventory: vec![],
@@ -2036,10 +2006,8 @@ mod tests {
         let active = repo.active_scene().await.expect("active");
         assert_eq!(active.as_ref().map(|s| s.id.as_str()), Some(s1.id.as_str()));
 
-        let entry = repo
-            .append_log(&s1.id, "Narrator", "The gates groan open.", None)
-            .await
-            .expect("log");
+        let entry =
+            repo.append_log(&s1.id, "Narrator", "The gates groan open.", None).await.expect("log");
         assert_eq!(entry.speaker, "Narrator");
 
         let logs = repo.list_logs(&s1.id, 10).await.expect("logs");
@@ -2117,19 +2085,14 @@ mod tests {
         assert_eq!(npcs[0].notes.as_deref(), Some("Knows everything"));
         assert_eq!(npcs[0].last_seen_scene_id.as_deref(), Some(s.id.as_str()));
 
-        repo.delete_npc_character(&npc.id)
-            .await
-            .expect("delete npc");
+        repo.delete_npc_character(&npc.id).await.expect("delete npc");
         let npcs = repo.list_npc_characters().await.expect("list npcs");
         assert!(npcs.is_empty());
     }
 
     #[tokio::test]
     async fn settings_crud() {
-        let pool = SqlitePoolOptions::new()
-            .connect("sqlite::memory:")
-            .await
-            .expect("connect");
+        let pool = SqlitePoolOptions::new().connect("sqlite::memory:").await.expect("connect");
         run_migrations(&pool).await.expect("migrate");
         let repo = SqliteRepository::new(pool);
 
@@ -2170,10 +2133,7 @@ mod tests {
 
     #[tokio::test]
     async fn doom_clock_crud() {
-        let pool = SqlitePoolOptions::new()
-            .connect("sqlite::memory:")
-            .await
-            .expect("connect");
+        let pool = SqlitePoolOptions::new().connect("sqlite::memory:").await.expect("connect");
         run_migrations(&pool).await.expect("migrate");
         let repo = SqliteRepository::new(pool);
 
@@ -2209,10 +2169,7 @@ mod tests {
 
     #[tokio::test]
     async fn exploration_zone_and_node_crud() {
-        let pool = SqlitePoolOptions::new()
-            .connect("sqlite::memory:")
-            .await
-            .expect("connect");
+        let pool = SqlitePoolOptions::new().connect("sqlite::memory:").await.expect("connect");
         run_migrations(&pool).await.expect("migrate");
         let repo = SqliteRepository::new(pool);
 
@@ -2227,16 +2184,9 @@ mod tests {
         assert_eq!(zones[0].danger_level, 3);
 
         // Create nodes
-        repo.save_exploration_node(
-            "n1",
-            "z1",
-            "Ruined Tower",
-            Some("Crumbling stone"),
-            "[]",
-            "[]",
-        )
-        .await
-        .expect("save node");
+        repo.save_exploration_node("n1", "z1", "Ruined Tower", Some("Crumbling stone"), "[]", "[]")
+            .await
+            .expect("save node");
         repo.save_exploration_node("n2", "z1", "Ancient Bridge", None, "[]", "[]")
             .await
             .expect("save node");
@@ -2256,40 +2206,20 @@ mod tests {
         )
         .await
         .expect("update node");
-        let nodes = repo
-            .list_exploration_nodes("z1")
-            .await
-            .expect("list nodes after update");
+        let nodes = repo.list_exploration_nodes("z1").await.expect("list nodes after update");
         let n1 = nodes.iter().find(|n| n.id == "n1").unwrap();
         assert!(n1.discovered);
         assert!(!n1.safe);
         assert_eq!(n1.notes.as_deref(), Some("Has traps"));
 
         // Delete node
-        assert!(repo
-            .delete_exploration_node("n2")
-            .await
-            .expect("delete node"));
-        let nodes = repo
-            .list_exploration_nodes("z1")
-            .await
-            .expect("list nodes after delete");
+        assert!(repo.delete_exploration_node("n2").await.expect("delete node"));
+        let nodes = repo.list_exploration_nodes("z1").await.expect("list nodes after delete");
         assert_eq!(nodes.len(), 1);
 
         // Delete zone cascades
-        assert!(repo
-            .delete_exploration_zone("z1")
-            .await
-            .expect("delete zone"));
-        assert!(repo
-            .list_exploration_nodes("z1")
-            .await
-            .expect("list")
-            .is_empty());
-        assert!(repo
-            .list_exploration_zones()
-            .await
-            .expect("list zones")
-            .is_empty());
+        assert!(repo.delete_exploration_zone("z1").await.expect("delete zone"));
+        assert!(repo.list_exploration_nodes("z1").await.expect("list").is_empty());
+        assert!(repo.list_exploration_zones().await.expect("list zones").is_empty());
     }
 }

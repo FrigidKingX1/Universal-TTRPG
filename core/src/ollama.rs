@@ -49,10 +49,7 @@ struct TagModel {
 
 impl OllamaLlmBackend {
     pub fn new(model: Option<String>) -> Self {
-        Self {
-            client: Client::new(),
-            model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()),
-        }
+        Self { client: Client::new(), model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()) }
     }
 
     /// Fast TCP reachability probe — does not load a model.
@@ -73,8 +70,7 @@ impl LlmBackend for OllamaLlmBackend {
         prompt: &str,
         max_tokens: Option<u32>,
     ) -> Result<String, LlmError> {
-        self.complete_streaming(system, prompt, max_tokens, &mut |_| {})
-            .await
+        self.complete_streaming(system, prompt, max_tokens, &mut |_| {}).await
     }
 
     async fn complete_streaming(
@@ -91,11 +87,7 @@ impl LlmBackend for OllamaLlmBackend {
             system: system.to_string(),
             format: super::intent::game_intent_json_schema(),
             stream: true,
-            options: GenerateOptions {
-                temperature: 0.7,
-                num_ctx: 4096,
-                num_predict: max_tokens,
-            },
+            options: GenerateOptions { temperature: 0.7, num_ctx: 4096, num_predict: max_tokens },
         };
 
         let response = self
@@ -108,10 +100,7 @@ impl LlmBackend for OllamaLlmBackend {
             .map_err(|e| LlmError::Backend(format!("ollama generate failed: {e}")))?;
 
         if !response.status().is_success() {
-            return Err(LlmError::Backend(format!(
-                "ollama returned status {}",
-                response.status()
-            )));
+            return Err(LlmError::Backend(format!("ollama returned status {}", response.status())));
         }
 
         // Ollama streams NDJSON chunks: one JSON object per line with a

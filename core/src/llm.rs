@@ -68,9 +68,7 @@ impl LlmBackend for StubLlmBackend {
         prompt: &str,
         _max_tokens: Option<u32>,
     ) -> Result<String, LlmError> {
-        Ok(format!(
-            "[stub-llm]\n-- system --\n{system}\n-- prompt --\n{prompt}"
-        ))
+        Ok(format!("[stub-llm]\n-- system --\n{system}\n-- prompt --\n{prompt}"))
     }
 
     fn is_stub(&self) -> bool {
@@ -96,9 +94,7 @@ impl<T: LlmBackend + ?Sized> LlmBackend for &T {
         max_tokens: Option<u32>,
         on_token: &mut (dyn for<'a> FnMut(&'a str) + Send),
     ) -> Result<String, LlmError> {
-        (**self)
-            .complete_streaming(system, prompt, max_tokens, on_token)
-            .await
+        (**self).complete_streaming(system, prompt, max_tokens, on_token).await
     }
 
     fn is_stub(&self) -> bool {
@@ -124,9 +120,7 @@ impl<T: LlmBackend + ?Sized> LlmBackend for Box<T> {
         max_tokens: Option<u32>,
         on_token: &mut (dyn for<'a> FnMut(&'a str) + Send),
     ) -> Result<String, LlmError> {
-        (**self)
-            .complete_streaming(system, prompt, max_tokens, on_token)
-            .await
+        (**self).complete_streaming(system, prompt, max_tokens, on_token).await
     }
 
     fn is_stub(&self) -> bool {
@@ -274,11 +268,7 @@ impl<B: LlmBackend> DmPipeline<B> {
         }
         let (narrative, intent, source) = if stub {
             let n = stub_narrative(request, &fate, event_meaning.as_ref());
-            (
-                n.clone(),
-                GameIntent::Narration { text: n },
-                "stub".to_string(),
-            )
+            (n.clone(), GameIntent::Narration { text: n }, "stub".to_string())
         } else {
             let prompt = build_prompt(
                 request,
@@ -288,9 +278,7 @@ impl<B: LlmBackend> DmPipeline<B> {
                 request.memory_context.as_deref(),
             );
             let raw = if let Some(cb) = on_token {
-                self.backend
-                    .complete_streaming(&sys, &prompt, Some(512), cb)
-                    .await?
+                self.backend.complete_streaming(&sys, &prompt, Some(512), cb).await?
             } else {
                 self.backend.complete(&sys, &prompt, Some(512)).await?
             };
@@ -337,12 +325,7 @@ fn execute_intent(
             Some(id) => format!("{id}: {line}"),
             None => line.clone(),
         },
-        GameIntent::DiceRoll {
-            skill,
-            modifier,
-            dc,
-            reason,
-        } => {
+        GameIntent::DiceRoll { skill, modifier, dc, reason } => {
             let mod_v = modifier.unwrap_or(0);
             let target_dc = clamp_dc(dc.unwrap_or(10));
             let roll = dice.evaluate(&format!("1d20 + {mod_v}"));
@@ -350,14 +333,8 @@ fn execute_intent(
                 Ok(r) => (r.total, r.detail.clone()),
                 Err(_) => (mod_v as i64, format!("1d20 + {mod_v} (roll failed)")),
             };
-            let outcome = if total >= target_dc as i64 {
-                "Success"
-            } else {
-                "Failure"
-            };
-            extra.push(format!(
-                "{skill} check: {detail} -> {outcome} (DC {target_dc})"
-            ));
+            let outcome = if total >= target_dc as i64 { "Success" } else { "Failure" };
+            extra.push(format!("{skill} check: {detail} -> {outcome} (DC {target_dc})"));
             let why = reason.clone().unwrap_or_else(|| skill.clone());
             format!("You attempt {why}. {detail} — {outcome}.")
         }
@@ -366,10 +343,7 @@ fn execute_intent(
         }
         GameIntent::FateQuestion { question } => {
             let f = oracle.ask_fate(Odds::FiftyFifty);
-            extra.push(format!(
-                "Fate Question '{question}': {}",
-                f.interpretation()
-            ));
+            extra.push(format!("Fate Question '{question}': {}", f.interpretation()));
             format!("The oracle is asked: {question} — {}", f.interpretation())
         }
     };
@@ -388,21 +362,11 @@ fn stub_narrative(
     fate: &super::oracle::FateResult,
     meaning: Option<&EventMeaning>,
 ) -> String {
-    let scene = request
-        .scene_summary
-        .trim()
-        .trim_end_matches('.')
-        .to_string();
+    let scene = request.scene_summary.trim().trim_end_matches('.').to_string();
     let mut text = if scene.is_empty() {
-        format!(
-            "Your action resolves: the Fate Check returns {}.",
-            fate.interpretation()
-        )
+        format!("Your action resolves: the Fate Check returns {}.", fate.interpretation())
     } else {
-        format!(
-            "In {scene}, your action is met with a result: {}.",
-            fate.interpretation()
-        )
+        format!("In {scene}, your action is met with a result: {}.", fate.interpretation())
     };
     if let Some(m) = meaning {
         text.push_str(&format!(
@@ -422,10 +386,7 @@ fn build_prompt(
 ) -> String {
     let scene = request.scene_summary.trim();
     let mut parts = vec![
-        format!(
-            "Scene: {}",
-            if scene.is_empty() { "(empty)" } else { scene }
-        ),
+        format!("Scene: {}", if scene.is_empty() { "(empty)" } else { scene }),
         format!("Player action: {}", request.player_action.trim()),
         format!(
             "Fate result: {} (roll {}, target {})",
@@ -479,10 +440,7 @@ mod tests {
         assert!(!out.narrative.is_empty());
         assert!(out.fate_roll >= 1 && out.fate_roll <= 100);
         assert!(out.fate_target > 0);
-        assert!(out
-            .mechanical_events
-            .iter()
-            .any(|e| e.contains("Fate Check")));
+        assert!(out.mechanical_events.iter().any(|e| e.contains("Fate Check")));
         assert_eq!(out.chaos_factor, 5);
     }
 
@@ -528,10 +486,7 @@ mod tests {
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert_eq!(out.source, "ollama");
-        assert!(out
-            .mechanical_events
-            .iter()
-            .any(|e| e.contains("Stealth check")));
+        assert!(out.mechanical_events.iter().any(|e| e.contains("Stealth check")));
         assert!(out.narrative.contains("attempt"));
         assert_eq!(out.intent.label(), "dice_roll");
     }
@@ -566,10 +521,7 @@ mod tests {
         };
         let out = futures_test_block_on(pipeline.resolve_action_seeded(&request, Some(1))).unwrap();
         assert!(out.mechanical_events.iter().any(|e| e.contains("DC 20")));
-        assert!(out
-            .mechanical_events
-            .iter()
-            .any(|e| e.contains("Athletics check")));
+        assert!(out.mechanical_events.iter().any(|e| e.contains("Athletics check")));
     }
 
     #[test]

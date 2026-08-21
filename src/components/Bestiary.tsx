@@ -70,7 +70,12 @@ export function Bestiary() {
           </li>
         ))}
       </ul>
-      {statBlocks.length === 0 && <p className="muted">No monsters yet.</p>}
+      {statBlocks.length === 0 && (
+        <div className="fantasy-empty" role="status">
+          <span className="fantasy-empty-icon" aria-hidden="true">🐉</span>
+          <span>No monsters yet — the bestiary awaits.</span>
+        </div>
+      )}
       {dialog}
     </section>
   );

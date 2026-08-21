@@ -6,11 +6,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq)]
 enum Tok {
     Int(i64),
-    Dice {
-        count: i64,
-        sides: i64,
-        keep: Option<Keep>,
-    },
+    Dice { count: i64, sides: i64, keep: Option<Keep> },
     Ref(String),
     Plus,
     Minus,
@@ -74,15 +70,11 @@ impl Default for DiceEngine {
 
 impl DiceEngine {
     pub fn new() -> Self {
-        Self {
-            rng: ChaCha8Rng::from_entropy(),
-        }
+        Self { rng: ChaCha8Rng::from_entropy() }
     }
 
     pub fn with_seed(seed: u64) -> Self {
-        Self {
-            rng: ChaCha8Rng::seed_from_u64(seed),
-        }
+        Self { rng: ChaCha8Rng::seed_from_u64(seed) }
     }
 
     /// Evaluate an expression containing no `@ref` references.
@@ -103,10 +95,7 @@ impl DiceEngine {
         let value = self.eval_node(&parser.tokens, &mut detail, &ast, resolve)?;
         detail.push_str(" = ");
         detail.push_str(&value.to_string());
-        Ok(RollResult {
-            total: value,
-            detail,
-        })
+        Ok(RollResult { total: value, detail })
     }
 
     fn eval_node(
@@ -122,10 +111,7 @@ impl DiceEngine {
                     detail.push_str(&v.to_string());
                     Ok(*v)
                 }
-                other => Err(DiceError::Parse(format!(
-                    "expected literal, found {:?}",
-                    other
-                ))),
+                other => Err(DiceError::Parse(format!("expected literal, found {:?}", other))),
             },
             Ast::Ref(tok_pos) => {
                 let path = match &tokens[*tok_pos] {
@@ -146,28 +132,19 @@ impl DiceEngine {
                         detail.push(']');
                         Ok(v)
                     }
-                    None => Err(DiceError::Resolve(format!(
-                        "unresolved reference `@{path}`"
-                    ))),
+                    None => Err(DiceError::Resolve(format!("unresolved reference `@{path}`"))),
                 }
             }
             Ast::Dice(tok_pos) => {
                 let (count, sides, keep) = match &tokens[*tok_pos] {
                     Tok::Dice { count, sides, keep } => (*count, *sides, *keep),
                     other => {
-                        return Err(DiceError::Parse(format!(
-                            "expected dice, found {:?}",
-                            other
-                        )))
+                        return Err(DiceError::Parse(format!("expected dice, found {:?}", other)))
                     }
                 };
                 self.roll_die(count, sides, keep, detail)
             }
-            Ast::BinOp {
-                op_pos,
-                left,
-                right,
-            } => {
+            Ast::BinOp { op_pos, left, right } => {
                 let left_v = self.eval_node(tokens, detail, left, resolve)?;
                 match &tokens[*op_pos] {
                     Tok::Plus | Tok::Minus | Tok::Star | Tok::Slash => {}
@@ -220,9 +197,7 @@ impl DiceEngine {
             return Err(DiceError::Parse(format!("invalid dice: {count}d{sides}")));
         }
         if count > MAX_DICE_COUNT {
-            return Err(DiceError::Parse(format!(
-                "too many dice: {count} (max {MAX_DICE_COUNT})"
-            )));
+            return Err(DiceError::Parse(format!("too many dice: {count} (max {MAX_DICE_COUNT})")));
         }
         let mut rolls: Vec<i64> = (0..count).map(|_| self.rng.gen_range(1..=sides)).collect();
 
@@ -236,27 +211,14 @@ impl DiceEngine {
             let total: i64 = take.iter().sum();
             detail.push_str(&format!(
                 "{}[{}]",
-                if k.mode == KeepMode::Highest {
-                    "kh"
-                } else {
-                    "kl"
-                },
-                take.iter()
-                    .map(|r| r.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                if k.mode == KeepMode::Highest { "kh" } else { "kl" },
+                take.iter().map(|r| r.to_string()).collect::<Vec<_>>().join(", ")
             ));
             Ok(total)
         } else {
             let total: i64 = rolls.iter().sum();
             detail.push('[');
-            detail.push_str(
-                &rolls
-                    .iter()
-                    .map(|r| r.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            );
+            detail.push_str(&rolls.iter().map(|r| r.to_string()).collect::<Vec<_>>().join(", "));
             detail.push(']');
             Ok(total)
         }
@@ -322,11 +284,7 @@ fn lex(input: &str) -> Result<Vec<Tok>, DiceError> {
                 i = next;
                 let (keep, next) = parse_keep(&chars, i)?;
                 i = next;
-                tokens.push(Tok::Dice {
-                    count: 1,
-                    sides,
-                    keep,
-                });
+                tokens.push(Tok::Dice { count: 1, sides, keep });
             }
             c if c.is_ascii_digit() => {
                 let (int, next) = parse_int(&chars, i)?;
@@ -338,11 +296,7 @@ fn lex(input: &str) -> Result<Vec<Tok>, DiceError> {
                     i = next;
                     let (keep, next) = parse_keep(&chars, i)?;
                     i = next;
-                    tokens.push(Tok::Dice {
-                        count: int,
-                        sides,
-                        keep,
-                    });
+                    tokens.push(Tok::Dice { count: int, sides, keep });
                 } else {
                     tokens.push(Tok::Int(int));
                 }
@@ -379,11 +333,7 @@ fn parse_int(chars: &[char], start: usize) -> Result<(i64, usize), DiceError> {
 fn parse_keep(chars: &[char], start: usize) -> Result<(Option<Keep>, usize), DiceError> {
     let mut i = start;
     if i + 1 < chars.len() && chars[i] == 'k' && (chars[i + 1] == 'h' || chars[i + 1] == 'l') {
-        let mode = if chars[i + 1] == 'h' {
-            KeepMode::Highest
-        } else {
-            KeepMode::Lowest
-        };
+        let mode = if chars[i + 1] == 'h' { KeepMode::Highest } else { KeepMode::Lowest };
         i += 2;
         let (n, next) = parse_int(chars, i)?;
         if n <= 0 {
@@ -459,11 +409,7 @@ impl Parser {
             let op_pos = self.pos;
             self.advance();
             let right = self.term()?;
-            left = Ast::BinOp {
-                op_pos,
-                left: Box::new(left),
-                right: Box::new(right),
-            };
+            left = Ast::BinOp { op_pos, left: Box::new(left), right: Box::new(right) };
         }
         Ok(left)
     }
@@ -474,11 +420,7 @@ impl Parser {
             let op_pos = self.pos;
             self.advance();
             let right = self.unary()?;
-            left = Ast::BinOp {
-                op_pos,
-                left: Box::new(left),
-                right: Box::new(right),
-            };
+            left = Ast::BinOp { op_pos, left: Box::new(left), right: Box::new(right) };
         }
         Ok(left)
     }
@@ -487,9 +429,7 @@ impl Parser {
         if matches!(self.peek(), Some(Tok::Minus)) {
             self.advance();
             let inner = self.unary()?;
-            return Ok(Ast::Neg {
-                inner: Box::new(inner),
-            });
+            return Ok(Ast::Neg { inner: Box::new(inner) });
         }
         self.primary()
     }
@@ -557,10 +497,7 @@ mod tests {
         // With seeded RNG, verify determinism.
         let mut d1 = DiceEngine::with_seed(99);
         let mut d2 = DiceEngine::with_seed(99);
-        assert_eq!(
-            d1.evaluate("2d20kh1").unwrap(),
-            d2.evaluate("2d20kh1").unwrap()
-        );
+        assert_eq!(d1.evaluate("2d20kh1").unwrap(), d2.evaluate("2d20kh1").unwrap());
     }
 
     #[test]
@@ -576,13 +513,10 @@ mod tests {
     fn refs_resolve() {
         let mut d = DiceEngine::with_seed(1);
         let r = d
-            .evaluate_with(
-                "1d20 + @attributes.STR.derived_modifier",
-                &|path| match path {
-                    "attributes.STR.derived_modifier" => Some(3),
-                    _ => None,
-                },
-            )
+            .evaluate_with("1d20 + @attributes.STR.derived_modifier", &|path| match path {
+                "attributes.STR.derived_modifier" => Some(3),
+                _ => None,
+            })
             .unwrap();
         assert!((4..=23).contains(&r.total));
     }

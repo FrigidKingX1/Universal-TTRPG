@@ -217,8 +217,12 @@ function App() {
         )}
 
         {loading ? (
-          <div className="loading-overlay" role="status">
-            Loading…
+          <div className="loading-overlay" role="status" aria-label="Loading campaign">
+            <div className="loading-sigil" aria-hidden="true">
+              <span className="loading-rune">◆</span>
+              <span className="loading-ring" />
+            </div>
+            <span className="loading-text">Awakening the archive…</span>
           </div>
         ) : appMode === "setup" ? (
           <div className="wizard-wrapper">

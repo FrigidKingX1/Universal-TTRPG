@@ -60,17 +60,11 @@ impl Combatant {
 
 impl From<&CharacterProfile> for Combatant {
     fn from(p: &CharacterProfile) -> Self {
-        let attributes: HashMap<String, i32> = p
-            .attributes
-            .iter()
-            .map(|(k, v)| (k.clone(), v.current_value))
-            .collect();
+        let attributes: HashMap<String, i32> =
+            p.attributes.iter().map(|(k, v)| (k.clone(), v.current_value)).collect();
         let hp = p.resource_pools.get("hp").map(|r| r.current).unwrap_or(10);
-        let ac = p
-            .attributes
-            .get("DEX")
-            .map(|d| 10 + attribute_modifier(d.current_value))
-            .unwrap_or(10);
+        let ac =
+            p.attributes.get("DEX").map(|d| 10 + attribute_modifier(d.current_value)).unwrap_or(10);
         Combatant {
             id: p.id.clone(),
             name: p.identity.name.clone(),
@@ -195,23 +189,11 @@ pub fn apply_damage(target: &mut Combatant, amount: i32) -> String {
 /// Returns the adjusted damage (immune → 0, resistant → half, vulnerable → double).
 pub fn modify_damage_for_type(raw: i32, damage_type: &str, target: &Combatant) -> i32 {
     let dt = damage_type.to_lowercase();
-    if target
-        .resistances
-        .iter()
-        .any(|r| r.eq_ignore_ascii_case(&dt))
-    {
+    if target.resistances.iter().any(|r| r.eq_ignore_ascii_case(&dt)) {
         raw / 2
-    } else if target
-        .vulnerabilities
-        .iter()
-        .any(|v| v.eq_ignore_ascii_case(&dt))
-    {
+    } else if target.vulnerabilities.iter().any(|v| v.eq_ignore_ascii_case(&dt)) {
         raw * 2
-    } else if target
-        .immunities
-        .iter()
-        .any(|i| i.eq_ignore_ascii_case(&dt))
-    {
+    } else if target.immunities.iter().any(|i| i.eq_ignore_ascii_case(&dt)) {
         0
     } else {
         raw
@@ -230,11 +212,7 @@ pub fn apply_healing(target: &mut Combatant, amount: i32) -> i32 {
 
 /// Resolve the defense value an action rolls against, from the target combatant.
 fn resolve_defense(action: &ActionDefinition, target: &Combatant) -> Result<i32, EngineError> {
-    let vs = action
-        .resolution
-        .vs_defense
-        .as_deref()
-        .unwrap_or("armor_class");
+    let vs = action.resolution.vs_defense.as_deref().unwrap_or("armor_class");
     if vs == "armor_class" || vs == "ac" {
         return Ok(target.armor_class);
     }
@@ -254,8 +232,7 @@ fn roll_for(
     actor: &Combatant,
     formula: &str,
 ) -> Result<RollResult, EngineError> {
-    dice.evaluate_with(formula, &|path| actor.resolve_ref(path))
-        .map_err(EngineError::from)
+    dice.evaluate_with(formula, &|path| actor.resolve_ref(path)).map_err(EngineError::from)
 }
 
 /// Execute an attack action from `attacker` against `target`.
@@ -413,11 +390,7 @@ pub fn execute_attack(
     if !damage_type_str.is_empty() {
         let dt = damage_type_str.to_lowercase();
         let pre_modifier = damage_dealt;
-        if !target
-            .immunities
-            .iter()
-            .any(|i| i.eq_ignore_ascii_case(&dt))
-        {
+        if !target.immunities.iter().any(|i| i.eq_ignore_ascii_case(&dt)) {
             damage_dealt = modify_damage_for_type(damage_dealt, damage_type_str, target);
             if damage_dealt < pre_modifier {
                 damage_modifier = Some("resisted".to_string());
@@ -431,11 +404,8 @@ pub fn execute_attack(
     }
 
     // 4. Apply damage and compute status.
-    let target_status = if damage_dealt > 0 {
-        apply_damage(target, damage_dealt)
-    } else {
-        current_status(target)
-    };
+    let target_status =
+        if damage_dealt > 0 { apply_damage(target, damage_dealt) } else { current_status(target) };
 
     Ok(EngineOutcome {
         check_result,
@@ -484,11 +454,7 @@ pub fn roll_initiative(
     combatants: &[Combatant],
     formula: &str,
 ) -> Result<Vec<InitiativeEntry>, EngineError> {
-    let formula = if formula.is_empty() {
-        "1d20 + @bonus.initiative"
-    } else {
-        formula
-    };
+    let formula = if formula.is_empty() { "1d20 + @bonus.initiative" } else { formula };
     let mut entries: Vec<InitiativeEntry> = Vec::with_capacity(combatants.len());
     for c in combatants {
         let roll = roll_for(dice, c, formula)?;
@@ -501,10 +467,7 @@ pub fn roll_initiative(
         });
     }
     entries.sort_by(|a, b| {
-        b.roll
-            .cmp(&a.roll)
-            .then(b.modifier.cmp(&a.modifier))
-            .then(a.name.cmp(&b.name))
+        b.roll.cmp(&a.roll).then(b.modifier.cmp(&a.modifier)).then(a.name.cmp(&b.name))
     });
     Ok(entries)
 }
@@ -560,10 +523,7 @@ mod tests {
         ActionDefinition {
             id: "longsword_slash".to_string(),
             name: "Longsword Slash".to_string(),
-            action_cost: ActionCost {
-                cost_type: CostType::Action,
-                amount: 1,
-            },
+            action_cost: ActionCost { cost_type: CostType::Action, amount: 1 },
             targeting: Some(Targeting {
                 range_feet: Some(5),
                 target_type: TargetType::SingleEntity,
@@ -599,11 +559,7 @@ mod tests {
             creature_type: None,
             alignment: Some("Neutral Evil".to_string()),
             armor_class: 15,
-            hit_points: HitPoints {
-                current: 7,
-                maximum: 7,
-                formula: Some("2d6 - 2".to_string()),
-            },
+            hit_points: HitPoints { current: 7, maximum: 7, formula: Some("2d6 - 2".to_string()) },
             speed_feet: Some(30),
             attributes,
             actions: vec![],
@@ -642,10 +598,7 @@ mod tests {
         assert_eq!(outcome.attack_result, "HIT");
         assert!(outcome.damage_dealt > 0);
         assert!(outcome.target_hp_remaining < 7);
-        assert!(matches!(
-            outcome.target_status.as_str(),
-            "ALIVE" | "DEFEATED"
-        ));
+        assert!(matches!(outcome.target_status.as_str(), "ALIVE" | "DEFEATED"));
     }
 
     #[test]
@@ -704,10 +657,7 @@ mod tests {
         let action = ActionDefinition {
             id: "cairn_swing".to_string(),
             name: "Cairn Swing".to_string(),
-            action_cost: ActionCost {
-                cost_type: CostType::Action,
-                amount: 1,
-            },
+            action_cost: ActionCost { cost_type: CostType::Action, amount: 1 },
             targeting: None,
             resolution: Resolution {
                 resolution_type: ResolutionType::GuaranteedEffect,
@@ -802,11 +752,7 @@ mod tests {
             creature_type: Some("humanoid".to_string()),
             alignment: Some("chaotic evil".to_string()),
             armor_class: 13,
-            hit_points: HitPoints {
-                current: 15,
-                maximum: 15,
-                formula: Some("2d8+6".to_string()),
-            },
+            hit_points: HitPoints { current: 15, maximum: 15, formula: Some("2d8+6".to_string()) },
             speed_feet: Some(30),
             attributes: HashMap::from([("STR".to_string(), 16), ("DEX".to_string(), 12)]),
             actions: vec!["greataxe".to_string()],
@@ -904,11 +850,7 @@ mod tests {
             creature_type: None,
             alignment: None,
             armor_class: 14,
-            hit_points: HitPoints {
-                current: 30,
-                maximum: 30,
-                formula: None,
-            },
+            hit_points: HitPoints { current: 30, maximum: 30, formula: None },
             speed_feet: None,
             attributes: attrs,
             actions: vec![],

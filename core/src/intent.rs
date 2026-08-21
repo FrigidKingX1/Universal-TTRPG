@@ -14,17 +14,9 @@ pub enum GameIntent {
     /// A change to the current scene's description (set-dressing, new exits, etc.).
     SceneDelta { delta: String },
     /// A line spoken by a non-player character.
-    NpcSpeech {
-        npc_id: Option<String>,
-        line: String,
-    },
+    NpcSpeech { npc_id: Option<String>, line: String },
     /// Request to roll a skill/attribute check (resolved by the engine).
-    DiceRoll {
-        skill: String,
-        modifier: Option<i32>,
-        dc: Option<i32>,
-        reason: Option<String>,
-    },
+    DiceRoll { skill: String, modifier: Option<i32>, dc: Option<i32>, reason: Option<String> },
     /// A rules question the engine should answer from its data.
     RuleCheck { question: String },
     /// A Mythic Fate-question the oracle should resolve.
@@ -72,9 +64,7 @@ impl GameIntent {
 
         match serde_json::from_str::<RawIntent>(json_candidate) {
             Ok(raw_intent) => raw_intent.into_game_intent(),
-            Err(_) => GameIntent::Narration {
-                text: trimmed.to_string(),
-            },
+            Err(_) => GameIntent::Narration { text: trimmed.to_string() },
         }
     }
 }
@@ -90,34 +80,21 @@ impl RawIntent {
     fn into_game_intent(self) -> GameIntent {
         let p = &self.payload;
         match self.kind.as_str() {
-            "narration" => GameIntent::Narration {
-                text: get_str(p, "text"),
-            },
-            "scene_delta" => GameIntent::SceneDelta {
-                delta: get_str(p, "delta"),
-            },
-            "npc_speech" => GameIntent::NpcSpeech {
-                npc_id: get_opt_str(p, "npc_id"),
-                line: get_str(p, "line"),
-            },
+            "narration" => GameIntent::Narration { text: get_str(p, "text") },
+            "scene_delta" => GameIntent::SceneDelta { delta: get_str(p, "delta") },
+            "npc_speech" => {
+                GameIntent::NpcSpeech { npc_id: get_opt_str(p, "npc_id"), line: get_str(p, "line") }
+            }
             "dice_roll" => GameIntent::DiceRoll {
                 skill: get_str(p, "skill"),
                 modifier: get_i32_opt(p, "modifier"),
                 dc: get_i32_opt(p, "dc"),
                 reason: get_opt_str(p, "reason"),
             },
-            "rule_check" => GameIntent::RuleCheck {
-                question: get_str(p, "question"),
-            },
-            "fate_question" => GameIntent::FateQuestion {
-                question: get_str(p, "question"),
-            },
-            "ooc" => GameIntent::Ooc {
-                message: get_str(p, "message"),
-            },
-            other => GameIntent::Narration {
-                text: format!("[unknown intent: {other}]\n{}", p),
-            },
+            "rule_check" => GameIntent::RuleCheck { question: get_str(p, "question") },
+            "fate_question" => GameIntent::FateQuestion { question: get_str(p, "question") },
+            "ooc" => GameIntent::Ooc { message: get_str(p, "message") },
+            other => GameIntent::Narration { text: format!("[unknown intent: {other}]\n{}", p) },
         }
     }
 }
@@ -125,9 +102,7 @@ impl RawIntent {
 /// If `s` is wrapped in a ```json (or bare ```) fence, return the inner body.
 /// Also handles fences with leading/trailing whitespace.
 pub fn stripped_json(s: &str) -> Option<&str> {
-    let body = s
-        .strip_prefix("```json")
-        .or_else(|| s.strip_prefix("```"))?;
+    let body = s.strip_prefix("```json").or_else(|| s.strip_prefix("```"))?;
     Some(body.trim_end_matches("```").trim())
 }
 
@@ -167,10 +142,7 @@ mod stripped_json_tests {
 }
 
 fn get_str(v: &Value, key: &str) -> String {
-    v.get(key)
-        .and_then(|x| x.as_str())
-        .unwrap_or_default()
-        .to_string()
+    v.get(key).and_then(|x| x.as_str()).unwrap_or_default().to_string()
 }
 
 fn get_opt_str(v: &Value, key: &str) -> Option<String> {
@@ -178,9 +150,7 @@ fn get_opt_str(v: &Value, key: &str) -> Option<String> {
 }
 
 fn get_i32_opt(v: &Value, key: &str) -> Option<i32> {
-    v.get(key)
-        .and_then(|x| x.as_i64())
-        .and_then(|n| i32::try_from(n).ok())
+    v.get(key).and_then(|x| x.as_i64()).and_then(|n| i32::try_from(n).ok())
 }
 
 /// GBNF grammar (llama.cpp / llama-cpp grammar format) that constrains the
@@ -246,12 +216,7 @@ mod tests {
     fn parses_narration() {
         let g =
             GameIntent::from_llm_text(&sample("narration", "{\"text\":\"The gate groans open.\"}"));
-        assert_eq!(
-            g,
-            GameIntent::Narration {
-                text: "The gate groans open.".to_string()
-            }
-        );
+        assert_eq!(g, GameIntent::Narration { text: "The gate groans open.".to_string() });
     }
 
     #[test]
@@ -262,10 +227,7 @@ mod tests {
         ));
         assert_eq!(
             g,
-            GameIntent::NpcSpeech {
-                npc_id: None,
-                line: "Halt! Who goes there?".to_string()
-            }
+            GameIntent::NpcSpeech { npc_id: None, line: "Halt! Who goes there?".to_string() }
         );
     }
 
@@ -290,22 +252,12 @@ mod tests {
     fn tolerates_code_fence_and_missing_payload_fields() {
         let raw = "```json\n{\"type\":\"scene_delta\",\"payload\":{}}\n```";
         let g = GameIntent::from_llm_text(raw);
-        assert_eq!(
-            g,
-            GameIntent::SceneDelta {
-                delta: String::new()
-            }
-        );
+        assert_eq!(g, GameIntent::SceneDelta { delta: String::new() });
     }
 
     #[test]
     fn degrades_to_narration_on_garbage() {
         let g = GameIntent::from_llm_text("The goblin lunges!");
-        assert_eq!(
-            g,
-            GameIntent::Narration {
-                text: "The goblin lunges!".to_string()
-            }
-        );
+        assert_eq!(g, GameIntent::Narration { text: "The goblin lunges!".to_string() });
     }
 }

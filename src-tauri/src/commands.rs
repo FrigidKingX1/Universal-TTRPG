@@ -50,24 +50,14 @@ async fn apply_session_effects(state: &AppState, request: &DmRequest, response: 
                 .and_then(|scenes| scenes.into_iter().find(|s| &s.id == scene_id))
                 .and_then(|s| s.summary_text)
                 .unwrap_or_default();
-            let mut merged = if existing.is_empty() {
-                delta.clone()
-            } else {
-                format!("{existing}\n{delta}")
-            };
+            let mut merged =
+                if existing.is_empty() { delta.clone() } else { format!("{existing}\n{delta}") };
             if merged.chars().count() > 2000 {
                 let skip = merged.chars().count() - 2000;
                 merged = merged.chars().skip(skip).collect();
             }
-            if state
-                .repo
-                .update_scene_summary(scene_id, Some(&merged))
-                .await
-                .is_ok()
-            {
-                response
-                    .mechanical_events
-                    .push("Scene record updated.".to_string());
+            if state.repo.update_scene_summary(scene_id, Some(&merged)).await.is_ok() {
+                response.mechanical_events.push("Scene record updated.".to_string());
             }
         }
         GameIntent::NpcSpeech { npc_id, line } => {
@@ -76,21 +66,14 @@ async fn apply_session_effects(state: &AppState, request: &DmRequest, response: 
             let npcs = state.repo.list_npc_characters().await.unwrap_or_default();
             let speaker = npc_id
                 .as_ref()
-                .and_then(|id| {
-                    npcs.iter().find(|n| &n.id == id || &n.name == id)
-                })
+                .and_then(|id| npcs.iter().find(|n| &n.id == id || &n.name == id))
                 .map(|n| n.name.clone())
                 .or_else(|| npc_id.clone())
                 .unwrap_or_else(|| "NPC".to_string());
             if let Some(scene_id) = &request.scene_id {
-                let _ = state
-                    .repo
-                    .append_log(scene_id, &speaker, line, None)
-                    .await;
+                let _ = state.repo.append_log(scene_id, &speaker, line, None).await;
             }
-            response
-                .mechanical_events
-                .push(format!("{speaker} speaks."));
+            response.mechanical_events.push(format!("{speaker} speaks."));
         }
         GameIntent::RuleCheck { question } => {
             // Answer from world data: look for actions / stat blocks whose
@@ -242,11 +225,7 @@ pub async fn create_scene(
     title: String,
     chaos_factor: i32,
 ) -> CmdResult<crate::db::Scene> {
-    let scene = state
-        .repo
-        .create_scene(&title, chaos_factor)
-        .await
-        .map_err(err)?;
+    let scene = state.repo.create_scene(&title, chaos_factor).await.map_err(err)?;
     emit(&app, "scene:created", &scene);
     Ok(scene)
 }
@@ -277,11 +256,7 @@ pub async fn update_scene_summary(
     id: String,
     summary: Option<String>,
 ) -> CmdResult<()> {
-    state
-        .repo
-        .update_scene_summary(&id, summary.as_deref())
-        .await
-        .map_err(err)
+    state.repo.update_scene_summary(&id, summary.as_deref()).await.map_err(err)
 }
 
 #[tauri::command]
@@ -290,11 +265,7 @@ pub async fn update_scene_chaos_factor(
     id: String,
     chaos_factor: i32,
 ) -> CmdResult<()> {
-    state
-        .repo
-        .update_scene_chaos_factor(&id, chaos_factor)
-        .await
-        .map_err(err)
+    state.repo.update_scene_chaos_factor(&id, chaos_factor).await.map_err(err)
 }
 
 // ---------- Log --------------------------------------------------------
@@ -307,11 +278,7 @@ pub async fn append_log(
     speaker: String,
     content: String,
 ) -> CmdResult<crate::db::LogEntry> {
-    let entry = state
-        .repo
-        .append_log(&scene_id, &speaker, &content, None)
-        .await
-        .map_err(err)?;
+    let entry = state.repo.append_log(&scene_id, &speaker, &content, None).await.map_err(err)?;
     emit(&app, "log:new", &entry);
     Ok(entry)
 }
@@ -342,11 +309,7 @@ pub fn roll_dice(app: AppHandle, expression: String, seed: Option<u64>) -> CmdRe
         None => DiceEngine::new(),
     };
     let roll = dice.evaluate(&expression).map_err(err)?;
-    let response = RollResponse {
-        expression,
-        total: roll.total,
-        detail: roll.detail,
-    };
+    let response = RollResponse { expression, total: roll.total, detail: roll.detail };
     emit(&app, "dice:rolled", &response);
     Ok(response)
 }
@@ -462,20 +425,13 @@ pub fn scene_test_cmd(
                 .unwrap_or_default()
                 .into_iter()
                 .filter(|t| t.status == "open")
-                .map(|t| ThreadRef {
-                    id: t.id,
-                    description: t.description,
-                })
+                .map(|t| ThreadRef { id: t.id, description: t.description })
                 .collect(),
             npcs: npcs
                 .unwrap_or_default()
                 .into_iter()
                 .filter(|n| n.alive)
-                .map(|n| NpcRef {
-                    id: n.id,
-                    name: n.name,
-                    disposition: n.disposition,
-                })
+                .map(|n| NpcRef { id: n.id, name: n.name, disposition: n.disposition })
                 .collect(),
         };
         let table = auto_dm_core::oracle::MeaningTable::default_table();
@@ -490,10 +446,7 @@ pub fn scene_test_cmd(
         auto_dm_core::oracle::SceneOutcome::Altered => "altered",
         auto_dm_core::oracle::SceneOutcome::Interrupted => "interrupted",
     };
-    Ok(SceneTestResponse {
-        outcome: outcome_str.to_string(),
-        event,
-    })
+    Ok(SceneTestResponse { outcome: outcome_str.to_string(), event })
 }
 
 // ---------- Lines & Veils / Safety Settings ---------------------------
@@ -527,18 +480,12 @@ pub async fn set_lines_veils(
 ) -> CmdResult<()> {
     state
         .repo
-        .set_setting(
-            "lines",
-            &serde_json::to_string(&lines).unwrap_or_else(|_| "[]".into()),
-        )
+        .set_setting("lines", &serde_json::to_string(&lines).unwrap_or_else(|_| "[]".into()))
         .await
         .map_err(|e| e.to_string())?;
     state
         .repo
-        .set_setting(
-            "veils",
-            &serde_json::to_string(&veils).unwrap_or_else(|_| "[]".into()),
-        )
+        .set_setting("veils", &serde_json::to_string(&veils).unwrap_or_else(|_| "[]".into()))
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -584,11 +531,7 @@ pub async fn create_doom_clock(
 
 #[tauri::command]
 pub async fn list_doom_clocks(state: State<'_, AppState>) -> CmdResult<Vec<DoomClockResponse>> {
-    let rows = state
-        .repo
-        .list_doom_clocks()
-        .await
-        .map_err(|e| e.to_string())?;
+    let rows = state.repo.list_doom_clocks().await.map_err(|e| e.to_string())?;
     Ok(rows
         .into_iter()
         .map(|r| DoomClockResponse {
@@ -608,11 +551,7 @@ pub async fn tick_doom_clock(
     state: State<'_, AppState>,
     id: String,
 ) -> CmdResult<Option<(u32, u32)>> {
-    state
-        .repo
-        .tick_doom_clock(&id)
-        .await
-        .map_err(|e| e.to_string())
+    state.repo.tick_doom_clock(&id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -621,30 +560,18 @@ pub async fn advance_doom_clock(
     id: String,
     ticks: u32,
 ) -> CmdResult<Option<(u32, u32)>> {
-    state
-        .repo
-        .advance_doom_clock(&id, ticks)
-        .await
-        .map_err(|e| e.to_string())
+    state.repo.advance_doom_clock(&id, ticks).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn reset_doom_clock(state: State<'_, AppState>, id: String) -> CmdResult<()> {
-    state
-        .repo
-        .reset_doom_clock(&id)
-        .await
-        .map_err(|e| e.to_string())?;
+    state.repo.reset_doom_clock(&id).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn delete_doom_clock(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
-    state
-        .repo
-        .delete_doom_clock(&id)
-        .await
-        .map_err(|e| e.to_string())
+    state.repo.delete_doom_clock(&id).await.map_err(|e| e.to_string())
 }
 
 // ---------- Exploration --------------------------------------------------
@@ -707,11 +634,7 @@ pub async fn create_exploration_zone(
 pub async fn list_exploration_zones(
     state: State<'_, AppState>,
 ) -> CmdResult<Vec<ExplorationZoneResponse>> {
-    let rows = state
-        .repo
-        .list_exploration_zones()
-        .await
-        .map_err(|e| e.to_string())?;
+    let rows = state.repo.list_exploration_zones().await.map_err(|e| e.to_string())?;
     Ok(rows
         .into_iter()
         .map(|r| ExplorationZoneResponse {
@@ -727,11 +650,7 @@ pub async fn list_exploration_zones(
 
 #[tauri::command]
 pub async fn delete_exploration_zone(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
-    state
-        .repo
-        .delete_exploration_zone(&id)
-        .await
-        .map_err(|e| e.to_string())
+    state.repo.delete_exploration_zone(&id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -765,11 +684,7 @@ pub async fn list_exploration_nodes(
     state: State<'_, AppState>,
     zone_id: String,
 ) -> CmdResult<Vec<ExplorationNodeResponse>> {
-    let rows = state
-        .repo
-        .list_exploration_nodes(&zone_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let rows = state.repo.list_exploration_nodes(&zone_id).await.map_err(|e| e.to_string())?;
     Ok(rows
         .into_iter()
         .map(|r| {
@@ -820,11 +735,7 @@ pub async fn update_exploration_node(
 
 #[tauri::command]
 pub async fn delete_exploration_node(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
-    state
-        .repo
-        .delete_exploration_node(&id)
-        .await
-        .map_err(|e| e.to_string())
+    state.repo.delete_exploration_node(&id).await.map_err(|e| e.to_string())
 }
 
 // ---------- Combat -----------------------------------------------------
@@ -863,10 +774,7 @@ pub async fn combat_attack(
             outcome.target_hp_remaining
         );
         if let Some(sid) = scene_id {
-            let _ = state
-                .repo
-                .append_log(&sid, "Combat", &narrative, None)
-                .await;
+            let _ = state.repo.append_log(&sid, "Combat", &narrative, None).await;
         }
     }
 
@@ -965,10 +873,7 @@ pub async fn seed_defaults(state: State<'_, AppState>) -> CmdResult<()> {
     let longsword = ActionDefinition {
         id: "act_longsword".to_string(),
         name: "Longsword".to_string(),
-        action_cost: ActionCost {
-            cost_type: CostType::Action,
-            amount: 1,
-        },
+        action_cost: ActionCost { cost_type: CostType::Action, amount: 1 },
         targeting: Some(Targeting {
             range_feet: Some(5),
             target_type: TargetType::SingleEntity,
@@ -995,10 +900,7 @@ pub async fn seed_defaults(state: State<'_, AppState>) -> CmdResult<()> {
     let shortsword = ActionDefinition {
         id: "act_shortsword".to_string(),
         name: "Shortsword".to_string(),
-        action_cost: ActionCost {
-            cost_type: CostType::Action,
-            amount: 1,
-        },
+        action_cost: ActionCost { cost_type: CostType::Action, amount: 1 },
         targeting: Some(Targeting {
             range_feet: Some(5),
             target_type: TargetType::SingleEntity,
@@ -1080,11 +982,7 @@ pub async fn seed_defaults(state: State<'_, AppState>) -> CmdResult<()> {
         creature_type: Some("humanoid".to_string()),
         alignment: Some("neutral evil".to_string()),
         armor_class: 15,
-        hit_points: HitPoints {
-            current: 7,
-            maximum: 7,
-            formula: Some("2d6".to_string()),
-        },
+        hit_points: HitPoints { current: 7, maximum: 7, formula: Some("2d6".to_string()) },
         speed_feet: Some(30),
         attributes: std::collections::HashMap::from([
             ("STR".to_string(), 8),
@@ -1211,9 +1109,7 @@ pub async fn generate_campaign(
 
     let raw = {
         let dm = state.dm.lock().await;
-        let pipeline = dm
-            .as_ref()
-            .ok_or_else(|| "DM backend not initialized".to_string())?;
+        let pipeline = dm.as_ref().ok_or_else(|| "DM backend not initialized".to_string())?;
         pipeline
             .backend()
             .complete(CAMPAIGN_GENERATION_PROMPT, &seed, Some(4096))
@@ -1227,7 +1123,7 @@ pub async fn generate_campaign(
 
     if result.scenes.is_empty() {
         return Err(
-            "Generated campaign contained no scenes; try rephrasing the concept.".to_string(),
+            "Generated campaign contained no scenes; try rephrasing the concept.".to_string()
         );
     }
 
@@ -1354,9 +1250,7 @@ pub async fn process_dm_intent(
     let mut token_buffer = String::new();
     let response = {
         let dm = state.dm.lock().await;
-        let pipeline = dm
-            .as_ref()
-            .ok_or_else(|| "DM backend not initialized".to_string())?;
+        let pipeline = dm.as_ref().ok_or_else(|| "DM backend not initialized".to_string())?;
         pipeline
             .resolve_action_streaming(&req, None, &mut |token: &str| {
                 token_buffer.push_str(token);
@@ -1397,17 +1291,8 @@ pub async fn get_random_encounter(
         _ => &STANDARD_ENCOUNTERS,
     };
 
-    let idx = if total == 0 {
-        0
-    } else {
-        total.min(table.len()) - 1
-    };
-    Ok(format!(
-        "[{}] d100={}: {}",
-        difficulty.to_uppercase(),
-        total,
-        table[idx]
-    ))
+    let idx = if total == 0 { 0 } else { total.min(table.len()) - 1 };
+    Ok(format!("[{}] d100={}: {}", difficulty.to_uppercase(), total, table[idx]))
 }
 
 const STANDARD_ENCOUNTERS: [&str; 20] = [
@@ -1548,11 +1433,7 @@ pub async fn save_loot(
     quantity: i32,
     source_entity: String,
 ) -> CmdResult<crate::db::LootRow> {
-    state
-        .repo
-        .save_loot(&scene_id, &name, quantity, &source_entity)
-        .await
-        .map_err(err)
+    state.repo.save_loot(&scene_id, &name, quantity, &source_entity).await.map_err(err)
 }
 
 /// Assign a loot entry to a character.
@@ -1562,11 +1443,7 @@ pub async fn assign_loot(
     loot_id: String,
     character_id: String,
 ) -> CmdResult<()> {
-    state
-        .repo
-        .assign_loot(&loot_id, &character_id)
-        .await
-        .map_err(err)
+    state.repo.assign_loot(&loot_id, &character_id).await.map_err(err)
 }
 
 /// List all loot for a scene.
@@ -1595,11 +1472,7 @@ pub async fn save_npc_note(
     relation: String,
     note: String,
 ) -> CmdResult<crate::db::NpcNoteRow> {
-    state
-        .repo
-        .save_npc_note(&scene_id, &npc_name, &relation, &note)
-        .await
-        .map_err(err)
+    state.repo.save_npc_note(&scene_id, &npc_name, &relation, &note).await.map_err(err)
 }
 
 /// List NPC notes for a scene.
@@ -1626,11 +1499,7 @@ pub async fn save_combat_state(
     scene_id: String,
     state_json: String,
 ) -> CmdResult<()> {
-    state
-        .repo
-        .save_combat_state(&scene_id, &state_json)
-        .await
-        .map_err(err)
+    state.repo.save_combat_state(&scene_id, &state_json).await.map_err(err)
 }
 
 /// Load combat state for the current scene.
@@ -1654,11 +1523,7 @@ pub async fn roll_monster_loot(
     use auto_dm_core::dice::DiceEngine;
     use auto_dm_core::models::roll_loot_table;
 
-    let block = state
-        .repo
-        .load_stat_block(&stat_block_id)
-        .await
-        .map_err(err)?;
+    let block = state.repo.load_stat_block(&stat_block_id).await.map_err(err)?;
     let block = block.ok_or_else(|| err("stat block not found"))?;
     // Use timestamp-based seed for quasi-randomness.
     let seed = std::time::SystemTime::now()
@@ -1693,12 +1558,7 @@ pub async fn save_thread(
 ) -> CmdResult<crate::db::ThreadRow> {
     state
         .repo
-        .save_thread(
-            &description,
-            &status,
-            &opened_scene_id,
-            resolved_scene_id.as_deref(),
-        )
+        .save_thread(&description, &status, &opened_scene_id, resolved_scene_id.as_deref())
         .await
         .map_err(err)
 }
@@ -1711,11 +1571,7 @@ pub async fn update_thread_status(
     status: String,
     resolved_scene_id: Option<String>,
 ) -> CmdResult<()> {
-    state
-        .repo
-        .update_thread_status(&id, &status, resolved_scene_id.as_deref())
-        .await
-        .map_err(err)
+    state.repo.update_thread_status(&id, &status, resolved_scene_id.as_deref()).await.map_err(err)
 }
 
 /// List all plot threads.

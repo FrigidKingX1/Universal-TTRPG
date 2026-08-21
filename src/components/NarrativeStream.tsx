@@ -96,9 +96,10 @@ export function NarrativeStream() {
 
       <div className="narrative-content" ref={scrollContainerRef} aria-live="polite" aria-atomic="false">
         {storyLog.length === 0 ? (
-          <div className="narrative-placeholder" role="status">
-            <p>No story entries yet.</p>
-            <p>Type a player action below to begin.</p>
+          <div className="fantasy-empty" role="status">
+            <span className="fantasy-empty-icon" aria-hidden="true">📜</span>
+            <span>No tale yet — speak your first action below.</span>
+            <span className="rune-divider" aria-hidden="true">◆ — ◇ — ◆</span>
           </div>
         ) : (
           <div className="story-log" role="log" aria-label="Story log">

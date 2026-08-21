@@ -117,11 +117,7 @@ impl FateResult {
             (FateOutcome::No, true) => "Exceptional",
             _ => "",
         };
-        let event = if self.random_event {
-            " Random Event!"
-        } else {
-            ""
-        };
+        let event = if self.random_event { " Random Event!" } else { "" };
         format!("{prefix} {base}{event}").trim().to_string()
     }
 }
@@ -134,17 +130,11 @@ pub struct MythicOracle {
 
 impl MythicOracle {
     pub fn new(chaos_factor: u32) -> Self {
-        Self {
-            chaos_factor: Self::clamp_cf(chaos_factor),
-            rng: ChaCha8Rng::from_entropy(),
-        }
+        Self { chaos_factor: Self::clamp_cf(chaos_factor), rng: ChaCha8Rng::from_entropy() }
     }
 
     pub fn with_seed(chaos_factor: u32, seed: u64) -> Self {
-        Self {
-            chaos_factor: Self::clamp_cf(chaos_factor),
-            rng: ChaCha8Rng::seed_from_u64(seed),
-        }
+        Self { chaos_factor: Self::clamp_cf(chaos_factor), rng: ChaCha8Rng::seed_from_u64(seed) }
     }
 
     fn clamp_cf(cf: u32) -> u32 {
@@ -180,11 +170,7 @@ impl MythicOracle {
     pub fn ask_fate_with(&self, odds: Odds, roll: u32) -> FateResult {
         let roll = roll.clamp(1, 100);
         let target = self.fate_target(odds);
-        let outcome = if roll <= target {
-            FateOutcome::Yes
-        } else {
-            FateOutcome::No
-        };
+        let outcome = if roll <= target { FateOutcome::Yes } else { FateOutcome::No };
         // Exceptional results are tied to the outcome (Mythic 2e):
         // a Yes at or below the Chaos Factor is Exceptional; a No at or above
         // 101 - Chaos Factor is Exceptional.
@@ -513,12 +499,7 @@ impl MeaningTable {
             remove_thread_id = Some(pick.id.clone());
         }
 
-        EnrichedEvent {
-            meaning,
-            suggested_npc_name,
-            remove_thread_id,
-            acting_npc,
-        }
+        EnrichedEvent { meaning, suggested_npc_name, remove_thread_id, acting_npc }
     }
 }
 
@@ -632,9 +613,8 @@ mod tests {
     fn random_event_set_matches_chaos_floor() {
         let o = MythicOracle::new(5);
         // Exactly the documented set {11,22,33,44,55} at CF 5.
-        let triggers: Vec<u32> = (1..=100)
-            .filter(|r| o.ask_fate_with(Odds::FiftyFifty, *r).random_event)
-            .collect();
+        let triggers: Vec<u32> =
+            (1..=100).filter(|r| o.ask_fate_with(Odds::FiftyFifty, *r).random_event).collect();
         assert_eq!(triggers, vec![11, 22, 33, 44, 55]);
     }
 
@@ -670,10 +650,7 @@ mod tests {
             }
         }
         // With CF 2, "AsExpected" requires roll > 2, so ~80% of the time.
-        assert!(
-            as_expected > 100,
-            "Expected mostly AsExpected, got {as_expected}"
-        );
+        assert!(as_expected > 100, "Expected mostly AsExpected, got {as_expected}");
     }
 
     #[test]
@@ -694,14 +671,8 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
         let ctx = OracleContext {
             open_threads: vec![
-                ThreadRef {
-                    id: "t1".into(),
-                    description: "Find the sword".into(),
-                },
-                ThreadRef {
-                    id: "t2".into(),
-                    description: "Rescue the captive".into(),
-                },
+                ThreadRef { id: "t1".into(), description: "Find the sword".into() },
+                ThreadRef { id: "t2".into(), description: "Rescue the captive".into() },
             ],
             npcs: vec![
                 NpcRef {
@@ -729,9 +700,6 @@ mod tests {
             }
         }
         // With 2 threads and 2 NPCs, some events should reference them.
-        assert!(
-            had_npc_ref || had_thread_ref,
-            "Expected at least some context references"
-        );
+        assert!(had_npc_ref || had_thread_ref, "Expected at least some context references");
     }
 }

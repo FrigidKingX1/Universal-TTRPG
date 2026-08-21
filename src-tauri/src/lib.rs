@@ -4,7 +4,9 @@ pub mod db;
 use auto_dm_core::llm::{DmPipeline, LlmBackend, StubLlmBackend};
 use auto_dm_core::memory::CampaignMemory;
 use auto_dm_core::ollama::OllamaLlmBackend;
-use db::{backup_before_migrate, open_pool, run_migrations, AppState, Repository, SqliteRepository};
+use db::{
+    backup_before_migrate, open_pool, run_migrations, AppState, Repository, SqliteRepository,
+};
 use std::panic;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -93,9 +95,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .targets([
-                    Target::new(TargetKind::LogDir {
-                        file_name: Some("auto_dm".into()),
-                    }),
+                    Target::new(TargetKind::LogDir { file_name: Some("auto_dm".into()) }),
                     Target::new(TargetKind::Stdout),
                 ])
                 .timezone_strategy(TimezoneStrategy::UseLocal)

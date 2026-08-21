@@ -131,7 +131,12 @@ export function CharacterList() {
           </li>
         ))}
       </ul>
-      {characters.length === 0 && <p className="muted">No characters yet.</p>}
+      {characters.length === 0 && (
+        <div className="fantasy-empty" role="status">
+          <span className="fantasy-empty-icon" aria-hidden="true">⚔️</span>
+          <span>No characters yet — forge your first hero.</span>
+        </div>
+      )}
       {dialog}
     </section>
   );
@@ -339,7 +344,11 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
             </button>
           </div>
         ))}
-        {inventory.length === 0 && <p className="muted">Empty backpack.</p>}
+        {inventory.length === 0 && (
+          <div className="fantasy-empty" style={{ padding: "0.8rem" }}>
+            <span>Empty pack — gather your gear.</span>
+          </div>
+        )}
       </div>
       <div className="row">
         <input

@@ -388,10 +388,7 @@ pub fn roll_loot_table(
                 .evaluate(&entry.quantity_formula)
                 .map(|r| (r.total as i32).max(1))
                 .unwrap_or(1);
-            result.push(RolledLoot {
-                name: entry.name.clone(),
-                quantity: qty,
-            });
+            result.push(RolledLoot { name: entry.name.clone(), quantity: qty });
         }
     }
     result
@@ -512,11 +509,7 @@ where
     match raw {
         KnowsFormat::Legacy(strings) => Ok(strings
             .into_iter()
-            .map(|s| NpcKnowledge {
-                text: s,
-                scene_id: None,
-                timestamp: None,
-            })
+            .map(|s| NpcKnowledge { text: s, scene_id: None, timestamp: None })
             .collect()),
         KnowsFormat::Structured(v) => Ok(v),
     }
@@ -790,10 +783,7 @@ mod tests {
         let de: NpcCharacter = serde_json::from_str(&json).unwrap();
         assert_eq!(npc, de);
         assert_eq!(de.knows[0].scene_id.as_deref(), Some("s1"));
-        assert_eq!(
-            de.knows[0].timestamp.as_deref(),
-            Some("2026-03-01T12:00:00Z")
-        );
+        assert_eq!(de.knows[0].timestamp.as_deref(), Some("2026-03-01T12:00:00Z"));
         assert!(de.knows[1].scene_id.is_none());
     }
 

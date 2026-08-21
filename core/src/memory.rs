@@ -10,9 +10,7 @@ pub struct CampaignMemory {
 
 impl CampaignMemory {
     pub fn new() -> Self {
-        Self {
-            events: VecDeque::with_capacity(MAX_EVENTS),
-        }
+        Self { events: VecDeque::with_capacity(MAX_EVENTS) }
     }
 
     /// Append a speaker + content pair as `"[speaker]: content"`.
@@ -28,12 +26,7 @@ impl CampaignMemory {
     pub fn to_context(&self, n: usize) -> String {
         let len = self.events.len();
         let skip = len.saturating_sub(n);
-        self.events
-            .iter()
-            .skip(skip)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("\n")
+        self.events.iter().skip(skip).cloned().collect::<Vec<_>>().join("\n")
     }
 
     pub fn is_empty(&self) -> bool {
