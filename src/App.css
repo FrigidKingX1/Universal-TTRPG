@@ -32,6 +32,20 @@
   --font-display: Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
   --font-body: 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', monospace;
+  /* 8pt spacing + type scale — use these instead of ad-hoc rem */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --text-xs: 0.75rem;
+  --leading-xs: 1.5;
+  --text-sm: 0.8125rem;
+  --leading-sm: 1.5;
+  --text-base: 0.875rem;
+  --leading-base: 1.6;
+  --text-lg: 1rem;
+  --leading-lg: 1.4;
 }
 
 * { box-sizing: border-box; }
@@ -1073,7 +1087,7 @@ kbd {
   align-items: center;
   gap: 0.6rem;
   color: rgba(201, 168, 106, 0.5);
-  font-size: 0.65rem;
+  font-size: var(--text-xs); line-height: var(--leading-xs);
   letter-spacing: 0.2em;
   margin: 0.6rem 0;
   user-select: none;
@@ -1646,7 +1660,7 @@ input[type="range"] {
   padding: 0.3rem;
 }
 .attr-name {
-  font-size: 0.65rem;
+  font-size: var(--text-xs); line-height: var(--leading-xs);
   color: var(--muted);
 }
 .attr-value {
@@ -1784,7 +1798,7 @@ input[type="range"] {
 .story-meta {
   display: flex;
   gap: 0.5rem;
-  font-size: 0.65rem;
+  font-size: var(--text-xs); line-height: var(--leading-xs);
   color: var(--muted);
   margin-top: 0.2rem;
 }
@@ -1978,7 +1992,7 @@ input[type="range"] {
   background: transparent;
 }
 .clock-consequence {
-  font-size: 0.65rem;
+  font-size: var(--text-xs); line-height: var(--leading-xs);
   color: var(--muted);
 }
 
@@ -2385,7 +2399,7 @@ details > div { margin-top: 0.5rem; padding-left: 0.5rem; }
 }
 
 .palette-shortcut {
-  font-size: 0.65rem;
+  font-size: var(--text-xs); line-height: var(--leading-xs);
   color: var(--muted);
   background: var(--bg);
   border: 1px solid var(--border);
