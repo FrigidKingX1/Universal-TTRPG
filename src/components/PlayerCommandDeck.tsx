@@ -7,6 +7,9 @@ export function PlayerCommandDeck({ character }: { character: CharacterProfile |
   const scenes = useStore((s) => s.scenes);
   const activeSceneId = useStore((s) => s.activeSceneId);
   const activeScene = scenes.find((s) => s.id === activeSceneId);
+  const shortRest = useStore((s) => s.shortRest);
+  const longRest = useStore((s) => s.longRest);
+  const showToast = useStore((s) => s.showToast);
 
   const resourcePools = character?.resource_pools ?? {};
   const attributes = character?.attributes ?? {};
@@ -109,10 +112,20 @@ export function PlayerCommandDeck({ character }: { character: CharacterProfile |
           )}
 
           <div className="rest-controls">
-            <button className="btn btn-small btn-outline" type="button">
+            <button
+              className="btn btn-small btn-outline"
+              type="button"
+              onClick={() => { void shortRest(); showToast(`${character.identity.name} takes a Short Rest`, "info"); }}
+              title="Recover half maximum HP"
+            >
               Short Rest
             </button>
-            <button className="btn btn-small btn-outline" type="button">
+            <button
+              className="btn btn-small btn-outline"
+              type="button"
+              onClick={() => { void longRest(); showToast(`${character.identity.name} takes a Long Rest`, "info"); }}
+              title="Restore full HP"
+            >
               Long Rest
             </button>
           </div>

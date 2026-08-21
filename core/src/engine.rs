@@ -393,7 +393,14 @@ pub fn execute_attack(
                 && base.trim_start().starts_with("1d20");
 
             let target_value = if resolution.resolution_type == ResolutionType::OpposedRoll {
-                let t_formula = "1d20 + @attributes.DEX.derived_modifier".to_string();
+                // Defender contests with the action's primary attribute
+                // (defaulting to DEX), not a hardcoded one.
+                let attr = resolution
+                    .primary_attribute
+                    .clone()
+                    .unwrap_or_else(|| "DEX".to_string());
+                let t_formula =
+                    format!("1d20 + @attributes.{attr}.derived_modifier");
                 roll_for(dice, target, &t_formula)?.total as i32
             } else {
                 resolve_defense(action, target)?

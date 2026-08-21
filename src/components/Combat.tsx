@@ -56,6 +56,7 @@ export function Combat() {
   const addLoot = useStore((s) => s.addLoot);
   const assignLoot = useStore((s) => s.assignLoot);
   const clearLoot = useStore((s) => s.clearLoot);
+  const showToast = useStore((s) => s.showToast);
   const { confirm, dialog } = useConfirmDialog();
 
   const requestRemoveCombatant = async (id: string, name: string) => {
@@ -93,8 +94,23 @@ export function Combat() {
   const hpInfo = (entity: CharacterProfile | EncounterStatBlock) => {
     const max = getMaxHp(entity);
     const st = combatantStates[entity.id];
-    if (st) return { current: st.hit_points, max, status: st.status };
-    return { current: getHitPoints(entity), max, status: undefined };
+    // Temp HP lives on the character's hp pool (engine absorbs it first).
+    const temp =
+      "resource_pools" in entity ? entity.resource_pools.hp?.temporary ?? 0 : 0;
+    if (st) return { current: st.hit_points, max, status: st.status, temp };
+    return { current: getHitPoints(entity), max, status: undefined, temp };
+  };
+
+  const grantTempHp = (entity: CharacterProfile | EncounterStatBlock, amount: number) => {
+    if (!("resource_pools" in entity) || !entity.resource_pools.hp) return;
+    const pool = entity.resource_pools.hp;
+    // 5e RAW: temp HP doesn't stack — take the higher value.
+    const next = Math.max(pool.temporary ?? 0, amount);
+    void saveCharacter({
+      ...entity,
+      resource_pools: { ...entity.resource_pools, hp: { ...pool, temporary: next } },
+    });
+    showToast(`${entity.identity.name} gains ${next} temp HP`);
   };
 
   // Get actions available to the selected attacker.
@@ -275,10 +291,21 @@ export function Combat() {
                 {isCurrentTurn && <span className="badge turn-badge">active</span>}
               </div>
               <div className="hp-row">
-                <span>HP {hp.current}/{hp.max}</span>
+                <span>HP {hp.current}/{hp.max}{hp.temp > 0 ? ` (+${hp.temp} temp)` : ""}</span>
                 <div className="hp-bar">
                   <div className={`hp-bar-fill ${barClass}`} style={{ transform: `scaleX(${pct / 100})` }} />
                 </div>
+                {isChar && (
+                  <button
+                    className="muted"
+                    style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem" }}
+                    title="Grant temporary HP (doesn't stack — takes higher)"
+                    onClick={() => grantTempHp(e.value, 5)}
+                    aria-label={`Grant 5 temporary HP to ${e.name}`}
+                  >
+                    +temp
+                  </button>
+                )}
               </div>
               <div className="hp-adjust-row">
                 {[-5, -1, 1, 5].map((amt) => (
