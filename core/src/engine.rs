@@ -17,6 +17,9 @@ pub struct Combatant {
     pub name: String,
     pub hit_points: i32,
     pub max_hit_points: i32,
+    /// Temporary HP absorbs damage before real HP (5e rule: don't stack —
+    /// take the higher value; here we simply keep the current pool).
+    pub temp_hp: i32,
     pub armor_class: i32,
     /// Raw attribute scores, e.g. `{"STR": 16, "DEX": 14}`.
     pub attributes: HashMap<String, i32>,
@@ -24,6 +27,9 @@ pub struct Combatant {
     pub bonuses: HashMap<String, i32>,
     pub actions: Vec<String>,
     pub status: Option<String>,
+    /// Active condition tags (Poisoned, Prone, Invisible, …) that the engine
+    /// reads for advantage/disadvantage semantics.
+    pub conditions: Vec<String>,
     /// Damage types this creature is resistant to (half damage).
     pub resistances: Vec<String>,
     /// Damage types this creature is vulnerable to (double damage).
@@ -65,16 +71,24 @@ impl From<&CharacterProfile> for Combatant {
         let hp = p.resource_pools.get("hp").map(|r| r.current).unwrap_or(10);
         let ac =
             p.attributes.get("DEX").map(|d| 10 + attribute_modifier(d.current_value)).unwrap_or(10);
+        // Standard 5e proficiency progression: +2 at level 1, +6 at 17+.
+        let prof = ((p.identity.level_or_rank - 1).div_euclid(4) + 2).max(2);
         Combatant {
             id: p.id.clone(),
             name: p.identity.name.clone(),
             hit_points: hp,
             max_hit_points: p.resource_pools.get("hp").map(|r| r.maximum).unwrap_or(hp),
+            temp_hp: p.resource_pools.get("hp").map(|r| r.temporary.max(0)).unwrap_or(0),
             armor_class: ac,
             attributes,
-            bonuses: HashMap::new(),
+            bonuses: {
+                let mut b = HashMap::new();
+                b.insert("proficiency".to_string(), prof);
+                b
+            },
             actions: p.abilities.clone(),
             status: None,
+            conditions: Vec::new(),
             resistances: Vec::new(),
             vulnerabilities: Vec::new(),
             immunities: Vec::new(),
@@ -89,11 +103,13 @@ impl From<&EncounterStatBlock> for Combatant {
             name: s.name.clone(),
             hit_points: s.hit_points.current,
             max_hit_points: s.hit_points.maximum,
+            temp_hp: 0,
             armor_class: s.armor_class,
             attributes: s.attributes.clone(),
             bonuses: HashMap::new(),
             actions: s.actions.clone(),
             status: None,
+            conditions: Vec::new(),
             resistances: s.resistances.clone(),
             vulnerabilities: s.vulnerabilities.clone(),
             immunities: s.immunities.clone(),
@@ -173,9 +189,17 @@ impl From<DiceError> for EngineError {
 }
 
 /// Apply damage to a combatant, returning the resulting status.
+/// Temporary HP absorbs damage before real HP (5e RAW).
 pub fn apply_damage(target: &mut Combatant, amount: i32) -> String {
-    let amount = amount.max(0);
-    target.hit_points = target.hit_points.saturating_sub(amount);
+    let mut amount = amount.max(0);
+    if target.temp_hp > 0 && amount > 0 {
+        let absorbed = target.temp_hp.min(amount);
+        target.temp_hp -= absorbed;
+        amount -= absorbed;
+    }
+    if amount > 0 {
+        target.hit_points = target.hit_points.saturating_sub(amount);
+    }
     if target.hit_points <= 0 {
         target.status = Some("DEFEATED".to_string());
         "DEFEATED".to_string()
@@ -200,14 +224,65 @@ pub fn modify_damage_for_type(raw: i32, damage_type: &str, target: &Combatant) -
     }
 }
 
-/// Heal a combatant, clamped to its maximum.
+/// Heal a combatant, clamped to its maximum. Healing above 0 HP revives a
+/// defeated combatant and clears any lingering status.
 pub fn apply_healing(target: &mut Combatant, amount: i32) -> i32 {
     let before = target.hit_points;
     target.hit_points = (target.hit_points + amount).min(target.max_hit_points);
     if target.hit_points > 0 {
         target.status = None;
+        target.conditions.clear();
     }
     target.hit_points - before
+}
+
+/// Advantage state derived from combatant conditions.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum AdvState {
+    Normal,
+    Advantage,
+    Disadvantage,
+}
+
+/// Conditions that grant advantage on the actor's attack rolls.
+const ADV_ON_ATTACK: &[&str] = &["Invisible"];
+/// Conditions that impose disadvantage on the actor's attack rolls.
+const DISADV_ON_ATTACK: &[&str] = &["Poisoned", "Blinded", "Frightened", "Stunned"];
+/// Conditions that grant attackers advantage against this target.
+const ADV_AGAINST: &[&str] = &["Prone", "Stunned", "Blinded", "Restrained"];
+
+fn attacker_advantage(attacker: &Combatant, target: &Combatant) -> AdvState {
+    let has = |list: &[&str], conds: &[String]| -> bool {
+        list.iter().any(|c| conds.iter().any(|x| x.eq_ignore_ascii_case(c)))
+    };
+    if has(DISADV_ON_ATTACK, &attacker.conditions) || has(ADV_AGAINST, &target.conditions) {
+        return AdvState::Disadvantage;
+    }
+    if has(ADV_ON_ATTACK, &attacker.conditions) {
+        return AdvState::Advantage;
+    }
+    AdvState::Normal
+}
+
+/// Rewrite a plain `1d20 …` formula into `2d20kh1/kl1 …` for advantage.
+fn apply_adv_to_formula(formula: &str, adv: AdvState) -> String {
+    match adv {
+        AdvState::Normal => formula.to_string(),
+        AdvState::Advantage => {
+            if formula.trim_start().starts_with("1d20") {
+                format!("2d20kh1{}", &formula[4..])
+            } else {
+                formula.to_string()
+            }
+        }
+        AdvState::Disadvantage => {
+            if formula.trim_start().starts_with("1d20") {
+                format!("2d20kl1{}", &formula[4..])
+            } else {
+                formula.to_string()
+            }
+        }
+    }
 }
 
 /// Resolve the defense value an action rolls against, from the target combatant.
@@ -284,6 +359,7 @@ pub fn execute_attack(
     let mut attack_detail: Option<String> = None;
     let mut damage_dealt: i32 = 0;
     let mut applied_status: Option<String> = None;
+    let adv = attacker_advantage(attacker, target);
 
     match resolution.resolution_type {
         ResolutionType::GuaranteedEffect => {
@@ -301,13 +377,20 @@ pub fn execute_attack(
             }
         }
         ResolutionType::ContestedCheck | ResolutionType::OpposedRoll => {
-            let formula = resolution
+            let base = resolution
                 .roll_formula
                 .clone()
                 .unwrap_or_else(|| "1d20 + @attributes.DEX.derived_modifier".to_string());
+            let formula = apply_adv_to_formula(&base, adv);
             let roll = roll_for(dice, attacker, &formula)?;
             attack_roll = Some(roll.total as i32);
             attack_detail = Some(roll.detail.clone());
+
+            // Natural 20 always hits (and crits); natural 1 always misses.
+            let nat_max = roll.raw_rolls.iter().filter(|r| **r == 20).count() > 0
+                && base.trim_start().starts_with("1d20");
+            let nat_min = roll.raw_rolls.contains(&1)
+                && base.trim_start().starts_with("1d20");
 
             let target_value = if resolution.resolution_type == ResolutionType::OpposedRoll {
                 let t_formula = "1d20 + @attributes.DEX.derived_modifier".to_string();
@@ -316,7 +399,15 @@ pub fn execute_attack(
                 resolve_defense(action, target)?
             };
 
-            if roll.total >= target_value as i64 {
+            let hit = if nat_min {
+                false
+            } else if nat_max {
+                true
+            } else {
+                roll.total >= target_value as i64
+            };
+
+            if hit {
                 attack_result = "HIT".to_string();
                 if let Some(out) = &resolution.outcomes {
                     if let Some(s) = &out.on_success {
@@ -325,6 +416,11 @@ pub fn execute_attack(
                             let prev = attack_detail.as_deref().unwrap_or("");
                             attack_detail = Some(format!("{prev} | {}", dmg.detail));
                             damage_dealt = dmg.total as i32;
+                            if nat_max {
+                                damage_dealt *= 2;
+                                attack_detail =
+                                    Some(format!("{} | CRITICAL!", attack_detail.unwrap()));
+                            }
                         }
                         applied_status = s.applied_status.clone();
                     }
@@ -352,15 +448,30 @@ pub fn execute_attack(
             }
         }
         ResolutionType::TargetDc => {
-            let formula = resolution
+            let base = resolution
                 .roll_formula
                 .clone()
                 .unwrap_or_else(|| "1d20 + @attributes.DEX.derived_modifier".to_string());
+            let formula = apply_adv_to_formula(&base, adv);
             let roll = roll_for(dice, attacker, &formula)?;
             attack_roll = Some(roll.total as i32);
             attack_detail = Some(roll.detail.clone());
             let dc = resolve_defense(action, target)?;
-            if roll.total >= dc as i64 {
+
+            let nat_max = roll.raw_rolls.iter().filter(|r| **r == 20).count() > 0
+                && base.trim_start().starts_with("1d20");
+            let nat_min = roll.raw_rolls.contains(&1)
+                && base.trim_start().starts_with("1d20");
+
+            let hit = if nat_min {
+                false
+            } else if nat_max {
+                true
+            } else {
+                roll.total >= dc as i64
+            };
+
+            if hit {
                 attack_result = "HIT".to_string();
                 if let Some(out) = &resolution.outcomes {
                     if let Some(s) = &out.on_success {
@@ -369,12 +480,34 @@ pub fn execute_attack(
                             let prev = attack_detail.as_deref().unwrap_or("");
                             attack_detail = Some(format!("{prev} | {}", dmg.detail));
                             damage_dealt = dmg.total as i32;
+                            if nat_max {
+                                damage_dealt *= 2;
+                                attack_detail =
+                                    Some(format!("{} | CRITICAL!", attack_detail.unwrap()));
+                            }
                         }
                         applied_status = s.applied_status.clone();
                     }
                 }
             } else {
                 attack_result = "MISS".to_string();
+                // Saving-throw semantics: failed save still deals half damage
+                // when the action declares it (e.g. Fireball).
+                if let Some(out) = &resolution.outcomes {
+                    if let Some(f) = &out.on_failure {
+                        if f.half_damage {
+                            if let Some(df) = &f.formula {
+                                let dmg = roll_for(dice, attacker, df)?;
+                                damage_dealt = dmg.total as i32 / 2;
+                            } else if let Some(s) = &out.on_success {
+                                if let Some(sf) = &s.formula {
+                                    let dmg = roll_for(dice, attacker, sf)?;
+                                    damage_dealt = dmg.total as i32 / 2;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -873,11 +1006,13 @@ mod tests {
             name: name.to_string(),
             hit_points: 20,
             max_hit_points: 20,
+            temp_hp: 0,
             armor_class: 10,
             attributes: attrs,
             bonuses: HashMap::new(),
             actions: vec![],
             status: None,
+            conditions: Vec::new(),
             resistances: Vec::new(),
             vulnerabilities: Vec::new(),
             immunities: Vec::new(),

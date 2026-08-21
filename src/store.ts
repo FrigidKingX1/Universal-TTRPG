@@ -1376,15 +1376,20 @@ export const useStore = create<AutoDmState>()(
     if (!target.discovered) {
       await get().updateExplorationNode(nodeId, { discovered: true });
     }
-    // Random encounter check: d10 vs zone danger level
+    // Random encounter check: seeded d10 vs zone danger level (deterministic
+    // engine, logged like every other roll).
     const zone = get().explorationZones.find((z) => z.id === activeZoneId);
     const dangerLevel = zone?.danger_level ?? 0;
     let encounter: string | null = null;
     if (dangerLevel > 0) {
-      const roll = Math.floor(Math.random() * 10) + 1;
-      if (roll <= dangerLevel) {
-        encounter = `Random encounter! (rolled ${roll} vs danger ${dangerLevel})`;
-        get().showToast(encounter);
+      try {
+        const roll = await backend.rollDice("1d10");
+        if (roll.total <= dangerLevel) {
+          encounter = `Random encounter! (rolled ${roll.total} vs danger ${dangerLevel})`;
+          get().showToast(encounter);
+        }
+      } catch {
+        // Roll failure shouldn't block travel.
       }
     }
     const entry = { nodeId, nodeName: target.name, timestamp: new Date().toISOString(), encounter };

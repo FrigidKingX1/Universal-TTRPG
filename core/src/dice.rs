@@ -51,6 +51,9 @@ impl std::error::Error for DiceError {}
 pub struct RollResult {
     pub total: i64,
     pub detail: String,
+    /// Raw individual d20/dN rolls (post-keep, pre-sum), enabling crit/fumble
+    /// detection without parsing the detail string.
+    pub raw_rolls: Vec<i64>,
 }
 
 /// Maximum number of dice allowed in a single expression to prevent memory exhaustion.
@@ -60,6 +63,8 @@ const MAX_DICE_COUNT: i64 = 1000;
 #[derive(Debug)]
 pub struct DiceEngine {
     rng: ChaCha8Rng,
+    /// Scratch buffer collecting raw die rolls for the current evaluation.
+    raw_rolls: Vec<i64>,
 }
 
 impl Default for DiceEngine {
@@ -70,11 +75,11 @@ impl Default for DiceEngine {
 
 impl DiceEngine {
     pub fn new() -> Self {
-        Self { rng: ChaCha8Rng::from_entropy() }
+        Self { rng: ChaCha8Rng::from_entropy(), raw_rolls: Vec::new() }
     }
 
     pub fn with_seed(seed: u64) -> Self {
-        Self { rng: ChaCha8Rng::seed_from_u64(seed) }
+        Self { rng: ChaCha8Rng::seed_from_u64(seed), raw_rolls: Vec::new() }
     }
 
     /// Evaluate an expression containing no `@ref` references.
@@ -92,10 +97,11 @@ impl DiceEngine {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
         let mut detail = String::new();
+        self.raw_rolls.clear();
         let value = self.eval_node(&parser.tokens, &mut detail, &ast, resolve)?;
         detail.push_str(" = ");
         detail.push_str(&value.to_string());
-        Ok(RollResult { total: value, detail })
+        Ok(RollResult { total: value, detail, raw_rolls: std::mem::take(&mut self.raw_rolls) })
     }
 
     fn eval_node(
@@ -200,6 +206,7 @@ impl DiceEngine {
             return Err(DiceError::Parse(format!("too many dice: {count} (max {MAX_DICE_COUNT})")));
         }
         let mut rolls: Vec<i64> = (0..count).map(|_| self.rng.gen_range(1..=sides)).collect();
+        self.raw_rolls.extend_from_slice(&rolls);
 
         detail.push_str(&format!("{count}d{sides}"));
         if let Some(k) = keep {

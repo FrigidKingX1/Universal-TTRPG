@@ -138,6 +138,20 @@ export function OraclePanel() {
     }
   };
 
+  const [lastSceneTest, setLastSceneTest] = useState<import("../backend").SceneTestResponse | null>(null);
+
+  const sceneTest = async () => {
+    try {
+      const result = await backend.sceneTest(chaosFactor);
+      setLastSceneTest(result);
+      if (result.event?.meaning) {
+        useStore.getState().recordEvent(result.event.meaning);
+      }
+    } catch (e) {
+      useStore.getState().setError(String(e));
+    }
+  };
+
   return (
     <section className="panel">
       <h2>Oracle</h2>
@@ -160,7 +174,18 @@ export function OraclePanel() {
         <span className="muted">CF {chaosFactor}</span>
         <button onClick={() => void fate()}>Fate Check</button>
         <button onClick={() => void event()}>Random Event</button>
+        <button onClick={() => void sceneTest()}>Scene Test</button>
       </div>
+      {lastSceneTest && (
+        <div className="oracle-result">
+          <strong className={lastSceneTest.outcome === "Interrupted" ? "exceptional" : ""}>
+            {lastSceneTest.outcome}
+          </strong>
+          {lastSceneTest.event && (
+            <span className="muted"> — {lastSceneTest.event.meaning.action} the {lastSceneTest.event.meaning.subject}</span>
+          )}
+        </div>
+      )}
       {lastFate && (
         <div className="oracle-result">
           <strong className={lastFate.exceptional ? "exceptional" : ""}>

@@ -771,8 +771,33 @@ pub async fn combat_attack(
             outcome.damage_dealt,
             outcome.target_hp_remaining
         );
-        if let Some(sid) = scene_id {
-            let _ = state.repo.append_log(&sid, "Combat", &narrative, None).await;
+        if let Some(sid) = scene_id.as_ref() {
+            let _ = state.repo.append_log(sid, "Combat", &narrative, None).await;
+        }
+    }
+
+    // Auto-loot: when a monster is defeated and carries a loot table, roll it
+    // immediately so the spoils land in the scene's loot list.
+    if outcome.target_status == "DEFEATED" {
+        if let Ok(block) =
+            serde_json::from_value::<auto_dm_core::models::EncounterStatBlock>(target.clone())
+        {
+            if !block.loot_table.is_empty() {
+                let rolled = auto_dm_core::models::roll_loot_table(&mut dice, &block.loot_table);
+                for item in rolled {
+                    if item.quantity <= 0 {
+                        continue;
+                    }
+                    let sid = scene_id.clone().unwrap_or_default();
+                    if !sid.is_empty() {
+                        let _ = state
+                            .repo
+                            .save_loot(&sid, &item.name, item.quantity, &victim.name)
+                            .await;
+                    }
+                }
+                emit(&app, "loot:rolled", &victim.name);
+            }
         }
     }
 
