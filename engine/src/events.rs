@@ -17,6 +17,17 @@ pub enum GameEvent {
     NpcSpoke { speaker: String },
     ItemAdded { name: String, quantity: i32 },
     ClockAdvanced { clock_id: String, ticks: i32 },
+    /// Emitted for every combat HP mutation (from core's DamageResult).
+    DamageApplied {
+        target_id: String,
+        target_name: String,
+        amount: i32,
+        temp_absorbed: i32,
+        hp_remaining: i32,
+        defeated: bool,
+        /// Single hit exceeded 50% max HP — knockdown trauma.
+        shock: bool,
+    },
     /// The mutation target was ambiguous; `candidates` are the valid choices
     /// (generic disambiguation shared by clocks, NPCs, monsters).
     AmbiguousTarget {
@@ -53,6 +64,13 @@ impl GameEvent {
             }
             GameEvent::ClockAdvanced { ticks, .. } => {
                 format!("Doom clock advanced by {ticks}.")
+            }
+            GameEvent::DamageApplied { target_name, amount, hp_remaining, shock, .. } => {
+                let mut s = format!("{amount} damage to {target_name} — {hp_remaining} HP remain");
+                if *shock {
+                    s.push_str(" (SYSTEMIC SHOCK — knocked prone)");
+                }
+                s
             }
             GameEvent::AmbiguousTarget { message, candidates, .. } => {
                 format!("{message} Options: {}", candidates.join(", "))

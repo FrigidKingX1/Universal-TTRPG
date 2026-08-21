@@ -158,6 +158,9 @@ pub struct EngineOutcome {
     /// Modifier note: "resisted", "vulnerable", or "immune".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub damage_modifier: Option<String>,
+    /// Structured damage event payload (temp absorb, shock, defeat).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub damage_result: Option<DamageResult>,
 }
 
 /// Error type for the combat engine.
@@ -188,24 +191,57 @@ impl From<DiceError> for EngineError {
     }
 }
 
-/// Apply damage to a combatant, returning the resulting status.
-/// Temporary HP absorbs damage before real HP (5e RAW).
-pub fn apply_damage(target: &mut Combatant, amount: i32) -> String {
+/// Structured result of applying damage — the event payload for the
+/// `DamageApplied` game-event stream (wire format, serde-proven).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DamageResult {
+    /// HP absorbed by temporary HP before real HP.
+    pub temp_absorbed: i32,
+    pub hp_remaining: i32,
+    pub defeated: bool,
+    /// Single hit exceeded 50% of max HP — knockdown/dropped-item trauma.
+    pub shock: bool,
+}
+
+impl DamageResult {
+    pub fn status(&self) -> &'static str {
+        if self.defeated { "DEFEATED" } else { "ALIVE" }
+    }
+}
+
+/// Apply damage to a combatant. Temporary HP absorbs first (5e RAW); a single
+/// hit exceeding 50% of max HP triggers systemic shock (knockdown — Prone).
+/// Returns the structured [`DamageResult`] event payload.
+pub fn apply_damage(target: &mut Combatant, amount: i32) -> DamageResult {
     let mut amount = amount.max(0);
+    let mut temp_absorbed = 0;
     if target.temp_hp > 0 && amount > 0 {
-        let absorbed = target.temp_hp.min(amount);
-        target.temp_hp -= absorbed;
-        amount -= absorbed;
+        temp_absorbed = target.temp_hp.min(amount);
+        target.temp_hp -= temp_absorbed;
+        amount -= temp_absorbed;
     }
     if amount > 0 {
         target.hit_points = target.hit_points.saturating_sub(amount);
     }
-    if target.hit_points <= 0 {
+    let defeated = target.hit_points <= 0;
+    // Systemic shock: one massive hit (excluding overkill) knocks the actor down.
+    let shock = !defeated
+        && amount > 0
+        && amount * 2 > target.max_hit_points
+        && !target.conditions.iter().any(|c| c.eq_ignore_ascii_case("Prone"));
+    if shock {
+        target.conditions.push("Prone".to_string());
+    }
+    if defeated {
         target.status = Some("DEFEATED".to_string());
-        "DEFEATED".to_string()
     } else {
         target.status = None;
-        "ALIVE".to_string()
+    }
+    DamageResult {
+        temp_absorbed,
+        hp_remaining: target.hit_points,
+        defeated,
+        shock,
     }
 }
 
@@ -346,6 +382,7 @@ pub fn execute_attack(
                 applied_status: None,
                 damage_type: None,
                 damage_modifier: None,
+                damage_result: None,
             });
         }
         check_result = Some("SUCCESS".to_string());
@@ -544,8 +581,12 @@ pub fn execute_attack(
     }
 
     // 4. Apply damage and compute status.
-    let target_status =
-        if damage_dealt > 0 { apply_damage(target, damage_dealt) } else { current_status(target) };
+    let (target_status, damage_result) = if damage_dealt > 0 {
+        let result = apply_damage(target, damage_dealt);
+        (result.status().to_string(), Some(result))
+    } else {
+        (current_status(target), None)
+    };
 
     Ok(EngineOutcome {
         check_result,
@@ -568,6 +609,7 @@ pub fn execute_attack(
             Some(damage_type_str.to_string())
         },
         damage_modifier,
+        damage_result,
     })
 }
 
@@ -843,9 +885,34 @@ mod tests {
     #[test]
     fn negative_damage_clamped_to_zero() {
         let mut target = Combatant::from(&goblin());
-        let status = apply_damage(&mut target, -5);
-        assert_eq!(status, "ALIVE");
+        let result = apply_damage(&mut target, -5);
+        assert_eq!(result.status(), "ALIVE");
         assert_eq!(target.hit_points, 7);
+    }
+
+    #[test]
+    fn systemic_shock_on_massive_hit() {
+        let mut target = make_combatant("tank");
+        target.max_hit_points = 20;
+        target.hit_points = 20;
+        let result = apply_damage(&mut target, 11); // >50% of 20
+        assert!(!result.defeated);
+        assert!(result.shock);
+        assert!(target.conditions.iter().any(|c| c == "Prone"));
+    }
+
+    #[test]
+    fn no_shock_on_small_hits_or_overkill() {
+        let mut a = make_combatant("a");
+        a.max_hit_points = 20;
+        let r = apply_damage(&mut a, 5);
+        assert!(!r.shock);
+
+        let mut b = make_combatant("b");
+        b.max_hit_points = 20;
+        let r = apply_damage(&mut b, 30); // overkill defeats — no shock on corpse
+        assert!(r.defeated);
+        assert!(!r.shock);
     }
 
     #[test]

@@ -692,6 +692,20 @@ pub async fn combat_attack(
     }
 
     emit(&app, "combat:outcome", &outcome);
+    // Route combat HP mutations through the unified GameEvent stream so the
+    // Phase C broadcast sees them without a bespoke integration.
+    if let Some(dr) = &outcome.damage_result {
+        let event = auto_dm_engine::GameEvent::DamageApplied {
+            target_id: victim.id.clone(),
+            target_name: victim.name.clone(),
+            amount: outcome.damage_dealt,
+            temp_absorbed: dr.temp_absorbed,
+            hp_remaining: dr.hp_remaining,
+            defeated: dr.defeated,
+            shock: dr.shock,
+        };
+        emit(&app, "game:events", &[auto_dm_engine::VersionedEvent::new(event)]);
+    }
     emit(
         &app,
         "combatant:state",
