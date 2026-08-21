@@ -1,9 +1,8 @@
-use crate::db::{AppState, Repository};
+use auto_dm_engine::{apply_session_effects, combatant_from_value, remember, GameState, Repository};
 use auto_dm_core::dice::DiceEngine;
 use auto_dm_core::engine::{
     execute_attack, roll_initiative, Combatant, EngineOutcome, PrerequisiteCheck,
 };
-use auto_dm_core::intent::GameIntent;
 use auto_dm_core::llm::{DmRequest, DmResponse};
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
 use auto_dm_core::oracle::{
@@ -19,122 +18,6 @@ fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
 }
 
-/// Record a campaign event in both the in-memory ring buffer and SQLite so
-/// the DM's context survives restarts. DB failures are non-fatal.
-async fn remember(state: &AppState, speaker: &str, content: &str) {
-    if let Ok(mut mem) = state.memory.lock() {
-        mem.push(speaker, content);
-    }
-    let _ = state.repo.append_memory(speaker, content).await;
-}
-
-/// Session layer: apply world effects for intents the pure pipeline cannot
-/// resolve (it has no DB access). Mutates campaign state and appends
-/// mechanical-event lines describing what was applied.
-async fn apply_session_effects(state: &AppState, request: &DmRequest, response: &mut DmResponse) {
-    match &response.intent {
-        GameIntent::SceneDelta { delta } => {
-            let (Some(scene_id), delta) = (&request.scene_id, delta) else {
-                return;
-            };
-            if delta.trim().is_empty() {
-                return;
-            }
-            // Single-row fetch instead of loading all scenes (O(1) vs O(N) parse).
-            let existing = state
-                .repo
-                .get_scene_summary(scene_id)
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_default();
-            let mut merged =
-                if existing.is_empty() { delta.clone() } else { format!("{existing}\n{delta}") };
-            let char_count = merged.chars().count();
-            if char_count > 2000 {
-                merged = merged.chars().skip(char_count - 2000).collect();
-            }
-            if state.repo.update_scene_summary(scene_id, Some(&merged)).await.is_ok() {
-                response.mechanical_events.push("Scene record updated.".to_string());
-            }
-        }
-        GameIntent::NpcSpeech { npc_id, line } => {
-            // Resolve the speaker against the NPC roster (by id or name) and
-            // persist the line as a log entry attributed to that NPC.
-            let npcs = state.repo.list_npc_characters().await.unwrap_or_default();
-            let speaker = npc_id
-                .as_ref()
-                .and_then(|id| npcs.iter().find(|n| &n.id == id || &n.name == id))
-                .map(|n| n.name.clone())
-                .or_else(|| npc_id.clone())
-                .unwrap_or_else(|| "NPC".to_string());
-            if let Some(scene_id) = &request.scene_id {
-                let _ = state.repo.append_log(scene_id, &speaker, line, None).await;
-            }
-            response.mechanical_events.push(format!("{speaker} speaks."));
-        }
-        GameIntent::RuleCheck { question } => {
-            // Answer from world data: look for actions / stat blocks whose
-            // names appear in the question.
-            let q = question.to_lowercase();
-            let mut answers: Vec<String> = Vec::new();
-            if let Ok(actions) = state.repo.list_actions().await {
-                for a in &actions {
-                    let name = a.name.to_lowercase();
-                    if !name.is_empty() && q.contains(&name) {
-                        let formula = a
-                            .resolution
-                            .roll_formula
-                            .clone()
-                            .unwrap_or_else(|| "no roll".to_string());
-                        answers.push(format!(
-                            "Action '{}': {:?} resolution, rolls {}.",
-                            a.name, a.resolution.resolution_type, formula,
-                        ));
-                    }
-                }
-            }
-            if let Ok(blocks) = state.repo.list_stat_blocks().await {
-                for b in &blocks {
-                    let name = b.name.to_lowercase();
-                    if name.len() > 2 && q.contains(&name) {
-                        answers.push(format!(
-                            "Stat block '{}': CR {}, AC {}, HP {}/{}.",
-                            b.name,
-                            b.challenge_rating,
-                            b.armor_class,
-                            b.hit_points.current,
-                            b.hit_points.maximum,
-                        ));
-                    }
-                }
-            }
-            if answers.is_empty() {
-                response.mechanical_events.push(format!(
-                    "Rule query '{question}': no matching rules data found in the vault."
-                ));
-            } else {
-                for a in answers {
-                    response.mechanical_events.push(a);
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
-/// Build a `Combatant` from a JSON value that is either a CharacterProfile or
-/// an EncounterStatBlock (as serialized by the frontend store).
-fn combatant_from_value(v: &Value) -> CmdResult<Combatant> {
-    if let Ok(profile) = serde_json::from_value::<CharacterProfile>(v.clone()) {
-        return Ok(Combatant::from(&profile));
-    }
-    if let Ok(block) = serde_json::from_value::<EncounterStatBlock>(v.clone()) {
-        return Ok(Combatant::from(&block));
-    }
-    Err("combatant payload must be a CharacterProfile or EncounterStatBlock".to_string())
-}
-
 fn emit(app: &AppHandle, event: &str, payload: &impl Serialize) {
     let _ = app.emit(event, payload);
 }
@@ -143,7 +26,7 @@ fn emit(app: &AppHandle, event: &str, payload: &impl Serialize) {
 
 #[tauri::command]
 pub async fn save_character(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     profile: CharacterProfile,
 ) -> CmdResult<CharacterProfile> {
     state.repo.save_character(&profile).await.map_err(err)?;
@@ -152,23 +35,23 @@ pub async fn save_character(
 
 #[tauri::command]
 pub async fn load_character(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
 ) -> CmdResult<Option<CharacterProfile>> {
     match state.repo.load_character(&id).await {
         Ok(p) => Ok(Some(p)),
-        Err(crate::db::DbError::NotFound(_)) => Ok(None),
+        Err(auto_dm_engine::DbError::NotFound(_)) => Ok(None),
         Err(e) => Err(err(e)),
     }
 }
 
 #[tauri::command]
-pub async fn list_characters(state: State<'_, AppState>) -> CmdResult<Vec<CharacterProfile>> {
+pub async fn list_characters(state: State<'_, GameState>) -> CmdResult<Vec<CharacterProfile>> {
     state.repo.list_characters().await.map_err(err)
 }
 
 #[tauri::command]
-pub async fn delete_character(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_character(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_character(&id).await.map_err(err)
 }
 
@@ -176,7 +59,7 @@ pub async fn delete_character(state: State<'_, AppState>, id: String) -> CmdResu
 
 #[tauri::command]
 pub async fn save_action(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     action: ActionDefinition,
 ) -> CmdResult<ActionDefinition> {
     state.repo.save_action(&action).await.map_err(err)?;
@@ -184,12 +67,12 @@ pub async fn save_action(
 }
 
 #[tauri::command]
-pub async fn list_actions(state: State<'_, AppState>) -> CmdResult<Vec<ActionDefinition>> {
+pub async fn list_actions(state: State<'_, GameState>) -> CmdResult<Vec<ActionDefinition>> {
     state.repo.list_actions().await.map_err(err)
 }
 
 #[tauri::command]
-pub async fn delete_action(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_action(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_action(&id).await.map_err(err)
 }
 
@@ -197,7 +80,7 @@ pub async fn delete_action(state: State<'_, AppState>, id: String) -> CmdResult<
 
 #[tauri::command]
 pub async fn save_stat_block(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     block: EncounterStatBlock,
 ) -> CmdResult<EncounterStatBlock> {
     state.repo.save_stat_block(&block).await.map_err(err)?;
@@ -205,12 +88,12 @@ pub async fn save_stat_block(
 }
 
 #[tauri::command]
-pub async fn list_stat_blocks(state: State<'_, AppState>) -> CmdResult<Vec<EncounterStatBlock>> {
+pub async fn list_stat_blocks(state: State<'_, GameState>) -> CmdResult<Vec<EncounterStatBlock>> {
     state.repo.list_stat_blocks().await.map_err(err)
 }
 
 #[tauri::command]
-pub async fn delete_stat_block(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_stat_block(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_stat_block(&id).await.map_err(err)
 }
 
@@ -218,39 +101,39 @@ pub async fn delete_stat_block(state: State<'_, AppState>, id: String) -> CmdRes
 
 #[tauri::command]
 pub async fn create_scene(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     app: AppHandle,
     title: String,
     chaos_factor: i32,
-) -> CmdResult<crate::db::Scene> {
+) -> CmdResult<auto_dm_engine::Scene> {
     let scene = state.repo.create_scene(&title, chaos_factor).await.map_err(err)?;
     emit(&app, "scene:created", &scene);
     Ok(scene)
 }
 
 #[tauri::command]
-pub async fn list_scenes(state: State<'_, AppState>) -> CmdResult<Vec<crate::db::Scene>> {
+pub async fn list_scenes(state: State<'_, GameState>) -> CmdResult<Vec<auto_dm_engine::Scene>> {
     state.repo.list_scenes().await.map_err(err)
 }
 
 #[tauri::command]
-pub async fn active_scene(state: State<'_, AppState>) -> CmdResult<Option<crate::db::Scene>> {
+pub async fn active_scene(state: State<'_, GameState>) -> CmdResult<Option<auto_dm_engine::Scene>> {
     state.repo.active_scene().await.map_err(err)
 }
 
 #[tauri::command]
-pub async fn set_active_scene(state: State<'_, AppState>, id: String) -> CmdResult<()> {
+pub async fn set_active_scene(state: State<'_, GameState>, id: String) -> CmdResult<()> {
     state.repo.set_active_scene(&id).await.map_err(err)
 }
 
 #[tauri::command]
-pub async fn delete_scene(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_scene(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_scene(&id).await.map_err(err)
 }
 
 #[tauri::command]
 pub async fn update_scene_summary(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
     summary: Option<String>,
 ) -> CmdResult<()> {
@@ -259,7 +142,7 @@ pub async fn update_scene_summary(
 
 #[tauri::command]
 pub async fn update_scene_chaos_factor(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
     chaos_factor: i32,
 ) -> CmdResult<()> {
@@ -270,12 +153,12 @@ pub async fn update_scene_chaos_factor(
 
 #[tauri::command]
 pub async fn append_log(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     app: AppHandle,
     scene_id: String,
     speaker: String,
     content: String,
-) -> CmdResult<crate::db::LogEntry> {
+) -> CmdResult<auto_dm_engine::LogEntry> {
     let entry = state.repo.append_log(&scene_id, &speaker, &content, None).await.map_err(err)?;
     emit(&app, "log:new", &entry);
     Ok(entry)
@@ -283,10 +166,10 @@ pub async fn append_log(
 
 #[tauri::command]
 pub async fn list_logs(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     scene_id: String,
     limit: i64,
-) -> CmdResult<Vec<crate::db::LogEntry>> {
+) -> CmdResult<Vec<auto_dm_engine::LogEntry>> {
     state.repo.list_logs(&scene_id, limit).await.map_err(err)
 }
 
@@ -387,7 +270,7 @@ pub struct SceneTestResponse {
 #[tauri::command]
 pub fn scene_test_cmd(
     app: AppHandle,
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     chaos_factor: u32,
     _seed: Option<u64>,
 ) -> CmdResult<SceneTestResponse> {
@@ -451,7 +334,7 @@ pub fn scene_test_cmd(
 
 /// Get the Lines (hard bans) and Veils (fade-to-black) as JSON arrays of strings.
 #[tauri::command]
-pub async fn get_lines_veils(state: State<'_, AppState>) -> CmdResult<serde_json::Value> {
+pub async fn get_lines_veils(state: State<'_, GameState>) -> CmdResult<serde_json::Value> {
     let lines = state
         .repo
         .get_setting("lines")
@@ -472,7 +355,7 @@ pub async fn get_lines_veils(state: State<'_, AppState>) -> CmdResult<serde_json
 /// Set the Lines (hard bans) and Veils (fade-to-black) as JSON arrays of strings.
 #[tauri::command]
 pub async fn set_lines_veils(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     lines: Vec<String>,
     veils: Vec<String>,
 ) -> CmdResult<()> {
@@ -504,7 +387,7 @@ pub struct DoomClockResponse {
 
 #[tauri::command]
 pub async fn create_doom_clock(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     label: String,
     max: u32,
     consequence: String,
@@ -528,7 +411,7 @@ pub async fn create_doom_clock(
 }
 
 #[tauri::command]
-pub async fn list_doom_clocks(state: State<'_, AppState>) -> CmdResult<Vec<DoomClockResponse>> {
+pub async fn list_doom_clocks(state: State<'_, GameState>) -> CmdResult<Vec<DoomClockResponse>> {
     let rows = state.repo.list_doom_clocks().await.map_err(|e| e.to_string())?;
     Ok(rows
         .into_iter()
@@ -546,7 +429,7 @@ pub async fn list_doom_clocks(state: State<'_, AppState>) -> CmdResult<Vec<DoomC
 
 #[tauri::command]
 pub async fn tick_doom_clock(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
 ) -> CmdResult<Option<(u32, u32)>> {
     state.repo.tick_doom_clock(&id).await.map_err(|e| e.to_string())
@@ -554,7 +437,7 @@ pub async fn tick_doom_clock(
 
 #[tauri::command]
 pub async fn advance_doom_clock(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
     ticks: u32,
 ) -> CmdResult<Option<(u32, u32)>> {
@@ -562,13 +445,13 @@ pub async fn advance_doom_clock(
 }
 
 #[tauri::command]
-pub async fn reset_doom_clock(state: State<'_, AppState>, id: String) -> CmdResult<()> {
+pub async fn reset_doom_clock(state: State<'_, GameState>, id: String) -> CmdResult<()> {
     state.repo.reset_doom_clock(&id).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn delete_doom_clock(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_doom_clock(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_doom_clock(&id).await.map_err(|e| e.to_string())
 }
 
@@ -599,7 +482,7 @@ pub struct ExplorationNodeResponse {
 
 #[tauri::command]
 pub async fn create_exploration_zone(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     name: String,
     zone_type: String,
     description: Option<String>,
@@ -630,7 +513,7 @@ pub async fn create_exploration_zone(
 
 #[tauri::command]
 pub async fn list_exploration_zones(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
 ) -> CmdResult<Vec<ExplorationZoneResponse>> {
     let rows = state.repo.list_exploration_zones().await.map_err(|e| e.to_string())?;
     Ok(rows
@@ -647,13 +530,13 @@ pub async fn list_exploration_zones(
 }
 
 #[tauri::command]
-pub async fn delete_exploration_zone(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_exploration_zone(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_exploration_zone(&id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn create_exploration_node(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     zone_id: String,
     name: String,
     description: Option<String>,
@@ -679,7 +562,7 @@ pub async fn create_exploration_node(
 
 #[tauri::command]
 pub async fn list_exploration_nodes(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     zone_id: String,
 ) -> CmdResult<Vec<ExplorationNodeResponse>> {
     let rows = state.repo.list_exploration_nodes(&zone_id).await.map_err(|e| e.to_string())?;
@@ -707,7 +590,7 @@ pub async fn list_exploration_nodes(
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn update_exploration_node(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
     discovered: Option<bool>,
     safe: Option<bool>,
@@ -732,7 +615,7 @@ pub async fn update_exploration_node(
 }
 
 #[tauri::command]
-pub async fn delete_exploration_node(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_exploration_node(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_exploration_node(&id).await.map_err(|e| e.to_string())
 }
 
@@ -741,7 +624,7 @@ pub async fn delete_exploration_node(state: State<'_, AppState>, id: String) -> 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn combat_attack(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     app: AppHandle,
     attacker: Value,
     target: Value,
@@ -877,7 +760,7 @@ pub fn meaning_table_words() -> CmdResult<auto_dm_core::oracle::MeaningTable> {
 /// Run the Auto-DM loop for a player action.
 #[tauri::command]
 pub async fn dm_resolve(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     app: AppHandle,
     mut request: DmRequest,
 ) -> CmdResult<DmResponse> {
@@ -921,7 +804,7 @@ use auto_dm_core::models::{
 /// Populate starter SRD-aligned sample data (clean-room mechanics only) when
 /// the vault is empty: a hero, a goblin, weapon actions, and an opening scene.
 #[tauri::command]
-pub async fn seed_defaults(state: State<'_, AppState>) -> CmdResult<()> {
+pub async fn seed_defaults(state: State<'_, GameState>) -> CmdResult<()> {
     let repo = &state.repo;
     let chars = repo.list_characters().await.map_err(err)?;
     let blocks = repo.list_stat_blocks().await.map_err(err)?;
@@ -1161,7 +1044,7 @@ Do not include any explanatory text — only the JSON object.";
 /// SQLite transaction.
 #[tauri::command]
 pub async fn generate_campaign(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     input: CampaignSeedInput,
 ) -> Result<CampaignGenerationResult, String> {
     let seed = format!(
@@ -1288,7 +1171,7 @@ pub async fn generate_campaign(
 /// Resolve a player intent into structured narrative via the DM pipeline.
 #[tauri::command]
 pub async fn process_dm_intent(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     app: AppHandle,
     request: DmRequest,
 ) -> Result<DmResponse, String> {
@@ -1365,7 +1248,7 @@ pub async fn process_dm_intent(
 /// Roll on a random encounter table using the deterministic dice engine.
 #[tauri::command]
 pub async fn get_random_encounter(
-    _state: State<'_, AppState>,
+    _state: State<'_, GameState>,
     difficulty: String,
 ) -> Result<String, String> {
     let seed = std::time::SystemTime::now()
@@ -1378,83 +1261,16 @@ pub async fn get_random_encounter(
     let total = roll.total as usize;
 
     let table: &[&str] = match difficulty.as_str() {
-        "easy" => &EASY_ENCOUNTERS,
-        "hard" => &HARD_ENCOUNTERS,
-        _ => &STANDARD_ENCOUNTERS,
+        "easy" => &auto_dm_engine::combat::EASY_ENCOUNTERS,
+        "hard" => &auto_dm_engine::combat::HARD_ENCOUNTERS,
+        _ => &auto_dm_engine::combat::STANDARD_ENCOUNTERS,
     };
 
     let idx = if total == 0 { 0 } else { total.min(table.len()) - 1 };
     Ok(format!("[{}] d100={}: {}", difficulty.to_uppercase(), total, table[idx]))
 }
 
-const STANDARD_ENCOUNTERS: [&str; 20] = [
-    "A lone wolf",
-    "Two wolves",
-    "Three wolves",
-    "A wounded wolf",
-    "Wolf pack leader (Dire Wolf)",
-    "Four wolves",
-    "A hungry bear",
-    "A territorial eagle",
-    "Swarm of bats",
-    "A giant spider",
-    "Two giant spiders",
-    "A hungry owlbear",
-    "A band of 3 goblins",
-    "A goblin scout",
-    "Two goblins with wolf riders",
-    "A lone orc",
-    "Two orcs",
-    "An ogre",
-    "A troll",
-    "A young green dragon (CR adjusted)",
-];
 
-const EASY_ENCOUNTERS: [&str; 20] = [
-    "A curious squirrel",
-    "An injured rabbit",
-    "A lost traveler",
-    "A friendly dog",
-    "A flock of birds",
-    "A gentle rain",
-    "A helpful sprite",
-    "An old hermit",
-    "A wandering merchant",
-    "A sign of recent travel",
-    "A broken wagon wheel",
-    "A campsite remains",
-    "A strange footprint",
-    "A glint of metal in the grass",
-    "A distant howl",
-    "A weathered monument",
-    "An abandoned shrine",
-    "A natural spring",
-    "A patch of berry bushes",
-    "A smooth river stone",
-];
-
-const HARD_ENCOUNTERS: [&str; 20] = [
-    "A veteran orc warrior",
-    "Two ogres",
-    "A wight rises from a grave",
-    "A pack of worgs",
-    "A stone troll guarding a bridge",
-    "A will-o'-wisp lures",
-    "A nest of stirges",
-    "A chuul in a pond",
-    "A manticore on a cliff",
-    "A bone naga emerges",
-    "A deathlock wight",
-    "A shadow mastema",
-    "A drider patrol",
-    "A hezrou demon (minor gate)",
-    "A young copper dragon",
-    "A frost giant patrol",
-    "An ettin in the hills",
-    "Two minotaurs",
-    "A wyrmscale bounty hunter",
-    "The campaign's primary antagonist appears",
-];
 
 // ---------- Ollama integration ------------------------------------------
 
@@ -1466,14 +1282,14 @@ pub async fn ollama_models() -> CmdResult<Vec<String>> {
 
 /// Get the currently selected Ollama model name.
 #[tauri::command]
-pub async fn get_ollama_model(state: State<'_, AppState>) -> CmdResult<String> {
+pub async fn get_ollama_model(state: State<'_, GameState>) -> CmdResult<String> {
     let model = state.current_model.lock().map_err(err)?;
     Ok(model.clone())
 }
 
 /// Switch the Ollama model used by the DM backend. Rebuilds the pipeline.
 #[tauri::command]
-pub async fn set_ollama_model(state: State<'_, AppState>, model: String) -> CmdResult<()> {
+pub async fn set_ollama_model(state: State<'_, GameState>, model: String) -> CmdResult<()> {
     {
         let mut current = state.current_model.lock().map_err(err)?;
         *current = model.clone();
@@ -1491,7 +1307,7 @@ pub async fn set_ollama_model(state: State<'_, AppState>, model: String) -> CmdR
 }
 
 #[tauri::command]
-pub async fn get_ollama_num_predict(state: State<'_, AppState>) -> CmdResult<u32> {
+pub async fn get_ollama_num_predict(state: State<'_, GameState>) -> CmdResult<u32> {
     if let Ok(Some(v)) = state.repo.get_setting("ollama_num_predict").await {
         if let Ok(n) = v.parse::<u32>() {
             return Ok(n.clamp(64, 2048));
@@ -1501,7 +1317,7 @@ pub async fn get_ollama_num_predict(state: State<'_, AppState>) -> CmdResult<u32
 }
 
 #[tauri::command]
-pub async fn set_ollama_num_predict(state: State<'_, AppState>, n: u32) -> CmdResult<()> {
+pub async fn set_ollama_num_predict(state: State<'_, GameState>, n: u32) -> CmdResult<()> {
     let clamped = n.clamp(64, 2048);
     if let Ok(mut cur) = state.current_num_predict.lock() {
         *cur = clamped;
@@ -1516,7 +1332,7 @@ pub async fn set_ollama_num_predict(state: State<'_, AppState>, n: u32) -> CmdRe
 /// Push a campaign event into the local memory log (best-effort).
 #[tauri::command]
 pub async fn ingest_memory(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     speaker: String,
     content: String,
 ) -> CmdResult<()> {
@@ -1528,15 +1344,15 @@ pub async fn ingest_memory(
 
 /// Export the full campaign data as JSON.
 #[tauri::command]
-pub async fn export_campaign(state: State<'_, AppState>) -> CmdResult<crate::db::CampaignExport> {
+pub async fn export_campaign(state: State<'_, GameState>) -> CmdResult<auto_dm_engine::CampaignExport> {
     state.repo.export_campaign().await.map_err(err)
 }
 
 /// Import campaign data from JSON (overwrites existing data).
 #[tauri::command]
 pub async fn import_campaign(
-    state: State<'_, AppState>,
-    data: crate::db::CampaignExport,
+    state: State<'_, GameState>,
+    data: auto_dm_engine::CampaignExport,
 ) -> CmdResult<()> {
     state.repo.import_campaign(&data).await.map_err(err)
 }
@@ -1546,19 +1362,19 @@ pub async fn import_campaign(
 /// Save a loot entry for the current scene.
 #[tauri::command]
 pub async fn save_loot(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     scene_id: String,
     name: String,
     quantity: i32,
     source_entity: String,
-) -> CmdResult<crate::db::LootRow> {
+) -> CmdResult<auto_dm_engine::LootRow> {
     state.repo.save_loot(&scene_id, &name, quantity, &source_entity).await.map_err(err)
 }
 
 /// Assign a loot entry to a character.
 #[tauri::command]
 pub async fn assign_loot(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     loot_id: String,
     character_id: String,
 ) -> CmdResult<()> {
@@ -1568,15 +1384,15 @@ pub async fn assign_loot(
 /// List all loot for a scene.
 #[tauri::command]
 pub async fn list_loot(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     scene_id: String,
-) -> CmdResult<Vec<crate::db::LootRow>> {
+) -> CmdResult<Vec<auto_dm_engine::LootRow>> {
     state.repo.list_loot(&scene_id).await.map_err(err)
 }
 
 /// Clear all loot for a scene.
 #[tauri::command]
-pub async fn clear_loot(state: State<'_, AppState>, scene_id: String) -> CmdResult<()> {
+pub async fn clear_loot(state: State<'_, GameState>, scene_id: String) -> CmdResult<()> {
     state.repo.clear_loot(&scene_id).await.map_err(err)
 }
 
@@ -1585,27 +1401,27 @@ pub async fn clear_loot(state: State<'_, AppState>, scene_id: String) -> CmdResu
 /// Save an NPC note for the current scene.
 #[tauri::command]
 pub async fn save_npc_note(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     scene_id: String,
     npc_name: String,
     relation: String,
     note: String,
-) -> CmdResult<crate::db::NpcNoteRow> {
+) -> CmdResult<auto_dm_engine::NpcNoteRow> {
     state.repo.save_npc_note(&scene_id, &npc_name, &relation, &note).await.map_err(err)
 }
 
 /// List NPC notes for a scene.
 #[tauri::command]
 pub async fn list_npc_notes(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     scene_id: String,
-) -> CmdResult<Vec<crate::db::NpcNoteRow>> {
+) -> CmdResult<Vec<auto_dm_engine::NpcNoteRow>> {
     state.repo.list_npc_notes(&scene_id).await.map_err(err)
 }
 
 /// Delete an NPC note by ID.
 #[tauri::command]
-pub async fn delete_npc_note(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_npc_note(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_npc_note(&id).await.map_err(err)
 }
 
@@ -1614,7 +1430,7 @@ pub async fn delete_npc_note(state: State<'_, AppState>, id: String) -> CmdResul
 /// Save combat state for the current scene.
 #[tauri::command]
 pub async fn save_combat_state(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     scene_id: String,
     state_json: String,
 ) -> CmdResult<()> {
@@ -1624,7 +1440,7 @@ pub async fn save_combat_state(
 /// Load combat state for the current scene.
 #[tauri::command]
 pub async fn load_combat_state(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     scene_id: String,
 ) -> CmdResult<Option<String>> {
     state.repo.load_combat_state(&scene_id).await.map_err(err)
@@ -1635,10 +1451,10 @@ pub async fn load_combat_state(
 /// Roll loot from a monster's loot table when it's defeated.
 #[tauri::command]
 pub async fn roll_monster_loot(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     stat_block_id: String,
     scene_id: String,
-) -> CmdResult<Vec<crate::db::LootRow>> {
+) -> CmdResult<Vec<auto_dm_engine::LootRow>> {
     use auto_dm_core::dice::DiceEngine;
     use auto_dm_core::models::roll_loot_table;
 
@@ -1669,12 +1485,12 @@ pub async fn roll_monster_loot(
 /// Create a new plot thread.
 #[tauri::command]
 pub async fn save_thread(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     description: String,
     status: String,
     opened_scene_id: String,
     resolved_scene_id: Option<String>,
-) -> CmdResult<crate::db::ThreadRow> {
+) -> CmdResult<auto_dm_engine::ThreadRow> {
     state
         .repo
         .save_thread(&description, &status, &opened_scene_id, resolved_scene_id.as_deref())
@@ -1685,7 +1501,7 @@ pub async fn save_thread(
 /// Update a thread's status.
 #[tauri::command]
 pub async fn update_thread_status(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
     status: String,
     resolved_scene_id: Option<String>,
@@ -1695,13 +1511,13 @@ pub async fn update_thread_status(
 
 /// List all plot threads.
 #[tauri::command]
-pub async fn list_threads(state: State<'_, AppState>) -> CmdResult<Vec<crate::db::ThreadRow>> {
+pub async fn list_threads(state: State<'_, GameState>) -> CmdResult<Vec<auto_dm_engine::ThreadRow>> {
     state.repo.list_threads().await.map_err(err)
 }
 
 /// Delete a plot thread.
 #[tauri::command]
-pub async fn delete_thread(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_thread(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_thread(&id).await.map_err(err)
 }
 
@@ -1711,7 +1527,7 @@ pub async fn delete_thread(state: State<'_, AppState>, id: String) -> CmdResult<
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn save_npc_character(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     name: String,
     disposition: String,
     alive: bool,
@@ -1719,7 +1535,7 @@ pub async fn save_npc_character(
     knows_json: String,
     notes: Option<String>,
     last_seen_scene_id: Option<String>,
-) -> CmdResult<crate::db::NpcCharacterRow> {
+) -> CmdResult<auto_dm_engine::NpcCharacterRow> {
     state
         .repo
         .save_npc_character(
@@ -1739,7 +1555,7 @@ pub async fn save_npc_character(
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn update_npc_character(
-    state: State<'_, AppState>,
+    state: State<'_, GameState>,
     id: String,
     disposition: Option<String>,
     alive: Option<bool>,
@@ -1766,13 +1582,13 @@ pub async fn update_npc_character(
 /// List all NPC characters.
 #[tauri::command]
 pub async fn list_npc_characters(
-    state: State<'_, AppState>,
-) -> CmdResult<Vec<crate::db::NpcCharacterRow>> {
+    state: State<'_, GameState>,
+) -> CmdResult<Vec<auto_dm_engine::NpcCharacterRow>> {
     state.repo.list_npc_characters().await.map_err(err)
 }
 
 /// Delete an NPC character.
 #[tauri::command]
-pub async fn delete_npc_character(state: State<'_, AppState>, id: String) -> CmdResult<bool> {
+pub async fn delete_npc_character(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_npc_character(&id).await.map_err(err)
 }

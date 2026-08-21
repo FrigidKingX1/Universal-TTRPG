@@ -253,6 +253,7 @@ name = "auto-dm"
 version = "0.1.0"
 dependencies = [
  "auto-dm-core",
+ "auto-dm-engine",
  "chrono",
  "log",
  "serde",
@@ -284,6 +285,21 @@ dependencies = [
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "auto-dm-engine"
+version = "0.1.0"
+dependencies = [
+ "auto-dm-core",
+ "chrono",
+ "log",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.20",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

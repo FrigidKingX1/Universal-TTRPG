@@ -6,41 +6,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 use sqlx::{Row, Sqlite};
-use std::fmt;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-/// Error type for the persistence layer.
-#[derive(Debug)]
-pub enum DbError {
-    Database(sqlx::Error),
-    Json(serde_json::Error),
-    NotFound(String),
-}
+/// Error type lives in `crate::error` (thiserror); aliased for back-compat.
+pub use crate::error::{DbError, EngineError};
 
-impl fmt::Display for DbError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DbError::Database(e) => write!(f, "database error: {e}"),
-            DbError::Json(e) => write!(f, "json error: {e}"),
-            DbError::NotFound(what) => write!(f, "not found: {what}"),
-        }
-    }
-}
-
-impl std::error::Error for DbError {}
-
-impl From<sqlx::Error> for DbError {
-    fn from(e: sqlx::Error) -> Self {
-        DbError::Database(e)
-    }
-}
-
-impl From<serde_json::Error> for DbError {
-    fn from(e: serde_json::Error) -> Self {
-        DbError::Json(e)
-    }
-}
 
 /// A campaign scene (the spec's `campaign_scenes` row).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -68,7 +39,7 @@ pub struct LogEntry {
 }
 
 /// Application state shared with Tauri commands.
-pub struct AppState {
+pub struct GameState {
     pub repo: SqliteRepository,
     /// The DM loop, swappable at runtime when the model changes.
     /// Wrapped in `Arc` so callers can clone and release the lock before
@@ -270,7 +241,7 @@ pub trait Repository: Send + Sync {
         tx: &mut sqlx::Transaction<'_, Sqlite>,
         title: &str,
         chaos_factor: i32,
-    ) -> Result<crate::db::Scene, DbError>;
+    ) -> Result<crate::state::Scene, DbError>;
     async fn db_save_npc_txn(
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
@@ -293,7 +264,7 @@ pub trait Repository: Send + Sync {
         description: &str,
         status: &str,
         resolved_scene_id: Option<&str>,
-    ) -> Result<crate::db::ThreadRow, DbError>;
+    ) -> Result<crate::state::ThreadRow, DbError>;
     async fn db_set_setting_txn(
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
@@ -442,7 +413,7 @@ pub async fn open_pool(path: &std::path::Path) -> Result<SqlitePool, sqlx::Error
 
 /// Snapshot the database before applying schema changes.
 /// `db_path` is the on-disk location so the snapshot lands next to it in
-/// `app_data_dir`, not in the process CWD. On failure we log and continue —
+/// `app_data_dir`, not in the process CWD. On failure we log and continue Ã¢â‚¬â€
 /// the migration is idempotent (CREATE IF NOT EXISTS), so a missing backup
 /// is preferable to blocking startup.
 pub async fn backup_before_migrate(pool: &SqlitePool, db_path: &std::path::Path) {
@@ -454,7 +425,7 @@ pub async fn backup_before_migrate(pool: &SqlitePool, db_path: &std::path::Path)
     // already-dir-sanitized backup path (it is derived from app_data_dir,
     // not user input) into the SQL string.
     let escaped = backup_path.display().to_string().replace('\'', "''");
-    // query() requires a 'static str; leak the owned string — one allocation
+    // query() requires a 'static str; leak the owned string Ã¢â‚¬â€ one allocation
     // on a cold path (startup), never freed by design (the pool lives for the
     // lifetime of the app).
     let sql: &'static str = Box::leak(format!("VACUUM INTO '{escaped}'").into_boxed_str());
@@ -1348,7 +1319,7 @@ impl Repository for SqliteRepository {
         Ok(row.map(|(json,)| json))
     }
 
-    // ── DM Memory ───────────────────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ DM Memory Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     async fn append_memory(&self, speaker: &str, content: &str) -> Result<(), DbError> {
         sqlx::query("INSERT INTO memory_events (speaker, content) VALUES (?, ?)")
@@ -1371,7 +1342,7 @@ impl Repository for SqliteRepository {
         Ok(rows)
     }
 
-    // ── Streaming checkpoints ────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Streaming checkpoints Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     async fn save_stream_checkpoint(&self, id: &str, content: &str) -> Result<(), DbError> {
         sqlx::query(
@@ -1403,7 +1374,7 @@ impl Repository for SqliteRepository {
         Ok(())
     }
 
-    // ── Plot Threads ────────────────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Plot Threads Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     async fn save_thread(
         &self,
@@ -1479,7 +1450,7 @@ impl Repository for SqliteRepository {
         Ok(r.rows_affected() > 0)
     }
 
-    // ── NPC Characters ─────────────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ NPC Characters Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     #[allow(clippy::too_many_arguments)]
     async fn save_npc_character(
@@ -1609,7 +1580,7 @@ impl Repository for SqliteRepository {
         Ok(r.rows_affected() > 0)
     }
 
-    // ── Campaign Settings ──────────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Campaign Settings Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     async fn get_setting(&self, key: &str) -> Result<Option<String>, DbError> {
         let row: Option<(String,)> =
@@ -1632,7 +1603,7 @@ impl Repository for SqliteRepository {
         Ok(())
     }
 
-    // ── Doom Clocks ────────────────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Doom Clocks Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     async fn save_doom_clock(
         &self,

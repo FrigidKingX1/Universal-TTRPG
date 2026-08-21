@@ -1,11 +1,10 @@
 pub mod commands;
-pub mod db;
 
 use auto_dm_core::llm::{DmPipeline, LlmBackend, StubLlmBackend};
 use auto_dm_core::memory::CampaignMemory;
 use auto_dm_core::ollama::OllamaLlmBackend;
-use db::{
-    backup_before_migrate, open_pool, run_migrations, AppState, Repository, SqliteRepository,
+use auto_dm_engine::{
+    backup_before_migrate, open_pool, run_migrations, GameState, Repository, SqliteRepository,
 };
 use std::panic;
 use std::sync::Arc;
@@ -193,7 +192,7 @@ pub fn run() {
                     .unwrap_or(512)
             });
 
-            app.manage(AppState {
+            app.manage(GameState {
                 repo,
                 dm: tokio::sync::Mutex::new(Some(Arc::new(DmPipeline::new(
                     choose_dm_backend_with(Some(persisted_model.clone())),
@@ -240,7 +239,7 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
-                if let Some(state) = window.try_state::<AppState>() {
+                if let Some(state) = window.try_state::<GameState>() {
                     if let Ok(mut child) = state.ollama_child.lock() {
                         if let Some(ref mut c) = *child {
                             log::info!("Killing ollama serve (pid {})", c.id());
