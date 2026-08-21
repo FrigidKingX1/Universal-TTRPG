@@ -63,6 +63,11 @@ body {
     radial-gradient(900px 500px at 100% 0%, rgba(155, 142, 196, 0.06), transparent 55%),
     var(--bg);
   color: var(--text);
+  line-height: var(--leading-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 
 /* Native Window Chrome — frameless titlebar with Snap Layout support */
@@ -186,6 +191,7 @@ body {
   font-weight: 700;
   font-variant: small-caps;
   letter-spacing: 0.06em;
+  line-height: 1.2;
   color: var(--accent);
   text-shadow: 0 0 14px rgba(201, 168, 106, 0.25);
 }
@@ -513,6 +519,7 @@ body {
   font-family: var(--font-display);
   font-variant: small-caps;
   letter-spacing: 0.06em;
+  line-height: var(--leading-lg);
   font-size: 1.05rem;
   color: var(--text);
   font-weight: 700;
@@ -948,7 +955,7 @@ button.rolling {
 /* Modal */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(10, 11, 15, 0.85);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(2px);
   display: flex; align-items: center;
   justify-content: center; z-index: 200; padding: 1rem;
@@ -2009,11 +2016,9 @@ input[type="range"] {
 /* ── Settings Panel ────────────────────────────────── */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(10, 11, 15, 0.8);
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;

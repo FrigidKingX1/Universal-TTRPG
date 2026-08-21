@@ -244,7 +244,7 @@ function App() {
           </div>
         )}
         {!loading && !ollamaStatus && (
-          <div className="banner warning" role="status">
+          <div className="banner warning" role="alert" aria-live="assertive">
             <span>Ollama Service Offline — AI generation uses the offline stub. Run <code>ollama serve</code> and <code>ollama run llama3.2</code> to enable full generation.</span>
             <button onClick={() => void useStore.getState().pollOllamaModels()} aria-label="Retry Ollama connection">Retry</button>
           </div>
