@@ -43,7 +43,7 @@ export function PlayerCommandDeck({ character }: { character: CharacterProfile |
             <div className="health-track">
               <div
                 className="health-fill"
-                style={{ width: `${hpPct}%` }}
+                style={{ transform: `scaleX(${hpPct / 100})` }}
               />
             </div>
             <div className="health-label">HP {hpCurrent}/{hpMax}</div>
@@ -96,7 +96,7 @@ export function PlayerCommandDeck({ character }: { character: CharacterProfile |
                         <div className="resource-track">
                           <div
                             className="resource-fill"
-                            style={{ width: `${pct}%` }}
+                            style={{ transform: `scaleX(${pct / 100})` }}
                           />
                         </div>
                         <span className="resource-value">{pool.current}/{pool.maximum}</span>

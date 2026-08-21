@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
 
 function NewCharacterForm() {
@@ -68,8 +69,15 @@ export function CharacterList() {
   const cloneCharacter = useStore((s) => s.cloneCharacter);
   const activeCharacterId = useStore((s) => s.activeCharacter?.id ?? null);
   const selectActiveCharacter = useStore((s) => s.selectActiveCharacter);
+  const { confirm, dialog } = useConfirmDialog();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rollingId, setRollingId] = useState<string | null>(null);
+
+  const requestDeleteCharacter = async (id: string, name: string) => {
+    if (await confirm({ title: "Delete Character", message: `Delete ${name}? This cannot be undone.` })) {
+      void deleteCharacter(id);
+    }
+  };
 
   return (
     <section className="panel">
@@ -94,7 +102,7 @@ export function CharacterList() {
                   const max = c.resource_pools.hp?.maximum ?? 1;
                   return cur <= 0 ? "dead" : cur < max * 0.25 ? "critical" : cur < max * 0.5 ? "wounded" : "healthy";
                 })()}`}
-                style={{ width: `${Math.max(0, Math.min(100, ((c.resource_pools.hp?.current ?? 0) / Math.max(1, c.resource_pools.hp?.maximum ?? 1)) * 100))}%` }}
+                style={{ transform: `scaleX(${Math.max(0, Math.min(100, ((c.resource_pools.hp?.current ?? 0) / Math.max(1, c.resource_pools.hp?.maximum ?? 1)) * 100)) / 100})` }}
               />
             </div>
             <div className="card-row">
@@ -114,7 +122,7 @@ export function CharacterList() {
               <button onClick={() => setRollingId(rollingId === c.id ? null : c.id)}>
                 {rollingId === c.id ? "Hide" : "Roll"}
               </button>
-              <button className="danger" onClick={() => { if (confirm(`Delete ${c.identity.name}?`)) void deleteCharacter(c.id); }}>
+              <button className="danger" onClick={() => void requestDeleteCharacter(c.id, c.identity.name)}>
                 Delete
               </button>
             </div>
@@ -124,6 +132,7 @@ export function CharacterList() {
         ))}
       </ul>
       {characters.length === 0 && <p className="muted">No characters yet.</p>}
+      {dialog}
     </section>
   );
 }
@@ -292,7 +301,7 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
       <div className="hp-bar">
         <div
           className={`hp-bar-fill ${hp <= 0 ? "dead" : hp < maxHp * 0.25 ? "critical" : hp < maxHp * 0.5 ? "wounded" : "healthy"}`}
-          style={{ width: `${Math.max(0, Math.min(100, (hp / maxHp) * 100))}%` }}
+          style={{ transform: `scaleX(${Math.max(0, Math.min(100, (hp / maxHp) * 100)) / 100})` }}
         />
       </div>
 
@@ -373,7 +382,14 @@ export function ActionList() {
   const actions = useStore((s) => s.actions);
   const saveAction = useStore((s) => s.saveAction);
   const deleteAction = useStore((s) => s.deleteAction);
+  const { confirm, dialog } = useConfirmDialog();
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const requestDeleteAction = async (id: string, name: string) => {
+    if (await confirm({ title: "Delete Action", message: `Delete action "${name}"?` })) {
+      void deleteAction(id);
+    }
+  };
 
   const create = () => {
     const action: ActionDefinition = {
@@ -409,7 +425,7 @@ export function ActionList() {
               <button onClick={() => setEditingId(editingId === a.id ? null : a.id)}>
                 {editingId === a.id ? "Close" : "Edit"}
               </button>
-              <button className="danger" onClick={() => { if (confirm(`Delete action "${a.name}"?`)) void deleteAction(a.id); }}>
+              <button className="danger" onClick={() => void requestDeleteAction(a.id, a.name)}>
                 Delete
               </button>
             </div>
@@ -420,6 +436,7 @@ export function ActionList() {
         ))}
       </ul>
       {actions.length === 0 && <p className="muted">No actions yet.</p>}
+      {dialog}
     </section>
   );
 }

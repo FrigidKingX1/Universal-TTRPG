@@ -39,10 +39,17 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   }, []);
 
   useEffect(() => {
-    backend.getLinesVeils().then((lv) => {
-      setLinesInput(lv.lines.join(", "));
-      setVeilsInput(lv.veils.join(", "));
-    }).catch(() => {});
+    let cancelled = false;
+    backend.getLinesVeils()
+      .then((lv) => {
+        if (cancelled) return;
+        setLinesInput(lv.lines.join(", "));
+        setVeilsInput(lv.veils.join(", "));
+      })
+      .catch((e) => {
+        if (!cancelled) setTestResult(`Could not load safety tools: ${e}`);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const handleSaveLinesVeils = useCallback(async () => {
@@ -247,14 +254,10 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
           <section className="settings-section">
             <h3>Application</h3>
-            <div className="settings-grid">
-              <label className="toggle-label">
-                <input type="checkbox" defaultChecked /> Auto-save campaign (every 30s)
-              </label>
-              <label className="toggle-label">
-                <input type="checkbox" defaultChecked /> Show dice roll animations
-              </label>
-            </div>
+            <p className="form-hint">
+              Auto-save runs every 30 seconds while the app is open. Dice animations respect your
+              system reduced-motion preference.
+            </p>
           </section>
 
           {testResult && (

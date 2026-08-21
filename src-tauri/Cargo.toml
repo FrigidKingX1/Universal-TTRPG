@@ -1,8 +1,8 @@
 [package]
 name = "auto-dm"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Auto-DM: AI-powered solo RPG game master desktop app"
+authors = ["Auto-DM contributors"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -24,13 +24,12 @@ tauri-plugin-log = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
-tauri-plugin-store = "2"
 tauri-plugin-window-state = "2"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 auto-dm-core = { path = "../core" }
-sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "chrono"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", features = ["sync"] }

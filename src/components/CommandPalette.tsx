@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useStore } from "../store";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import "../App.css";
 
 interface Command {
@@ -23,6 +24,14 @@ export function CommandPalette() {
     setQuery("");
   });
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const { confirm, dialog } = useConfirmDialog();
+
+  const requestClearStoryLog = async () => {
+    if (await confirm({ title: "Clear Story Log", message: "Remove all narrative entries from this session?" })) {
+      clearStoryLog();
+      showToast("Story log cleared", "info");
+    }
+  };
 
   const appMode = useStore((s) => s.appMode);
   const setAppMode = useStore((s) => s.setAppMode);
@@ -243,10 +252,7 @@ export function CommandPalette() {
         icon: "🗑️",
         category: "DM",
         action: () => {
-          if (confirm("Clear entire story log?")) {
-            clearStoryLog();
-            showToast("Story log cleared", "info");
-          }
+          void requestClearStoryLog();
         },
       },
 
@@ -459,9 +465,11 @@ export function CommandPalette() {
     }
   }, [selectedIndex, filteredCommands]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !dialog) return null;
 
   return (
+    <>
+    {dialog}
     <div ref={paletteRef} className="command-palette-overlay" onClick={() => setIsOpen(false)} role="dialog" aria-modal="true" aria-label="Command palette">
       <div className="command-palette" onClick={(e) => e.stopPropagation()}>
         <div className="palette-header">
@@ -512,5 +520,6 @@ export function CommandPalette() {
         </div>
       </div>
     </div>
+    </>
   );
 }

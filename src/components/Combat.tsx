@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../store";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import type { CharacterProfile, EncounterStatBlock, EngineOutcome } from "../types";
 
 const CONDITIONS = ["Poisoned", "Prone", "Stunned", "Frightened", "Blinded", "Charmed", "Invisible", "Exhaustion", "Concentrating"];
@@ -55,6 +56,13 @@ export function Combat() {
   const addLoot = useStore((s) => s.addLoot);
   const assignLoot = useStore((s) => s.assignLoot);
   const clearLoot = useStore((s) => s.clearLoot);
+  const { confirm, dialog } = useConfirmDialog();
+
+  const requestRemoveCombatant = async (id: string, name: string) => {
+    if (await confirm({ title: "Remove Combatant", message: `Remove ${name} from combat?` })) {
+      removeCombatant(id);
+    }
+  };
 
   const [attackerKey, setAttackerKey] = useState("");
   const [targetKey, setTargetKey] = useState("");
@@ -269,7 +277,7 @@ export function Combat() {
               <div className="hp-row">
                 <span>HP {hp.current}/{hp.max}</span>
                 <div className="hp-bar">
-                  <div className={`hp-bar-fill ${barClass}`} style={{ width: `${pct}%` }} />
+                  <div className={`hp-bar-fill ${barClass}`} style={{ transform: `scaleX(${pct / 100})` }} />
                 </div>
               </div>
               <div className="hp-adjust-row">
@@ -318,7 +326,7 @@ export function Combat() {
                 {lastHpChange?.entityId === e.value.id && (
                   <button className="undo-btn" onClick={undoLastHpChange}>Undo</button>
                 )}
-                <button className="remove-combatant-btn danger" onClick={() => { if (confirm(`Remove ${e.name} from combat?`)) removeCombatant(e.value.id); }}>
+                <button className="remove-combatant-btn danger" onClick={() => void requestRemoveCombatant(e.value.id, e.name)}>
                   Remove
                 </button>
               </div>
@@ -535,6 +543,7 @@ export function Combat() {
           </div>
         )}
       </div>
+      {dialog}
     </section>
     {showSummary && combatSummary && (
       <div className="modal-overlay" onClick={() => setShowSummary(false)}>

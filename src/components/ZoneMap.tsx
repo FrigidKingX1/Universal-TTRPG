@@ -56,8 +56,8 @@ export function ZoneMap({ zone, nodes, currentNodeId, onTravel, onSelect }: Zone
   }
 
   return (
-    <div className="zone-map" role="img" aria-label={`Map of ${zone.name} with ${nodes.length} locations`}>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="zone-map-svg">
+    <div className="zone-map" aria-label={`Map of ${zone.name} with ${nodes.length} locations`}>
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="zone-map-svg" aria-hidden="true">
         <defs>
           <radialGradient id="fog" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
@@ -113,6 +113,21 @@ export function ZoneMap({ zone, nodes, currentNodeId, onTravel, onSelect }: Zone
                 if (isReachable && onTravel) onTravel(n.id);
                 else if (onSelect) onSelect(n.id);
               }}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === " ") && isReachable && onTravel) {
+                  e.preventDefault();
+                  onTravel(n.id);
+                }
+              }}
+              tabIndex={isReachable ? 0 : undefined}
+              role={isReachable ? "button" : undefined}
+              aria-label={
+                isReachable && n.discovered
+                  ? `Travel to ${n.name}${n.safe ? " (safe)" : " (dangerous)"}`
+                  : n.discovered
+                    ? n.name
+                    : "Undiscovered location"
+              }
               style={{ cursor: isReachable ? "pointer" : "default" }}
             >
               {isCurrent && <circle cx={p.x} cy={p.y} r={18} className="zone-node-pulse" />}

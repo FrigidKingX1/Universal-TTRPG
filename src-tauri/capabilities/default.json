@@ -9,7 +9,6 @@
     "log:default",
     "dialog:default",
     "fs:default",
-    "store:default",
     "window-state:default"
   ]
 }

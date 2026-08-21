@@ -23,7 +23,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  const dialogRef = useFocusTrap(isOpen);
+  const dialogRef = useFocusTrap(isOpen, onCancel);
 
   useEffect(() => {
     if (isOpen) {

@@ -14,6 +14,7 @@ import { Combat } from "./components/Combat";
 import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, NpcNotesPanel, LinesVeilPanel } from "./components/Tools";
 import { CampaignExport } from "./components/CampaignExport";
 import { ShortcutsHelp } from "./components/ShortcutsHelp";
+import { OnboardingOverlay } from "./components/OnboardingOverlay";
 import { usePanelResize } from "./hooks/usePanelResize";
 import "./App.css";
 
@@ -260,6 +261,7 @@ function App() {
 
       <ToastContainer />
       <CommandPalette />
+      <OnboardingOverlay />
       {settingsOpen && (
         <SettingsPanel onClose={() => setSettingsOpen(false)} />
       )}

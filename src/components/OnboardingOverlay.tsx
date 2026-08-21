@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "../store";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import "../App.css";
@@ -40,7 +40,7 @@ const STEPS: OnboardingStep[] = [
   {
     id: "shortcuts",
     title: "Keyboard Shortcuts",
-    description: "Ctrl+K: Command Palette • Ctrl+M: Toggle Mode • 1-5: Navigate (Setup) • Enter: Send to DM • Esc: Dismiss • Ctrl+B: Toggle Sidebar",
+    description: "Ctrl+K: Command Palette • Ctrl+M: Toggle Mode • 1-6: Navigate (Setup) • Enter: Send to DM • Esc: Dismiss • Ctrl+B: Toggle Sidebar",
     illustration: "⌨️",
   },
   {
@@ -54,14 +54,34 @@ const STEPS: OnboardingStep[] = [
 export function OnboardingOverlay() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const modalRef = useFocusTrap(isOpen);
+  const modalRef = useFocusTrap(isOpen, () => completeOnboardingRef.current?.());
 
   useEffect(() => {
-    const completed = localStorage.getItem(ONBOARDING_KEY);
-    if (!completed) {
-      setIsOpen(true);
+    try {
+      const completed = localStorage.getItem(ONBOARDING_KEY);
+      if (!completed) {
+        setIsOpen(true);
+      }
+    } catch {
+      // localStorage unavailable; don't block the app on onboarding
     }
   }, []);
+
+  const showToast = useStore((s) => s.showToast);
+
+  const completeOnboarding = useCallback(() => {
+    try {
+      localStorage.setItem(ONBOARDING_KEY, "true");
+    } catch {
+      // persistence is best-effort
+    }
+    setIsOpen(false);
+    showToast("Welcome to Auto-DM! Press Ctrl+K for the Command Palette.", "success", 5000);
+  }, [showToast]);
+
+  // Ref so the focus trap's Escape handler can reach the latest closure.
+  const completeOnboardingRef = useRef<() => void>(null);
+  completeOnboardingRef.current = completeOnboarding;
 
   const handleNext = useCallback(() => {
     if (currentStep < STEPS.length - 1) {
@@ -69,21 +89,13 @@ export function OnboardingOverlay() {
     } else {
       completeOnboarding();
     }
-  }, [currentStep]);
+  }, [currentStep, completeOnboarding]);
 
   const handlePrev = useCallback(() => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   }, [currentStep]);
-
-  const showToast = useStore((s) => s.showToast);
-
-  const completeOnboarding = useCallback(() => {
-    localStorage.setItem(ONBOARDING_KEY, "true");
-    setIsOpen(false);
-    showToast("Welcome to Auto-DM! Press Ctrl+K for the Command Palette.", "success", 5000);
-  }, [showToast]);
 
   const handleSkip = useCallback(() => {
     completeOnboarding();

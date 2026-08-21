@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
-import type { Disposition } from "../types";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import type { Disposition, Scene } from "../types";
 import { ZoneMap } from "./ZoneMap";
 
 const DISPOSITIONS: Disposition[] = ["hostile", "unfriendly", "neutral", "friendly", "helpful"];
@@ -14,12 +15,20 @@ export function Scenes() {
   const setActiveScene = useStore((s) => s.setActiveScene);
   const deleteScene = useStore((s) => s.deleteScene);
   const completeScene = useStore((s) => s.completeScene);
+  const { confirm, dialog } = useConfirmDialog();
   const [title, setTitle] = useState("");
   const [cf, setCf] = useState(5);
   const [showThreads, setShowThreads] = useState(false);
   const [showNpcs, setShowNpcs] = useState(false);
   const [showClocks, setShowClocks] = useState(false);
   const [showExploration, setShowExploration] = useState(false);
+  const [completingScene, setCompletingScene] = useState<Scene | null>(null);
+
+  const requestDeleteScene = async (id: string, name: string) => {
+    if (await confirm({ title: "Delete Scene", message: `Delete scene "${name}"? This cannot be undone.` })) {
+      void deleteScene(id);
+    }
+  };
 
   return (
     <section className="panel">
@@ -62,20 +71,14 @@ export function Scenes() {
               <span className="muted">CF {sc.chaos_factor}</span>
               {sc.id === activeSceneId && <span className="badge">active</span>}
               {sc.id === activeSceneId && (
-                <button className="complete-scene-btn" onClick={() => {
-                  if (!confirm(`Complete scene "${sc.title}"?`)) return;
-                  const outcome = prompt("Scene outcome:\nType 'favor' if it went in the player's favor (CF-1),\n'against' if it went against them (CF+1),\nor leave blank for no CF change.");
-                  if (outcome === null) return;
-                  const adj = outcome === "favor" || outcome === "against" ? outcome as "favor" | "against" : undefined;
-                  void completeScene(adj);
-                }}>
+                <button className="complete-scene-btn" onClick={() => setCompletingScene(sc)}>
                   Complete
                 </button>
               )}
               {sc.id !== activeSceneId && (
                 <button onClick={() => void setActiveScene(sc.id)}>Set active</button>
               )}
-              <button className="danger" onClick={() => { if (confirm(`Delete scene "${sc.title}"?`)) void deleteScene(sc.id); }}>
+              <button className="danger" onClick={() => void requestDeleteScene(sc.id, sc.title)}>
                 Delete
               </button>
             </div>
@@ -121,6 +124,31 @@ export function Scenes() {
         </button>
         {showExploration && <ExplorationPanel />}
       </div>
+
+      {dialog}
+
+      {completingScene && (
+        <div className="modal-overlay" onClick={() => setCompletingScene(null)} role="dialog" aria-modal="true" aria-labelledby="complete-scene-title">
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 id="complete-scene-title">Complete Scene #{completingScene.scene_number}: {completingScene.title}</h3>
+            <p className="muted">How did the scene resolve? This adjusts the Chaos Factor.</p>
+            <div className="row" style={{ justifyContent: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <button className="btn btn-primary" onClick={() => { void completeScene("favor"); setCompletingScene(null); }}>
+                In player's favor (CF −1)
+              </button>
+              <button className="btn btn-danger" onClick={() => { void completeScene("against"); setCompletingScene(null); }}>
+                Against them (CF +1)
+              </button>
+              <button className="btn btn-secondary" onClick={() => { void completeScene(undefined); setCompletingScene(null); }}>
+                No CF change
+              </button>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setCompletingScene(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -321,6 +349,13 @@ function NpcCharactersPanel() {
   const markNpcDead = useStore((s) => s.markNpcDead);
   const deleteNpcCharacter = useStore((s) => s.deleteNpcCharacter);
   const scenes = useStore((s) => s.scenes);
+  const { confirm: confirmNpc, dialog: npcDialog } = useConfirmDialog();
+
+  const requestKillNpc = async (id: string, name: string) => {
+    if (await confirmNpc({ title: "Kill NPC", message: `Mark ${name} as dead?` })) {
+      void markNpcDead(id);
+    }
+  };
 
   const [name, setName] = useState("");
   const [disposition, setDisposition] = useState<Disposition>("neutral");
@@ -379,7 +414,7 @@ function NpcCharactersPanel() {
                 <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void deleteNpcCharacter(npc.id)}>×</button>
               )}
               {npc.alive && (
-                <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => { if (confirm(`Mark ${npc.name} as dead?`)) void markNpcDead(npc.id); }}>Kill</button>
+                <button className="danger" style={{ fontSize: "0.75rem" }} onClick={() => void requestKillNpc(npc.id, npc.name)}>Kill</button>
               )}
             </div>
 
@@ -461,6 +496,7 @@ function NpcCharactersPanel() {
           </li>
         ))}
       </ul>
+      {npcDialog}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStore, newStatBlock } from "../store";
 import { backend } from "../backend";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import type { EncounterStatBlock, LootTableEntry, Size } from "../types";
 
 export function Bestiary() {
@@ -9,12 +10,19 @@ export function Bestiary() {
   const deleteStatBlock = useStore((s) => s.deleteStatBlock);
   const cloneStatBlock = useStore((s) => s.cloneStatBlock);
   const actions = useStore((s) => s.actions);
+  const { confirm, dialog } = useConfirmDialog();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const create = () => {
     const block = newStatBlock(`Monster ${statBlocks.length + 1}`);
     void saveStatBlock(block);
     setEditingId(block.id);
+  };
+
+  const requestDelete = async (id: string, name: string) => {
+    if (await confirm({ title: "Delete Monster", message: `Delete ${name}? This cannot be undone.` })) {
+      void deleteStatBlock(id);
+    }
   };
 
   return (
@@ -38,7 +46,7 @@ export function Bestiary() {
                 {editingId === b.id ? "Close" : "Edit"}
               </button>
               <button onClick={() => void cloneStatBlock(b.id)}>Clone</button>
-              <button className="danger" onClick={() => { if (confirm(`Delete ${b.name}?`)) void deleteStatBlock(b.id); }}>
+              <button className="danger" onClick={() => void requestDelete(b.id, b.name)}>
                 Delete
               </button>
             </div>
@@ -54,7 +62,7 @@ export function Bestiary() {
                         : "healthy"
                 }`}
                 style={{
-                  width: `${Math.max(0, Math.min(100, (b.hit_points.current / b.hit_points.maximum) * 100))}%`,
+                  transform: `scaleX(${Math.max(0, Math.min(100, (b.hit_points.current / b.hit_points.maximum) * 100)) / 100})`,
                 }}
               />
             </div>
@@ -63,6 +71,7 @@ export function Bestiary() {
         ))}
       </ul>
       {statBlocks.length === 0 && <p className="muted">No monsters yet.</p>}
+      {dialog}
     </section>
   );
 }
@@ -185,7 +194,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
       <div className="hp-bar">
         <div
           className={`hp-bar-fill ${hp <= 0 ? "dead" : hp < maxHp * 0.25 ? "critical" : hp < maxHp * 0.5 ? "wounded" : "healthy"}`}
-          style={{ width: `${Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100))}%` }}
+          style={{ transform: `scaleX(${Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100)) / 100})` }}
         />
       </div>
 
