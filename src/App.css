@@ -1840,6 +1840,30 @@ input[type="range"] {
   padding: 1rem;
   contain: layout paint;
 }
+
+/* Jump-to-latest floating button */
+.jump-bottom {
+  position: absolute;
+  bottom: 92px;
+  right: 1.25rem;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: var(--card);
+  color: var(--accent);
+  border: 1px solid rgba(201, 168, 106, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 5;
+  animation: modal-in 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.jump-bottom:hover {
+  background: var(--accent);
+  color: #0b0d10;
+}
 .narrative-placeholder {
   text-align: center;
   color: var(--muted);
@@ -1865,6 +1889,20 @@ input[type="range"] {
   font-size: 0.95rem;
   line-height: 1.65;
   letter-spacing: 0.01em;
+}
+
+/* Mechanical entries (dice, checks, system) — mono, boxed, distinct from prose */
+.story-entry[data-role="combat"] .story-content,
+.story-entry[data-role="system"] .story-content {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--info);
+  background: rgba(155, 142, 196, 0.07);
+  border-left: 2px solid var(--info);
+  padding: 0.35rem 0.6rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: pre-wrap;
 }
 /* Drop cap on the first letter of DM narrative entries */
 .story-entry[data-role="narrator"] .story-content::first-letter,
