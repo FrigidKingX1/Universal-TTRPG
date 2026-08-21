@@ -2,87 +2,95 @@ import { useState, useCallback, useRef, useEffect } from "react";
 
 interface PanelSizes {
   left: number;
-  center: number;
   right: number;
 }
 
-const DEFAULT_SIZES: PanelSizes = { left: 240, center: 1, right: 260 };
+const DEFAULT_SIZES: PanelSizes = { left: 240, right: 260 };
 const MIN_PANEL_WIDTH = 180;
 const MAX_PANEL_WIDTH = 400;
+const KEYBOARD_STEP = 16;
+
+function clampWidth(value: number): number {
+  return Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, value));
+}
+
+function loadSizes(): PanelSizes {
+  try {
+    const saved = localStorage.getItem("autodm-panel-sizes");
+    if (saved) return { ...DEFAULT_SIZES, ...JSON.parse(saved) };
+  } catch {
+    // localStorage unavailable or corrupt; use defaults
+  }
+  return DEFAULT_SIZES;
+}
 
 export function usePanelResize() {
-  const [sizes, setSizes] = useState<PanelSizes>(() => {
-    const saved = localStorage.getItem("autodm-panel-sizes");
-    if (saved) {
-      try {
-        return { ...DEFAULT_SIZES, ...JSON.parse(saved) };
-      } catch {
-        return DEFAULT_SIZES;
-      }
-    }
-    return DEFAULT_SIZES;
-  });
-
+  const [sizes, setSizes] = useState<PanelSizes>(loadSizes);
   const [dragging, setDragging] = useState<"left" | "right" | null>(null);
-  const startX = useRef(0);
-  const startSizes = useRef<PanelSizes>(DEFAULT_SIZES);
+  const dragState = useRef<{ edge: "left" | "right"; startX: number; startSize: number } | null>(null);
 
   useEffect(() => {
-    localStorage.setItem("autodm-panel-sizes", JSON.stringify(sizes));
+    try {
+      localStorage.setItem("autodm-panel-sizes", JSON.stringify(sizes));
+    } catch {
+      // persistence is best-effort
+    }
   }, [sizes]);
 
-  const handleMouseDown = useCallback((edge: "left" | "right", e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragging(edge);
-    startX.current = e.clientX;
-    startSizes.current = { ...sizes };
-    document.body.style.cursor = edge === "left" ? "ew-resize" : "ew-resize";
-    document.body.style.userSelect = "none";
-  }, [sizes]);
+  const beginDrag = useCallback(
+    (edge: "left" | "right", e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      dragState.current = {
+        edge,
+        startX: e.clientX,
+        startSize: edge === "left" ? sizes.left : sizes.right,
+      };
+      setDragging(edge);
+      document.body.style.cursor = "ew-resize";
+      document.body.style.userSelect = "none";
+    },
+    [sizes],
+  );
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragging) return;
+    if (!dragging) return;
 
-      const deltaX = e.clientX - startX.current;
-      const newSizes = { ...startSizes.current };
-
-      if (dragging === "left") {
-        const newLeft = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, startSizes.current.left + deltaX));
-        const diff = newLeft - startSizes.current.left;
-        newSizes.left = newLeft;
-        newSizes.center = Math.max(1, startSizes.current.center - diff);
-      } else if (dragging === "right") {
-        const newRight = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, startSizes.current.right - deltaX));
-        const diff = startSizes.current.right - newRight;
-        newSizes.right = newRight;
-        newSizes.center = Math.max(1, startSizes.current.center - diff);
-      }
-
-      setSizes(newSizes);
+    const onPointerMove = (e: PointerEvent) => {
+      const st = dragState.current;
+      if (!st) return;
+      const delta = e.clientX - st.startX;
+      const newSize = clampWidth(st.edge === "left" ? st.startSize + delta : st.startSize - delta);
+      setSizes((prev) => ({ ...prev, [st.edge]: newSize }));
     };
 
-    const handleMouseUp = () => {
+    const endDrag = () => {
+      dragState.current = null;
       setDragging(null);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
 
-    if (dragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    }
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      // Reset body styles even if unmounted mid-drag.
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
-  }, [dragging, sizes]);
+  }, [dragging]);
 
-  const resetSizes = useCallback(() => {
-    setSizes(DEFAULT_SIZES);
+  const resizeByKeyboard = useCallback((edge: "left" | "right", direction: 1 | -1) => {
+    setSizes((prev) => ({ ...prev, [edge]: clampWidth(prev[edge] + direction * KEYBOARD_STEP) }));
   }, []);
 
-  return { sizes, dragging, handleMouseDown, resetSizes };
+  const resetSizes = useCallback(() => setSizes(DEFAULT_SIZES), []);
+
+  return { sizes, dragging, beginDrag, resizeByKeyboard, resetSizes };
 }

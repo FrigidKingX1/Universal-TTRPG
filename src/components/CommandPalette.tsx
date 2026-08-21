@@ -26,6 +26,10 @@ export function CommandPalette() {
 
   const appMode = useStore((s) => s.appMode);
   const setAppMode = useStore((s) => s.setAppMode);
+  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
+  const setShortcutsOpen = useStore((s) => s.setShortcutsOpen);
+  const setActiveNav = useStore((s) => s.setActiveNav);
+  const refreshLogs = useStore((s) => s.refreshLogs);
   const activeCharacter = useStore((s) => s.activeCharacter);
   const characters = useStore((s) => s.characters);
   const scenes = useStore((s) => s.scenes);
@@ -36,13 +40,20 @@ export function CommandPalette() {
   const activeSceneId = useStore((s) => s.activeSceneId);
   const ollamaReachable = useStore((s) => s.ollama.reachable);
   const showToast = useStore((s) => s.showToast);
-  const generateCampaign = useStore((s) => s.generateCampaign);
-  const processDmIntent = useStore((s) => s.processDmIntent);
-  const addStoryEntry = useStore((s) => s.addStoryEntry);
   const clearStoryLog = useStore((s) => s.clearStoryLog);
   const autoSave = useStore((s) => s.autoSave);
   const exportCampaign = useStore((s) => s.exportCampaign);
   const importCampaign = useStore((s) => s.importCampaign);
+
+  // Navigate to a setup-mode view; used by most palette commands.
+  const goToSetupView = useCallback(
+    (nav: string, description: string) => {
+      setAppMode("setup");
+      setActiveNav(nav);
+      showToast(description, "info");
+    },
+    [setAppMode, setActiveNav, showToast],
+  );
 
   const commands = useMemo<Command[]>(() => {
     const baseCommands: Command[] = [
@@ -70,11 +81,19 @@ export function CommandPalette() {
       {
         id: "nav.settings",
         label: "Open Settings",
-        description: "Configure Ollama, safety tools, app options",
-        shortcut: "⚙️",
+        description: "Configure Ollama, safety tools, appearance",
         icon: "⚙️",
         category: "Navigation",
-        action: () => { /* handled by App */ },
+        action: () => setSettingsOpen(true),
+      },
+      {
+        id: "nav.shortcuts",
+        label: "Show Keyboard Shortcuts",
+        description: "List all keyboard shortcuts",
+        shortcut: "?",
+        icon: "❔",
+        category: "Navigation",
+        action: () => setShortcutsOpen(true),
       },
 
       // Character
@@ -82,19 +101,17 @@ export function CommandPalette() {
         id: "char.new",
         label: "Create New Character",
         description: "Add a player character",
-        shortcut: "",
         icon: "👤",
         category: "Character",
-        action: () => { /* would trigger character creation */ },
+        action: () => goToSetupView("characters", "Characters — add one below"),
       },
       {
         id: "char.select",
         label: "Select Active Character",
         description: activeCharacter ? `Current: ${activeCharacter.identity.name}` : "No character selected",
-        shortcut: "",
         icon: "🎯",
         category: "Character",
-        action: () => { /* would open character picker */ },
+        action: () => goToSetupView("characters", "Characters — pick one and press Set Active"),
         disabled: characters.length === 0,
       },
 
@@ -103,19 +120,18 @@ export function CommandPalette() {
         id: "scene.new",
         label: "Create New Scene",
         description: "Start a new scene with chaos factor",
-        shortcut: "",
         icon: "📖",
         category: "Scene",
-        action: () => { /* would open scene creator */ },
+        action: () => goToSetupView("scenes", "Scenes — create one above the list"),
       },
       {
         id: "scene.list",
         label: "List All Scenes",
         description: `${scenes.length} scene${scenes.length !== 1 ? "s" : ""} available`,
-        shortcut: "1",
+        shortcut: "2",
         icon: "📋",
         category: "Scene",
-        action: () => { /* would navigate to scenes */ },
+        action: () => goToSetupView("scenes", "Scenes"),
       },
 
       // Campaign
@@ -123,10 +139,9 @@ export function CommandPalette() {
         id: "campaign.generate",
         label: "Generate Campaign (Zero-to-Campaign)",
         description: "Create a full campaign from a concept using Ollama",
-        shortcut: "",
         icon: "✨",
         category: "Campaign",
-        action: () => { /* would trigger wizard */ },
+        action: () => goToSetupView("campaign", "Campaign wizard"),
         disabled: !ollamaReachable,
       },
       {
@@ -203,16 +218,22 @@ export function CommandPalette() {
         shortcut: "Enter (in input)",
         icon: "🎤",
         category: "DM",
-        action: () => { /* focus DM input */ },
+        action: () => setAppMode("tabletop"),
       },
       {
         id: "dm.refresh",
         label: "Refresh Logs",
         description: "Reload story log from database",
-        shortcut: "R",
         icon: "🔄",
         category: "DM",
-        action: () => { /* would trigger refresh */ },
+        action: async () => {
+          try {
+            await refreshLogs();
+            showToast("Logs refreshed", "success");
+          } catch {
+            showToast("Refresh failed", "error");
+          }
+        },
       },
       {
         id: "dm.clear",
@@ -234,28 +255,26 @@ export function CommandPalette() {
         id: "tools.dice",
         label: "Roll Dice",
         description: "Open dice roller (e.g. 2d6+3)",
-        shortcut: "",
         icon: "🎲",
         category: "Tools",
-        action: () => { /* would open dice roller */ },
+        action: () => goToSetupView("tools", "Tools — dice roller"),
       },
       {
         id: "tools.oracle",
         label: "Ask Oracle",
         description: "Mythic Fate Chart question",
-        shortcut: "",
         icon: "🔮",
         category: "Tools",
-        action: () => { /* would open oracle */ },
+        action: () => goToSetupView("tools", "Tools — oracle panel"),
       },
       {
         id: "tools.combat",
         label: "Start Combat",
         description: "Roll initiative and track combat",
-        shortcut: "4",
+        shortcut: "5",
         icon: "⚔️",
         category: "Tools",
-        action: () => { /* would open combat */ },
+        action: () => goToSetupView("combat", "Combat tracker"),
       },
     ];
 
@@ -263,18 +282,19 @@ export function CommandPalette() {
   }, [
     appMode,
     setAppMode,
+    setSettingsOpen,
+    setShortcutsOpen,
+    goToSetupView,
     activeCharacter,
     characters,
     scenes,
     activeSceneId,
     ollamaReachable,
-    generateCampaign,
-    processDmIntent,
     autoSave,
     exportCampaign,
     importCampaign,
+    refreshLogs,
     showToast,
-    addStoryEntry,
     clearStoryLog,
   ]);
 
@@ -293,7 +313,7 @@ export function CommandPalette() {
           description: `Character · Lv ${c.identity.level_or_rank} · HP ${c.resource_pools.hp?.current ?? 0}/${c.resource_pools.hp?.maximum ?? 0}`,
           icon: "👤",
           category: "Results",
-          action: () => { /* character sheet opens in Characters view */ },
+          action: () => goToSetupView("characters", "Characters"),
         });
       }
       if (results.length >= limit) break;
@@ -326,7 +346,7 @@ export function CommandPalette() {
           description: `NPC · ${n.disposition}${n.alive ? "" : " · deceased"}${n.location ? ` · ${n.location}` : ""}`,
           icon: "🧝",
           category: "Results",
-          action: () => { /* NPC details open in Scenes view */ },
+          action: () => goToSetupView("scenes", "Scenes — NPC roster"),
         });
       }
     }
@@ -342,7 +362,7 @@ export function CommandPalette() {
           description: `Monster · CR ${b.challenge_rating} · AC ${b.armor_class}`,
           icon: "🐉",
           category: "Results",
-          action: () => { /* stat block opens in Bestiary view */ },
+          action: () => goToSetupView("bestiary", "Bestiary"),
         });
       }
     }
@@ -358,13 +378,13 @@ export function CommandPalette() {
           description: `Log · ${l.speaker} · ${l.timestamp}`,
           icon: "📜",
           category: "Results",
-          action: () => { /* log entry visible in Session Log view */ },
+          action: () => goToSetupView("tools", "Tools — session log"),
         });
       }
     }
 
     return results;
-  }, [query, characters, scenes, npcs, statBlocks, logs, setActiveScene]);
+  }, [query, characters, scenes, npcs, statBlocks, logs, setActiveScene, goToSetupView]);
 
   const filteredCommands = useMemo(() => {
     const entities = entityResults;
@@ -418,8 +438,11 @@ export function CommandPalette() {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setIsOpen(true);
-        setSelectedIndex(0);
+        setIsOpen((prev) => {
+          if (prev) return false;
+          setSelectedIndex(0);
+          return true;
+        });
       }
     };
     window.addEventListener("keydown", handleGlobalKeyDown);

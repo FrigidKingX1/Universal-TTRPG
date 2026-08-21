@@ -29,16 +29,19 @@ const NAV_ITEMS: { id: NavItem; label: string; icon: string }[] = [
 ];
 
 function App() {
-  const [activeNav, setActiveNav] = useState<NavItem>("scenes");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
   const bootstrap = useStore((s) => s.bootstrap);
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
   const setError = useStore((s) => s.setError);
   const appMode = useStore((s) => s.appMode);
   const setAppMode = useStore((s) => s.setAppMode);
+  const activeNav = useStore((s) => s.activeNav);
+  const setActiveNav = useStore((s) => s.setActiveNav);
+  const settingsOpen = useStore((s) => s.settingsOpen);
+  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
+  const shortcutsOpen = useStore((s) => s.shortcutsOpen);
+  const setShortcutsOpen = useStore((s) => s.setShortcutsOpen);
   const activeCharacter = useStore((s) => s.activeCharacter);
   const activeScene = useStore((s) =>
     s.scenes.find((sc) => sc.id === s.activeSceneId),
@@ -49,7 +52,7 @@ function App() {
   const sceneCount = useStore((s) => s.scenes.length);
   const ollamaStatus = useStore((s) => s.ollama.reachable);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const { sizes, handleMouseDown } = usePanelResize();
+  const { sizes, beginDrag, resizeByKeyboard } = usePanelResize();
 
   useEffect(() => {
     void bootstrap();
@@ -59,23 +62,22 @@ function App() {
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-    
+
+    // While a modal is open, only Escape (handled by its focus trap) applies —
+    // don't switch nav or stack more modals underneath.
+    if (useStore.getState().settingsOpen || useStore.getState().shortcutsOpen) return;
+
     // Global shortcuts
     if (e.key === "Escape") { setError(null); }
     if (e.ctrlKey && e.key === "b") { setSidebarCollapsed(prev => !prev); e.preventDefault(); }
     if (e.ctrlKey && e.key === "m") { setAppMode(appMode === "setup" ? "tabletop" : "setup"); e.preventDefault(); }
-    if (e.key === "?") { setShowShortcuts(true); e.preventDefault(); }
-    
+    if (e.key === "?") { setShortcutsOpen(true); e.preventDefault(); }
+
     if (appMode === "setup") {
       const navKeys: Record<string, NavItem> = { "1": "campaign", "2": "scenes", "3": "characters", "4": "bestiary", "5": "combat", "6": "tools" };
       if (navKeys[e.key]) { setActiveNav(navKeys[e.key]); e.preventDefault(); }
-    } else {
-      // Tabletop mode shortcuts
-      if (e.key === "f") { /* Focus DM input - handled by NarrativeStream */ }
-      if (e.key === "r") { /* Refresh - could trigger log refresh */ }
-      if (e.key === "Tab") { /* Panel navigation could be added */ }
     }
-  }, [setError, appMode, setAppMode]);
+  }, [setError, appMode, setAppMode, setShortcutsOpen, setActiveNav]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -94,7 +96,6 @@ function App() {
 
   const renderSetupView = () => {
     switch (activeNav) {
-      case "campaign": return <CampaignWizard />;
       case "scenes": return <Scenes />;
       case "characters": return <CharacterList />;
       case "bestiary": return <Bestiary />;
@@ -112,6 +113,9 @@ function App() {
             <LinesVeilPanel />
           </div>
         );
+      case "campaign":
+      default:
+        return <CampaignWizard />;
     }
   };
 
@@ -199,8 +203,8 @@ function App() {
             >
               {appMode === "setup" ? "🧙 Setup" : "🏰 Tabletop"}
             </button>
-            <button className="icon-btn" onClick={() => setShowShortcuts(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">❔</button>
-            <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">⚙️</button>
+            <button className="icon-btn" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">❔</button>
+            <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings">⚙️</button>
           </div>
         </header>
 
@@ -224,20 +228,30 @@ function App() {
             <PlayerCommandDeck character={activeCharacter} />
             <div
               className="panel-gutter"
-              onMouseDown={(e) => handleMouseDown("left", e)}
+              onPointerDown={(e) => beginDrag("left", e)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") { resizeByKeyboard("left", 1); e.preventDefault(); }
+                if (e.key === "ArrowRight") { resizeByKeyboard("left", -1); e.preventDefault(); }
+              }}
               aria-label="Resize left panel"
               role="separator"
               tabIndex={0}
               aria-orientation="vertical"
+              title="Drag or use arrow keys to resize"
             />
             <NarrativeStream />
             <div
               className="panel-gutter"
-              onMouseDown={(e) => handleMouseDown("right", e)}
+              onPointerDown={(e) => beginDrag("right", e)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") { resizeByKeyboard("right", -1); e.preventDefault(); }
+                if (e.key === "ArrowRight") { resizeByKeyboard("right", 1); e.preventDefault(); }
+              }}
               aria-label="Resize right panel"
               role="separator"
               tabIndex={0}
               aria-orientation="vertical"
+              title="Drag or use arrow keys to resize"
             />
             <TacticalMatrix />
           </div>
@@ -246,11 +260,11 @@ function App() {
 
       <ToastContainer />
       <CommandPalette />
-      {showSettings && (
-        <SettingsPanel onClose={() => setShowSettings(false)} />
+      {settingsOpen && (
+        <SettingsPanel onClose={() => setSettingsOpen(false)} />
       )}
-      {showShortcuts && (
-        <ShortcutsHelp onClose={() => setShowShortcuts(false)} />
+      {shortcutsOpen && (
+        <ShortcutsHelp onClose={() => setShortcutsOpen(false)} />
       )}
     </div>
   );

@@ -210,6 +210,14 @@ export interface AutoDmState {
   storyLog: StoryLogEntry[];
   addStoryEntry: (entry: Partial<StoryLogEntry>) => void;
   clearStoryLog: () => void;
+
+  // UI chrome shared between App shell and Command Palette
+  settingsOpen: boolean;
+  shortcutsOpen: boolean;
+  activeNav: string;
+  setSettingsOpen: (open: boolean) => void;
+  setShortcutsOpen: (open: boolean) => void;
+  setActiveNav: (nav: string) => void;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -303,6 +311,11 @@ export const useStore = create<AutoDmState>((set, get) => ({
   dmIntent: { loading: false, lastResponse: null },
   storyLog: [],
   toasts: [],
+
+  // UI chrome
+  settingsOpen: false,
+  shortcutsOpen: false,
+  activeNav: "campaign",
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -1308,6 +1321,11 @@ export const useStore = create<AutoDmState>((set, get) => ({
   setActiveCharacter: (profile) => set({ activeCharacter: profile, appMode: "tabletop" }),
   selectActiveCharacter: (id) =>
     set((s) => ({ activeCharacter: s.characters.find((c) => c.id === id) ?? null })),
+
+  // UI chrome actions
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+  setActiveNav: (nav) => set({ activeNav: nav }),
 
   generateCampaign: async (concept: string, levelRange?: string, sceneCount?: number) => {
     set({ generation: { status: "generating", progress: "Generating campaign..." } });
