@@ -39,7 +39,7 @@ export function ZoneMap({ zone, nodes, currentNodeId, onTravel, onSelect }: Zone
 
   if (nodes.length === 0) {
     return (
-      <div className="zone-map empty">
+      <div className="zone-map empty" aria-label={`Map of ${zone.name} — empty`}>
         <p className="muted">Add nodes to see the map of {zone.name}.</p>
       </div>
     );

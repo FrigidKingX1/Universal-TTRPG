@@ -4,7 +4,7 @@ pub mod db;
 use auto_dm_core::llm::{DmPipeline, LlmBackend, StubLlmBackend};
 use auto_dm_core::memory::CampaignMemory;
 use auto_dm_core::ollama::OllamaLlmBackend;
-use db::{backup_before_migrate, open_pool, run_migrations, AppState, SqliteRepository};
+use db::{backup_before_migrate, open_pool, run_migrations, AppState, Repository, SqliteRepository};
 use std::panic;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -138,10 +138,34 @@ pub fn run() {
                 }
             }
 
+            let repo = SqliteRepository::new(pool);
+
+            // Restore the DM's campaign memory from SQLite so context
+            // survives restarts.
+            let memory = tauri::async_runtime::block_on(async {
+                let mem = CampaignMemory::new();
+                match repo.list_memory(50).await {
+                    Ok(events) => {
+                        let mut mem = mem;
+                        for (speaker, content) in events {
+                            mem.push(&speaker, &content);
+                        }
+                        if !mem.is_empty() {
+                            log::info!("Restored DM memory from database");
+                        }
+                        mem
+                    }
+                    Err(e) => {
+                        log::warn!("Could not load DM memory: {e}");
+                        mem
+                    }
+                }
+            });
+
             app.manage(AppState {
-                repo: SqliteRepository::new(pool),
+                repo,
                 dm: tokio::sync::Mutex::new(Some(DmPipeline::new(choose_dm_backend()))),
-                memory: Mutex::new(CampaignMemory::new()),
+                memory: Mutex::new(memory),
                 ollama_child: Mutex::new(ollama_child),
                 current_model: Mutex::new("llama3.2".to_string()),
             });

@@ -147,6 +147,10 @@ pub trait Repository: Send + Sync {
     async fn save_combat_state(&self, scene_id: &str, state_json: &str) -> Result<(), DbError>;
     async fn load_combat_state(&self, scene_id: &str) -> Result<Option<String>, DbError>;
 
+    // DM memory persistence (survives restarts)
+    async fn append_memory(&self, speaker: &str, content: &str) -> Result<(), DbError>;
+    async fn list_memory(&self, limit: i64) -> Result<Vec<(String, String)>, DbError>;
+
     // Plot Threads
     async fn save_thread(
         &self,
@@ -558,6 +562,18 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
             notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
+        "CREATE TABLE IF NOT EXISTS memory_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            speaker TEXT NOT NULL,
+            content TEXT NOT NULL,
+            seq INTEGER
+        );",
+        // Indexes for hot query paths (idempotent).
+        "CREATE INDEX IF NOT EXISTS idx_log_entries_scene_ts ON log_entries(scene_id, timestamp);",
+        "CREATE INDEX IF NOT EXISTS idx_loot_entries_scene ON loot_entries(scene_id);",
+        "CREATE INDEX IF NOT EXISTS idx_npc_notes_scene ON npc_notes(scene_id);",
+        "CREATE INDEX IF NOT EXISTS idx_exploration_nodes_zone ON exploration_nodes(zone_id);",
+        "CREATE INDEX IF NOT EXISTS idx_plot_threads_status ON plot_threads(status);",
     ];
     let mut tx = pool.begin().await?;
     for stmt in schema {
@@ -893,17 +909,65 @@ impl Repository for SqliteRepository {
         let actions = self.list_actions().await?;
         let stat_blocks = self.list_stat_blocks().await?;
         let scenes = self.list_scenes().await?;
-        let mut logs = Vec::new();
-        let mut all_loot = Vec::new();
-        let mut all_notes = Vec::new();
-        for scene in &scenes {
-            let scene_logs = self.list_logs(&scene.id, 10000).await?;
-            logs.extend(scene_logs);
-            let loot = self.list_loot(&scene.id).await.unwrap_or_default();
-            all_loot.extend(loot);
-            let notes = self.list_npc_notes(&scene.id).await.unwrap_or_default();
-            all_notes.extend(notes);
-        }
+        // Bulk fetches instead of per-scene loops (avoids N+1 round-trips).
+        let log_rows: Vec<(String, String, String, String, Option<String>, String)> = sqlx::query_as(
+            "SELECT id, COALESCE(scene_id, ''), speaker, content, payload_json, timestamp
+             FROM log_entries ORDER BY timestamp ASC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        let logs: Vec<LogEntry> = log_rows
+            .into_iter()
+            .map(|(id, scene_id, speaker, content, payload_json, timestamp)| {
+                let payload = match payload_json {
+                    Some(j) => Some(serde_json::from_str(&j).map_err(DbError::Json)?),
+                    None => None,
+                };
+                Ok(LogEntry {
+                    id,
+                    scene_id: Some(scene_id).filter(|s| !s.is_empty()),
+                    speaker,
+                    content,
+                    payload,
+                    timestamp,
+                })
+            })
+            .collect::<Result<_, DbError>>()?;
+        let all_loot: Vec<LootRow> = sqlx::query_as(
+            "SELECT id, COALESCE(scene_id, ''), name, quantity, source_entity, assigned_to, timestamp
+             FROM loot_entries ORDER BY timestamp ASC",
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(
+            |(id, scene_id, name, quantity, source_entity, assigned_to, timestamp)| LootRow {
+                id,
+                scene_id,
+                name,
+                quantity,
+                source_entity,
+                assigned_to,
+                timestamp,
+            },
+        )
+        .collect();
+        let all_notes: Vec<NpcNoteRow> = sqlx::query_as(
+            "SELECT id, COALESCE(scene_id, ''), npc_name, relation, note, timestamp
+             FROM npc_notes ORDER BY timestamp ASC",
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(|(id, scene_id, npc_name, relation, note, timestamp)| NpcNoteRow {
+            id,
+            scene_id,
+            npc_name,
+            relation,
+            note,
+            timestamp,
+        })
+        .collect();
         let plot_threads = self.list_threads().await.unwrap_or_default();
         let npc_characters = self.list_npc_characters().await.unwrap_or_default();
         Ok(CampaignExport {
@@ -920,14 +984,59 @@ impl Repository for SqliteRepository {
     }
 
     async fn import_campaign(&self, data: &CampaignExport) -> Result<(), DbError> {
+        // Single transaction: an import either fully lands or fully rolls back.
+        let mut tx = self.pool.begin().await?;
+
         for c in &data.characters {
-            self.save_character(c).await?;
+            let profile_json = serde_json::to_string(c)?;
+            sqlx::query(
+                "INSERT INTO characters (id, name, system_id, profile_json)
+                 VALUES (?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   system_id = excluded.system_id,
+                   profile_json = excluded.profile_json",
+            )
+            .bind(&c.id)
+            .bind(&c.identity.name)
+            .bind(&c.system_id)
+            .bind(&profile_json)
+            .execute(&mut *tx)
+            .await?;
         }
         for a in &data.actions {
-            self.save_action(a).await?;
+            let definition_json = serde_json::to_string(a)?;
+            sqlx::query(
+                "INSERT INTO action_definitions (id, name, system_id, definition_json)
+                 VALUES (?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   system_id = excluded.system_id,
+                   definition_json = excluded.definition_json",
+            )
+            .bind(&a.id)
+            .bind(&a.name)
+            .bind("")
+            .bind(&definition_json)
+            .execute(&mut *tx)
+            .await?;
         }
         for b in &data.stat_blocks {
-            self.save_stat_block(b).await?;
+            let block_json = serde_json::to_string(b)?;
+            sqlx::query(
+                "INSERT INTO stat_blocks (id, name, system_id, block_json)
+                 VALUES (?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   system_id = excluded.system_id,
+                   block_json = excluded.block_json",
+            )
+            .bind(&b.id)
+            .bind(&b.name)
+            .bind("")
+            .bind(&block_json)
+            .execute(&mut *tx)
+            .await?;
         }
         for s in &data.scenes {
             sqlx::query(
@@ -945,19 +1054,41 @@ impl Repository for SqliteRepository {
             .bind(s.chaos_factor)
             .bind(&s.summary_text)
             .bind(s.is_active)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
         }
+        // Re-insert logs with their original IDs and timestamps so replayed
+        // history keeps its ordering and identity.
         for l in &data.logs {
             let sid = l.scene_id.as_deref().unwrap_or("");
-            self.append_log(sid, &l.speaker, &l.content, l.payload.clone())
-                .await?;
+            sqlx::query(
+                "INSERT INTO log_entries (id, scene_id, speaker, content, payload_json, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   speaker = excluded.speaker,
+                   content = excluded.content,
+                   payload_json = excluded.payload_json,
+                   timestamp = excluded.timestamp",
+            )
+            .bind(&l.id)
+            .bind(sid)
+            .bind(&l.speaker)
+            .bind(&l.content)
+            .bind(l.payload.as_ref().map(|v| v.to_string()))
+            .bind(&l.timestamp)
+            .execute(&mut *tx)
+            .await?;
         }
         // Import loot
         for loot in &data.loot {
             sqlx::query(
-                "INSERT OR IGNORE INTO loot_entries (id, scene_id, name, quantity, source_entity, assigned_to, timestamp)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO loot_entries (id, scene_id, name, quantity, source_entity, assigned_to, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   quantity = excluded.quantity,
+                   source_entity = excluded.source_entity,
+                   assigned_to = excluded.assigned_to",
             )
             .bind(&loot.id)
             .bind(&loot.scene_id)
@@ -966,14 +1097,19 @@ impl Repository for SqliteRepository {
             .bind(&loot.source_entity)
             .bind(&loot.assigned_to)
             .bind(&loot.timestamp)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
         }
         // Import NPC notes
         for note in &data.npc_notes {
             sqlx::query(
-                "INSERT OR IGNORE INTO npc_notes (id, scene_id, npc_name, relation, note, timestamp)
-                 VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO npc_notes (id, scene_id, npc_name, relation, note, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   npc_name = excluded.npc_name,
+                   relation = excluded.relation,
+                   note = excluded.note,
+                   timestamp = excluded.timestamp",
             )
             .bind(&note.id)
             .bind(&note.scene_id)
@@ -981,14 +1117,18 @@ impl Repository for SqliteRepository {
             .bind(&note.relation)
             .bind(&note.note)
             .bind(&note.timestamp)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
         }
         // Import plot threads
         for thread in &data.plot_threads {
             sqlx::query(
-                "INSERT OR IGNORE INTO plot_threads (id, description, status, opened_scene_id, resolved_scene_id, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO plot_threads (id, description, status, opened_scene_id, resolved_scene_id, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   description = excluded.description,
+                   status = excluded.status,
+                   resolved_scene_id = excluded.resolved_scene_id",
             )
             .bind(&thread.id)
             .bind(&thread.description)
@@ -996,14 +1136,22 @@ impl Repository for SqliteRepository {
             .bind(&thread.opened_scene_id)
             .bind(&thread.resolved_scene_id)
             .bind(&thread.created_at)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
         }
         // Import NPC characters
         for npc in &data.npc_characters {
             sqlx::query(
-                "INSERT OR IGNORE INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   disposition = excluded.disposition,
+                   alive = excluded.alive,
+                   location = excluded.location,
+                   knows_json = excluded.knows_json,
+                   notes = excluded.notes,
+                   last_seen_scene_id = excluded.last_seen_scene_id",
             )
             .bind(&npc.id)
             .bind(&npc.name)
@@ -1014,9 +1162,11 @@ impl Repository for SqliteRepository {
             .bind(&npc.notes)
             .bind(&npc.last_seen_scene_id)
             .bind(&npc.created_at)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
         }
+
+        tx.commit().await?;
         Ok(())
     }
 
@@ -1183,6 +1333,29 @@ impl Repository for SqliteRepository {
                 .fetch_optional(&self.pool)
                 .await?;
         Ok(row.map(|(json,)| json))
+    }
+
+    // ── DM Memory ───────────────────────────────────────────────────────
+
+    async fn append_memory(&self, speaker: &str, content: &str) -> Result<(), DbError> {
+        sqlx::query("INSERT INTO memory_events (speaker, content) VALUES (?, ?)")
+            .bind(speaker)
+            .bind(content)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn list_memory(&self, limit: i64) -> Result<Vec<(String, String)>, DbError> {
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT speaker, content FROM (
+                 SELECT id, speaker, content FROM memory_events ORDER BY id DESC LIMIT ?
+             ) ORDER BY id ASC",
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
     }
 
     // ── Plot Threads ────────────────────────────────────────────────────

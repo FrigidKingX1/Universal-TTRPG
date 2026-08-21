@@ -3,6 +3,7 @@ use auto_dm_core::dice::DiceEngine;
 use auto_dm_core::engine::{
     execute_attack, roll_initiative, Combatant, EngineOutcome, PrerequisiteCheck,
 };
+use auto_dm_core::intent::GameIntent;
 use auto_dm_core::llm::{DmRequest, DmResponse};
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
 use auto_dm_core::oracle::{
@@ -16,6 +17,129 @@ type CmdResult<T> = Result<T, String>;
 
 fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
+}
+
+/// Record a campaign event in both the in-memory ring buffer and SQLite so
+/// the DM's context survives restarts. DB failures are non-fatal.
+async fn remember(state: &AppState, speaker: &str, content: &str) {
+    if let Ok(mut mem) = state.memory.lock() {
+        mem.push(speaker, content);
+    }
+    let _ = state.repo.append_memory(speaker, content).await;
+}
+
+/// Session layer: apply world effects for intents the pure pipeline cannot
+/// resolve (it has no DB access). Mutates campaign state and appends
+/// mechanical-event lines describing what was applied.
+async fn apply_session_effects(state: &AppState, request: &DmRequest, response: &mut DmResponse) {
+    match &response.intent {
+        GameIntent::SceneDelta { delta } => {
+            let (Some(scene_id), delta) = (&request.scene_id, delta) else {
+                return;
+            };
+            if delta.trim().is_empty() {
+                return;
+            }
+            // Append to the existing summary so prior context is preserved,
+            // trimming from the front if it grows beyond a sane size.
+            let existing = state
+                .repo
+                .list_scenes()
+                .await
+                .ok()
+                .and_then(|scenes| scenes.into_iter().find(|s| &s.id == scene_id))
+                .and_then(|s| s.summary_text)
+                .unwrap_or_default();
+            let mut merged = if existing.is_empty() {
+                delta.clone()
+            } else {
+                format!("{existing}\n{delta}")
+            };
+            if merged.chars().count() > 2000 {
+                let skip = merged.chars().count() - 2000;
+                merged = merged.chars().skip(skip).collect();
+            }
+            if state
+                .repo
+                .update_scene_summary(scene_id, Some(&merged))
+                .await
+                .is_ok()
+            {
+                response
+                    .mechanical_events
+                    .push("Scene record updated.".to_string());
+            }
+        }
+        GameIntent::NpcSpeech { npc_id, line } => {
+            // Resolve the speaker against the NPC roster (by id or name) and
+            // persist the line as a log entry attributed to that NPC.
+            let npcs = state.repo.list_npc_characters().await.unwrap_or_default();
+            let speaker = npc_id
+                .as_ref()
+                .and_then(|id| {
+                    npcs.iter().find(|n| &n.id == id || &n.name == id)
+                })
+                .map(|n| n.name.clone())
+                .or_else(|| npc_id.clone())
+                .unwrap_or_else(|| "NPC".to_string());
+            if let Some(scene_id) = &request.scene_id {
+                let _ = state
+                    .repo
+                    .append_log(scene_id, &speaker, line, None)
+                    .await;
+            }
+            response
+                .mechanical_events
+                .push(format!("{speaker} speaks."));
+        }
+        GameIntent::RuleCheck { question } => {
+            // Answer from world data: look for actions / stat blocks whose
+            // names appear in the question.
+            let q = question.to_lowercase();
+            let mut answers: Vec<String> = Vec::new();
+            if let Ok(actions) = state.repo.list_actions().await {
+                for a in &actions {
+                    let name = a.name.to_lowercase();
+                    if !name.is_empty() && q.contains(&name) {
+                        let formula = a
+                            .resolution
+                            .roll_formula
+                            .clone()
+                            .unwrap_or_else(|| "no roll".to_string());
+                        answers.push(format!(
+                            "Action '{}': {:?} resolution, rolls {}.",
+                            a.name, a.resolution.resolution_type, formula,
+                        ));
+                    }
+                }
+            }
+            if let Ok(blocks) = state.repo.list_stat_blocks().await {
+                for b in &blocks {
+                    let name = b.name.to_lowercase();
+                    if name.len() > 2 && q.contains(&name) {
+                        answers.push(format!(
+                            "Stat block '{}': CR {}, AC {}, HP {}/{}.",
+                            b.name,
+                            b.challenge_rating,
+                            b.armor_class,
+                            b.hit_points.current,
+                            b.hit_points.maximum,
+                        ));
+                    }
+                }
+            }
+            if answers.is_empty() {
+                response.mechanical_events.push(format!(
+                    "Rule query '{question}': no matching rules data found in the vault."
+                ));
+            } else {
+                for a in answers {
+                    response.mechanical_events.push(a);
+                }
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Build a `Combatant` from a JSON value that is either a CharacterProfile or
@@ -803,7 +927,7 @@ pub async fn dm_resolve(
             request.veils = vv;
         }
     }
-    let response = state
+    let mut response = state
         .dm
         .lock()
         .await
@@ -812,6 +936,7 @@ pub async fn dm_resolve(
         .resolve_action(&request)
         .await
         .map_err(err)?;
+    apply_session_effects(&state, &request, &mut response).await;
     emit(&app, "dm:response", &response);
     Ok(response)
 }
@@ -1193,10 +1318,7 @@ pub async fn generate_campaign(
 
     tx.commit().await.map_err(err)?;
 
-    {
-        let mut mem = state.memory.lock().map_err(err)?;
-        mem.push("Campaign", &result.campaign_summary);
-    }
+    remember(&state, "Campaign", &result.campaign_summary).await;
 
     Ok(result)
 }
@@ -1226,21 +1348,29 @@ pub async fn process_dm_intent(
         }
     }
 
-    let response = state
-        .dm
-        .lock()
-        .await
-        .as_ref()
-        .ok_or_else(|| "DM backend not initialized".to_string())?
-        .resolve_action(&req)
-        .await
-        .map_err(|e| e.to_string())?;
+    // Stream tokens to the UI as they arrive so the narrative appears live
+    // instead of after a long silent wait.
+    let app_for_tokens = app.clone();
+    let mut token_buffer = String::new();
+    let response = {
+        let dm = state.dm.lock().await;
+        let pipeline = dm
+            .as_ref()
+            .ok_or_else(|| "DM backend not initialized".to_string())?;
+        pipeline
+            .resolve_action_streaming(&req, None, &mut |token: &str| {
+                token_buffer.push_str(token);
+                let _ = app_for_tokens.emit("dm:token", token);
+            })
+            .await
+            .map_err(|e| e.to_string())?
+    };
 
-    state
-        .memory
-        .lock()
-        .map_err(err)?
-        .push("Dungeon Master", &response.narrative);
+    let mut response = response;
+    apply_session_effects(&state, &req, &mut response).await;
+
+    remember(&state, "Player", &req.player_action).await;
+    remember(&state, "Dungeon Master", &response.narrative).await;
 
     emit(&app, "dm:intent", &response);
     Ok(response)
@@ -1381,13 +1511,12 @@ pub async fn set_ollama_model(state: State<'_, AppState>, model: String) -> CmdR
 
 /// Push a campaign event into the local memory log (best-effort).
 #[tauri::command]
-pub fn ingest_memory(
+pub async fn ingest_memory(
     state: State<'_, AppState>,
     speaker: String,
     content: String,
 ) -> CmdResult<()> {
-    let mut mem = state.memory.lock().map_err(err)?;
-    mem.push(&speaker, &content);
+    remember(&state, &speaker, &content).await;
     Ok(())
 }
 

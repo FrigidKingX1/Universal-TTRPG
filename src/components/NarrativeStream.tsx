@@ -45,7 +45,7 @@ export function NarrativeStream() {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-  }, [storyLog]);
+  }, [storyLog, dmIntent.streamingText]);
 
   useEffect(() => {
     void refreshLogs();
@@ -139,8 +139,20 @@ export function NarrativeStream() {
 
         {dmIntent.loading && (
           <div className="dm-loading" role="status" aria-live="assertive">
-            <div className="spinner" aria-label="Dungeon Master is thinking" />
-            <span>The Dungeon Master ponders your action…</span>
+            {dmIntent.streamingText ? (
+              <div className="streaming-narrative">
+                <div className="story-speaker" style={{ color: getSpeakerColor("Dungeon Master") }}>
+                  Dungeon Master
+                </div>
+                <div className="story-content">{dmIntent.streamingText}</div>
+                <span className="streaming-cursor" aria-hidden="true">▊</span>
+              </div>
+            ) : (
+              <>
+                <div className="spinner" aria-label="Dungeon Master is thinking" />
+                <span>The Dungeon Master ponders your action…</span>
+              </>
+            )}
           </div>
         )}
 

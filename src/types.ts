@@ -221,6 +221,9 @@ export interface DmRequest {
   player_action: string;
   chaos_factor: number;
   memory_context?: string;
+  lines?: string[];
+  veils?: string[];
+  scene_id?: string;
 }
 
 export type GameIntent =
@@ -410,15 +413,6 @@ export interface CampaignGenerationResult {
   npcs: GeneratedNpcInfo[];
   doom_clocks: GeneratedDoomClockInfo[];
   plot_threads: GeneratedPlotThreadInfo[];
-  lines: string[];
-  veils: string[];
-}
-
-export interface DmRequest {
-  scene_summary: string;
-  player_action: string;
-  chaos_factor: number;
-  memory_context?: string;
   lines: string[];
   veils: string[];
 }

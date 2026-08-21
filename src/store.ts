@@ -203,7 +203,7 @@ export interface AutoDmState {
   generateCampaign: (concept: string, levelRange?: string, sceneCount?: number) => Promise<void>;
 
   // Active DM runtime loop
-  dmIntent: { loading: boolean; lastResponse: DmResponse | null };
+  dmIntent: { loading: boolean; lastResponse: DmResponse | null; streamingText: string };
   processDmIntent: (input: string) => Promise<void>;
 
   // Story log for narrative stream
@@ -308,7 +308,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
   appMode: "setup" as const,
   activeCharacter: null,
   generation: { status: "idle" },
-  dmIntent: { loading: false, lastResponse: null },
+  dmIntent: { loading: false, lastResponse: null, streamingText: "" },
   storyLog: [],
   toasts: [],
 
@@ -564,6 +564,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
       memory_context: void 0,
       lines: [],
       veils: [],
+      scene_id: s.activeSceneId ?? undefined,
     });
     set((s) => ({ lastDm: response, dmHistory: [...s.dmHistory.slice(-19), response] }));
     if (scene && response.narrative) {
@@ -1348,7 +1349,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
     const scene = activeSceneId ? scenes.find((s) => s.id === activeSceneId) : null;
     if (!scene) return;
 
-    set((s) => ({ dmIntent: { ...s.dmIntent, loading: true } }));
+    set((s) => ({ dmIntent: { ...s.dmIntent, loading: true, streamingText: "" } }));
     try {
       const response = await backend.processDmIntent({
         scene_summary: scene.summary_text || scene.title,
@@ -1357,9 +1358,10 @@ export const useStore = create<AutoDmState>((set, get) => ({
         memory_context: char?.identity.name ? `${char.identity.name} is acting` : undefined,
         lines: [],
         veils: [],
+        scene_id: activeSceneId ?? undefined,
       });
 
-      set({ dmIntent: { loading: false, lastResponse: response } });
+      set({ dmIntent: { loading: false, lastResponse: response, streamingText: "" } });
 
       if (response.narrative) {
         get().addStoryEntry({
@@ -1408,7 +1410,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
       await get().refreshLogs();
     } catch (e) {
       get().setError(String(e));
-      set({ dmIntent: { loading: false, lastResponse: null } });
+      set({ dmIntent: { loading: false, lastResponse: null, streamingText: "" } });
     }
   },
 
@@ -1492,6 +1494,11 @@ export async function subscribeToEvents() {
     listen<Scene>("scene:created", async () => {
       const scenes = await backend.listScenes();
       useStore.setState({ scenes });
+    }),
+    listen<string>("dm:token", (e) => {
+      useStore.setState((s) => ({
+        dmIntent: { ...s.dmIntent, streamingText: s.dmIntent.streamingText + e.payload },
+      }));
     }),
   ]);
   unlisteners = fns;

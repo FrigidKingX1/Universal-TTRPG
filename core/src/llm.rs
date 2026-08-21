@@ -35,6 +35,21 @@ pub trait LlmBackend: Send + Sync {
         max_tokens: Option<u32>,
     ) -> Result<String, LlmError>;
 
+    /// Streaming variant: invokes `on_token` for each incremental token as it
+    /// arrives and returns the full text. The default implementation falls
+    /// back to [`LlmBackend::complete`] and emits the whole text at once.
+    async fn complete_streaming(
+        &self,
+        system: &str,
+        prompt: &str,
+        max_tokens: Option<u32>,
+        on_token: &mut (dyn for<'a> FnMut(&'a str) + Send),
+    ) -> Result<String, LlmError> {
+        let full = self.complete(system, prompt, max_tokens).await?;
+        on_token(&full);
+        Ok(full)
+    }
+
     /// True for the deterministic stub, so callers can surface that a live
     /// model is not in use.
     fn is_stub(&self) -> bool;
@@ -74,6 +89,18 @@ impl<T: LlmBackend + ?Sized> LlmBackend for &T {
         (**self).complete(system, prompt, max_tokens).await
     }
 
+    async fn complete_streaming(
+        &self,
+        system: &str,
+        prompt: &str,
+        max_tokens: Option<u32>,
+        on_token: &mut (dyn for<'a> FnMut(&'a str) + Send),
+    ) -> Result<String, LlmError> {
+        (**self)
+            .complete_streaming(system, prompt, max_tokens, on_token)
+            .await
+    }
+
     fn is_stub(&self) -> bool {
         (**self).is_stub()
     }
@@ -88,6 +115,18 @@ impl<T: LlmBackend + ?Sized> LlmBackend for Box<T> {
         max_tokens: Option<u32>,
     ) -> Result<String, LlmError> {
         (**self).complete(system, prompt, max_tokens).await
+    }
+
+    async fn complete_streaming(
+        &self,
+        system: &str,
+        prompt: &str,
+        max_tokens: Option<u32>,
+        on_token: &mut (dyn for<'a> FnMut(&'a str) + Send),
+    ) -> Result<String, LlmError> {
+        (**self)
+            .complete_streaming(system, prompt, max_tokens, on_token)
+            .await
     }
 
     fn is_stub(&self) -> bool {
@@ -115,6 +154,10 @@ pub struct DmRequest {
     /// Topics that should be faded to black / implied off-screen.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub veils: Vec<String>,
+    /// Scene the action takes place in; lets the session layer apply
+    /// SceneDelta world effects. Optional for backward compatibility.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scene_id: Option<String>,
 }
 
 impl Default for DmRequest {
@@ -126,6 +169,7 @@ impl Default for DmRequest {
             memory_context: None,
             lines: Vec::new(),
             veils: Vec::new(),
+            scene_id: None,
         }
     }
 }
@@ -170,6 +214,27 @@ impl<B: LlmBackend> DmPipeline<B> {
         &self,
         request: &DmRequest,
         seed: Option<u64>,
+    ) -> Result<DmResponse, LlmError> {
+        self.resolve_inner(request, seed, None).await
+    }
+
+    /// Like [`resolve_action`], but streams tokens from the backend as they
+    /// arrive via `on_token`. Backends without native streaming emit the full
+    /// text once at completion.
+    pub async fn resolve_action_streaming(
+        &self,
+        request: &DmRequest,
+        seed: Option<u64>,
+        on_token: &mut (dyn for<'a> FnMut(&'a str) + Send),
+    ) -> Result<DmResponse, LlmError> {
+        self.resolve_inner(request, seed, Some(on_token)).await
+    }
+
+    async fn resolve_inner(
+        &self,
+        request: &DmRequest,
+        seed: Option<u64>,
+        on_token: Option<&mut (dyn for<'a> FnMut(&'a str) + Send)>,
     ) -> Result<DmResponse, LlmError> {
         let mut oracle = match seed {
             Some(s) => MythicOracle::with_seed(request.chaos_factor, s),
@@ -222,7 +287,13 @@ impl<B: LlmBackend> DmPipeline<B> {
                 &mechanical_events,
                 request.memory_context.as_deref(),
             );
-            let raw = self.backend.complete(&sys, &prompt, Some(512)).await?;
+            let raw = if let Some(cb) = on_token {
+                self.backend
+                    .complete_streaming(&sys, &prompt, Some(512), cb)
+                    .await?
+            } else {
+                self.backend.complete(&sys, &prompt, Some(512)).await?
+            };
             let intent = GameIntent::from_llm_text(&raw);
             let mut dice = match seed {
                 Some(s) => DiceEngine::with_seed(s.wrapping_add(1)),
