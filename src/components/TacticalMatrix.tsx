@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Map, MapPinned, Check, CircleAlert, HelpCircle } from "lucide-react";
 import { useStore } from "../store";
 import type { ExplorationNode, DoomClock } from "../types";
 import "../App.css";
@@ -37,7 +38,7 @@ export function TacticalMatrix() {
           <h3>{activeZone.name}</h3>
           <span className="zone-meta">
             {activeZone.zone_type} | Danger: {activeZone.danger_level}
-            {activeZone.mapped ? " | 🗺️ Mapped" : ""}
+            {activeZone.mapped ? (<><MapPinned size={12} style={{ display: "inline", verticalAlign: "-1px", marginLeft: "6px" }} /> Mapped</>) : ""}
           </span>
           {activeZone.description && (
             <p className="zone-description">{activeZone.description}</p>
@@ -123,7 +124,7 @@ export function TacticalMatrix() {
   return (
     <aside className="panel tactical-matrix">
       <div className="panel-header">
-        <span className="panel-icon">🗺️</span>
+        <span className="panel-icon" aria-hidden="true"><Map size={16} strokeWidth={1.7} /></span>
         <span className="panel-title">Tactical Matrix</span>
       </div>
 
@@ -172,7 +173,7 @@ function NodeCard({ node }: { node: ExplorationNode }) {
     <div className={`node-card ${discovered ? "discovered" : "undiscovered"} ${safe ? "safe" : "dangerous"}`}>
       <div className="node-header">
         <span className="node-icon">
-          {discovered ? (safe ? "✓" : "⚠") : "❓"}
+          {discovered ? (safe ? <Check size={12} strokeWidth={2} /> : <CircleAlert size={12} strokeWidth={2} />) : <HelpCircle size={12} strokeWidth={2} />}
         </span>
         <span className="node-name">{node.name}</span>
       </div>

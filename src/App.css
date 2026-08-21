@@ -24,7 +24,7 @@
   --top-bar-border: var(--sidebar-border);
   --shadow: 0 4px 10px -1px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.55), 0 6px 12px -2px rgba(0, 0, 0, 0.4);
-  --transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  --transition: color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --radius: 10px;
   --radius-sm: 7px;
   --radius-lg: 14px;
@@ -65,7 +65,7 @@ body {
   padding-right: var(--tauri-frame-controls-width, 0px);
   background: var(--sidebar-bg);
   border-bottom: 1px solid var(--sidebar-border);
-  z-index: 1000;
+  z-index: 30;
   user-select: none;
 }
 
@@ -136,7 +136,7 @@ body {
   width: 240px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
-  transition: width 0.3s ease;
+  transition: width 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: var(--shadow-lg);
   position: relative;
   z-index: 10;
@@ -324,7 +324,7 @@ body {
   backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
   box-shadow: 0 1px 0 rgba(201, 168, 106, 0.12);
 }
 
@@ -452,7 +452,7 @@ body {
 }
 
 .banner.error {
-  background: rgba(247, 118, 142, 0.15);
+  background: rgba(224, 90, 79, 0.15);
   border: 1px solid var(--danger);
   color: var(--danger);
 }
@@ -560,7 +560,7 @@ button:disabled {
 button.danger { background: var(--danger); color: #fff; }
 button.danger:hover {
   background: var(--danger-hover);
-  box-shadow: 0 2px 8px rgba(247, 118, 142, 0.3);
+  box-shadow: 0 2px 8px rgba(224, 90, 79, 0.3);
 }
 
 button.muted, button.secondary {
@@ -591,7 +591,7 @@ button.muted:hover, button.secondary:hover {
 .btn-secondary:hover { background: var(--border); box-shadow: none; }
 
 .btn-danger { background: var(--danger); color: #fff; }
-.btn-danger:hover { background: var(--danger-hover); box-shadow: 0 2px 8px rgba(247, 118, 142, 0.3); }
+.btn-danger:hover { background: var(--danger-hover); box-shadow: 0 2px 8px rgba(224, 90, 79, 0.3); }
 
 .btn-ghost { background: transparent; color: var(--muted); }
 .btn-ghost:hover { background: var(--card); color: var(--text); box-shadow: none; }
@@ -853,21 +853,21 @@ button.rolling {
 /* Rest Buttons */
 .rest-buttons-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
 .rest-btn { font-size: 0.85rem; padding: 0.4rem 0.9rem; font-weight: 600; border-radius: var(--radius-sm); transition: var(--transition); }
-.rest-btn.short-rest { background: rgba(224, 175, 104, 0.15); color: var(--warning); border: 1px solid rgba(224, 175, 104, 0.4); }
-.rest-btn.short-rest:hover { background: rgba(224, 175, 104, 0.3); box-shadow: 0 2px 8px rgba(224, 175, 104, 0.2); }
+.rest-btn.short-rest { background: rgba(217, 164, 65, 0.15); color: var(--warning); border: 1px solid rgba(217, 164, 65, 0.40); }
+.rest-btn.short-rest:hover { background: rgba(217, 164, 65, 0.30); box-shadow: 0 2px 8px rgba(217, 164, 65, 0.20); }
 .rest-btn.long-rest { background: rgba(158, 206, 106, 0.15); color: var(--success); border: 1px solid rgba(158, 206, 106, 0.4); }
 .rest-btn.long-rest:hover { background: rgba(158, 206, 106, 0.3); box-shadow: 0 2px 8px rgba(158, 206, 106, 0.2); }
 
 /* HP Adjust */
 .hp-adjust-row { display: flex; gap: 0.25rem; margin-top: 0.3rem; }
 .hp-dmg {
-  background: rgba(247, 118, 142, 0.15); color: var(--danger);
+  background: rgba(224, 90, 79, 0.15); color: var(--danger);
   font-size: 0.75rem; padding: 0.2rem 0.5rem;
-  border: 1px solid rgba(247, 118, 142, 0.3);
+  border: 1px solid rgba(224, 90, 79, 0.3);
   border-radius: var(--radius-sm); cursor: pointer;
   transition: var(--transition);
 }
-.hp-dmg:hover { background: rgba(247, 118, 142, 0.35); box-shadow: 0 2px 6px rgba(247, 118, 142, 0.3); }
+.hp-dmg:hover { background: rgba(224, 90, 79, 0.35); box-shadow: 0 2px 6px rgba(224, 90, 79, 0.3); }
 .hp-heal {
   background: rgba(158, 206, 106, 0.15); color: var(--success);
   font-size: 0.75rem; padding: 0.2rem 0.5rem;
@@ -888,13 +888,13 @@ button.rolling {
 /* Condition Badges */
 .condition-row { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; align-items: center; }
 .condition-badge {
-  background: rgba(247, 118, 142, 0.1); color: var(--danger);
-  border: 1px solid rgba(247, 118, 142, 0.25);
+  background: rgba(224, 90, 79, 0.10); color: var(--danger);
+  border: 1px solid rgba(224, 90, 79, 0.25);
   border-radius: 4px; padding: 0.15rem 0.4rem;
   font-size: 0.72rem; cursor: pointer;
   transition: var(--transition); position: relative;
 }
-.condition-badge:hover { background: rgba(247, 118, 142, 0.25); }
+.condition-badge:hover { background: rgba(224, 90, 79, 0.25); }
 .condition-select {
   font-size: 0.75rem; padding: 0.1rem 0.35rem;
   background: var(--bg); color: var(--muted);
@@ -907,12 +907,12 @@ button.rolling {
 .death-save-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
 .death-save-btn {
   font-size: 0.72rem; padding: 0.15rem 0.4rem;
-  background: rgba(247, 118, 142, 0.15); color: var(--danger);
-  border: 1px solid rgba(247, 118, 142, 0.3);
+  background: rgba(224, 90, 79, 0.15); color: var(--danger);
+  border: 1px solid rgba(224, 90, 79, 0.3);
   border-radius: var(--radius-sm); cursor: pointer;
   transition: var(--transition);
 }
-.death-save-btn:hover { background: rgba(247, 118, 142, 0.35); }
+.death-save-btn:hover { background: rgba(224, 90, 79, 0.35); }
 
 /* Loot */
 .loot-section { margin-top: 0.75rem; }
@@ -1012,7 +1012,7 @@ kbd {
 
 /* Mode toggle button in top bar */
 .mode-toggle {
-  background: rgba(26, 28, 34, 0.6);
+  background: var(--card);
   border: 1px solid var(--border);
   color: var(--text);
   padding: 0.3rem 0.7rem;
@@ -1025,7 +1025,7 @@ kbd {
   gap: 0.3rem;
 }
 .mode-toggle:hover {
-  background: rgba(42, 46, 55, 0.8);
+  background: color-mix(in srgb, var(--card) 80%, var(--border));
   border-color: var(--border-hover);
 }
 .mode-toggle.setup-active {
@@ -1640,7 +1640,7 @@ input[type="range"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(26, 28, 34, 0.5);
+  background: rgba(27, 22, 20, 0.5);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.3rem;
@@ -1668,7 +1668,7 @@ input[type="range"] {
   gap: 0.3rem;
 }
 .ability-chip {
-  background: rgba(26, 28, 34, 0.5);
+  background: rgba(27, 22, 20, 0.5);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 4px;
@@ -1756,7 +1756,7 @@ input[type="range"] {
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
-  contain: strict;
+  contain: layout paint;
 }
 .narrative-placeholder {
   text-align: center;
@@ -1887,7 +1887,7 @@ input[type="range"] {
 }
 .tab.active, .tab:hover {
   color: var(--text);
-  background: rgba(26, 28, 34, 0.5);
+  background: rgba(27, 22, 20, 0.5);
 }
 .tab.active {
   color: var(--accent);
@@ -2082,9 +2082,9 @@ input[type="range"] {
   border: 1px solid rgba(158, 206, 106, 0.3);
 }
 .test-result.error {
-  background: rgba(247, 118, 142, 0.15);
+  background: rgba(224, 90, 79, 0.15);
   color: var(--danger);
-  border: 1px solid rgba(247, 118, 142, 0.3);
+  border: 1px solid rgba(224, 90, 79, 0.3);
 }
 
 .modal-footer {
@@ -2398,8 +2398,8 @@ details > div { margin-top: 0.5rem; padding-left: 0.5rem; }
 .palette-badge {
   font-size: 0.6rem;
   color: var(--warning);
-  background: rgba(224, 175, 104, 0.15);
-  border: 1px solid rgba(224, 175, 104, 0.3);
+  background: rgba(217, 164, 65, 0.15);
+  border: 1px solid rgba(217, 164, 65, 0.30);
   border-radius: 3px;
   padding: 0.1rem 0.3rem;
   text-transform: uppercase;
@@ -2488,7 +2488,7 @@ details > div { margin-top: 0.5rem; padding-left: 0.5rem; }
   color: var(--text);
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: rgba(247, 118, 142, 0.1);
+  background: rgba(224, 90, 79, 0.10);
   border: 1px solid var(--danger);
   border-radius: var(--radius);
   font-family: monospace;

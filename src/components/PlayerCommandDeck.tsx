@@ -1,3 +1,4 @@
+import { Shield } from "lucide-react";
 import { useStore } from "../store";
 import type { CharacterProfile, AttributeState, ResourcePool } from "../types";
 import "../App.css";
@@ -25,7 +26,7 @@ export function PlayerCommandDeck({ character }: { character: CharacterProfile |
   return (
     <aside className="panel player-deck">
       <div className="panel-header">
-        <span className="panel-icon">🛡️</span>
+        <span className="panel-icon" aria-hidden="true"><Shield size={16} strokeWidth={1.7} /></span>
         <span className="panel-title">Command Deck</span>
       </div>
 

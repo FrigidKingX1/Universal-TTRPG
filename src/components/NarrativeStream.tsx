@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { ScrollText, RefreshCw, Send } from "lucide-react";
 import { useStore } from "../store";
 import type { StoryLogEntry } from "../types";
 import "../App.css";
 
 const SPEAKER_COLORS: Record<string, string> = {
-  "Dungeon Master": "var(--color-accent)",
-  "Player": "var(--color-player)",
-  "Oracle": "var(--color-warning)",
-  "System": "var(--color-system)",
-  "Narrator": "var(--color-narrator)",
+  "Dungeon Master": "var(--accent)",
+  "Player": "var(--success)",
+  "Oracle": "var(--warning)",
+  "System": "var(--info)",
+  "Narrator": "var(--accent)",
 };
 
 function getSpeakerColor(speaker: string): string {
@@ -18,13 +19,13 @@ function getSpeakerColor(speaker: string): string {
 
 function getRoleColor(role: StoryLogEntry["role"]): string {
   switch (role) {
-    case "player": return "var(--color-player)";
-    case "narrator": return "var(--color-narrator)";
-    case "npc": return "var(--color-npc)";
-    case "system": return "var(--color-system)";
-    case "combat": return "var(--color-combat)";
-    case "auto-dm": return "var(--color-accent)";
-    default: return "var(--color-muted)";
+    case "player": return "var(--success)";
+    case "narrator": return "var(--accent)";
+    case "npc": return "var(--info)";
+    case "system": return "var(--muted)";
+    case "combat": return "var(--danger)";
+    case "auto-dm": return "var(--accent)";
+    default: return "var(--muted)";
   }
 }
 
@@ -96,7 +97,7 @@ export function NarrativeStream() {
   return (
     <main className="panel narrative-stream" role="main" aria-label="Narrative Stream">
       <div className="panel-header">
-        <span className="panel-icon" aria-hidden="true">📜</span>
+        <span className="panel-icon" aria-hidden="true"><ScrollText size={16} strokeWidth={1.7} /></span>
         <span className="panel-title">
           {activeScene ? activeScene.title : "Narrative Stream"}
         </span>
@@ -106,7 +107,7 @@ export function NarrativeStream() {
           title="Refresh logs"
           aria-label="Refresh logs"
         >
-          ↻
+          <RefreshCw size={14} strokeWidth={1.8} />
         </button>
       </div>
 
@@ -274,7 +275,7 @@ export function NarrativeStream() {
           aria-label="Send action to DM"
           aria-disabled={dmIntent.loading || !inputValue.trim()}
         >
-          🎤
+          <Send size={16} strokeWidth={1.8} />
         </button>
       </div>
     </main>
