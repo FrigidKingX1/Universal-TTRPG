@@ -39,7 +39,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 ];
 
 export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
-  const modalRef = useFocusTrap(true);
+  const modalRef = useFocusTrap(true, onClose);
 
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">

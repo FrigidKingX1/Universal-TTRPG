@@ -747,7 +747,11 @@ export const useStore = create<AutoDmState>((set, get) => ({
 
   showToast: (message: string, type: "info" | "success" | "warning" | "error" = "info", duration = 3000) => {
     const id = crypto.randomUUID();
-    set((s) => ({ toasts: [...s.toasts, { id, message, type, duration }], toast: message }));
+    set((s) => ({
+      // Cap the visible queue so rapid actions can't stack unbounded.
+      toasts: [...s.toasts, { id, message, type, duration }].slice(-4),
+      toast: message,
+    }));
     setTimeout(() => {
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id), toast: s.toasts.length > 1 ? s.toasts[s.toasts.length - 2].message : null }));
     }, duration);

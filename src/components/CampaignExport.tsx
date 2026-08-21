@@ -309,7 +309,7 @@ export function CampaignExport() {
         </fieldset>
       </div>
 
-      <button className="primary" onClick={() => void handleExport()} disabled={exporting}>
+      <button className="btn btn-primary" onClick={() => void handleExport()} disabled={exporting}>
         {exporting ? "Exporting…" : "Export Campaign"}
       </button>
 

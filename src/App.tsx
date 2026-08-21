@@ -37,7 +37,6 @@ function App() {
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
   const setError = useStore((s) => s.setError);
-  const toast = useStore((s) => s.toast);
   const appMode = useStore((s) => s.appMode);
   const setAppMode = useStore((s) => s.setAppMode);
   const activeCharacter = useStore((s) => s.activeCharacter);
@@ -211,7 +210,6 @@ function App() {
             <button onClick={() => setError(null)} aria-label="Dismiss error">✕</button>
           </div>
         )}
-        {toast && <div className="toast" role="status">{toast}</div>}
 
         {loading ? (
           <div className="loading-overlay" role="status">

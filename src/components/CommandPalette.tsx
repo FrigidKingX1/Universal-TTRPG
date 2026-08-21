@@ -18,7 +18,10 @@ export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const paletteRef = useFocusTrap(isOpen);
+  const paletteRef = useFocusTrap(isOpen, () => {
+    setIsOpen(false);
+    setQuery("");
+  });
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const appMode = useStore((s) => s.appMode);

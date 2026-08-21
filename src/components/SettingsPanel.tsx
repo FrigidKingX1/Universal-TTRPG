@@ -6,7 +6,7 @@ import { ACCENT_PRESETS, applyTheme, loadTheme, saveTheme, type ThemeSettings } 
 import "../App.css";
 
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
-  const modalRef = useFocusTrap(true);
+  const modalRef = useFocusTrap(true, onClose);
   const ollamaModel = useStore((s) => s.ollama.currentModel);
   const ollamaReachable = useStore((s) => s.ollama.reachable);
   const ollamaModels = useStore((s) => s.ollama.models);

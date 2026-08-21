@@ -6,13 +6,12 @@ export function ToastContainer() {
   const removeToast = useStore((s) => s.removeToast);
 
   return (
-    <div className="toast-container" aria-live="polite" aria-atomic="false">
+    <div className="toast-container">
       {toasts.map((toast) => (
         <div
           key={toast.id}
           className={`toast toast-${toast.type}`}
-          role="alert"
-          aria-live={toast.type === "error" ? "assertive" : "polite"}
+          role={toast.type === "error" ? "alert" : "status"}
         >
           <span className="toast-icon" aria-hidden="true">
             {toast.type === "error" ? "✕" : toast.type === "success" ? "✓" : toast.type === "warning" ? "⚠" : "ℹ"}
