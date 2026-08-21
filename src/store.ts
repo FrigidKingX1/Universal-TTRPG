@@ -537,8 +537,28 @@ export const useStore = create<AutoDmState>()(
 
   setActiveScene: async (id) => {
     await backend.setActiveScene(id);
-    const logs = await backend.listLogs(id, 200);
-    set({ activeSceneId: id, logs, scenes: (await backend.listScenes()) });
+    const [logs, lootRows, noteRows, scenes] = await Promise.all([
+      backend.listLogs(id, 200),
+      backend.listLoot(id).catch(() => []),
+      backend.listNpcNotes(id).catch(() => []),
+      backend.listScenes(),
+    ]);
+    const loot: LootEntry[] = lootRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      quantity: r.quantity,
+      assignedTo: r.assigned_to,
+      sourceEntity: r.source_entity,
+      timestamp: r.timestamp,
+    }));
+    const npcNotes: NpcNote[] = noteRows.map((r) => ({
+      id: r.id,
+      npcName: r.npc_name,
+      relation: r.relation,
+      note: r.note,
+      timestamp: r.timestamp,
+    }));
+    set({ activeSceneId: id, logs, loot, npcNotes, scenes });
   },
 
   deleteScene: async (id) => {
@@ -549,11 +569,34 @@ export const useStore = create<AutoDmState>()(
       const active = await backend.activeScene();
       activeSceneId = active ? active.id : null;
     }
-    const logs =
-      activeSceneId && activeSceneId !== id
-        ? await backend.listLogs(activeSceneId, 200)
-        : [];
-    set({ scenes, activeSceneId, logs });
+    const shouldReload = activeSceneId && activeSceneId !== id;
+    const [logs, lootRows, noteRows] = shouldReload
+      ? await Promise.all([
+          backend.listLogs(activeSceneId!, 200),
+          backend.listLoot(activeSceneId!).catch(() => []),
+          backend.listNpcNotes(activeSceneId!).catch(() => []),
+        ])
+      : ([[], [], []] as unknown as [
+          import("./types").LogEntry[],
+          import("./backend").LootRow[],
+          import("./backend").NpcNoteRow[],
+        ]);
+    const loot: LootEntry[] = (lootRows as import("./backend").LootRow[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+      quantity: r.quantity,
+      assignedTo: r.assigned_to,
+      sourceEntity: r.source_entity,
+      timestamp: r.timestamp,
+    }));
+    const npcNotes: NpcNote[] = (noteRows as import("./backend").NpcNoteRow[]).map((r) => ({
+      id: r.id,
+      npcName: r.npc_name,
+      relation: r.relation,
+      note: r.note,
+      timestamp: r.timestamp,
+    }));
+    set({ scenes, activeSceneId, logs, loot, npcNotes });
   },
 
   refreshLogs: async () => {

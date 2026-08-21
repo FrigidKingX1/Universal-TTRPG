@@ -8,6 +8,7 @@ use db::{
     backup_before_migrate, open_pool, run_migrations, AppState, Repository, SqliteRepository,
 };
 use std::panic;
+use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
@@ -194,8 +195,8 @@ pub fn run() {
 
             app.manage(AppState {
                 repo,
-                dm: tokio::sync::Mutex::new(Some(DmPipeline::new(choose_dm_backend_with(
-                    Some(persisted_model.clone()),
+                dm: tokio::sync::Mutex::new(Some(Arc::new(DmPipeline::new(
+                    choose_dm_backend_with(Some(persisted_model.clone())),
                 )))),
                 memory: Mutex::new(memory),
                 ollama_child: Mutex::new(ollama_child),

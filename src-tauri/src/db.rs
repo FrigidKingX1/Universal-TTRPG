@@ -7,7 +7,7 @@ use serde_json::Value;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 use sqlx::{Row, Sqlite};
 use std::fmt;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 /// Error type for the persistence layer.
@@ -71,8 +71,11 @@ pub struct LogEntry {
 pub struct AppState {
     pub repo: SqliteRepository,
     /// The DM loop, swappable at runtime when the model changes.
-    /// Uses tokio::sync::Mutex so the guard can cross .await boundaries.
-    pub dm: tokio::sync::Mutex<Option<DmPipeline<Box<dyn LlmBackend>>>>,
+    /// Wrapped in `Arc` so callers can clone and release the lock before
+    /// awaiting the LLM (which may take up to 180 s) without blocking
+    /// concurrent DM requests.
+    #[allow(clippy::type_complexity)]
+    pub dm: tokio::sync::Mutex<Option<Arc<DmPipeline<Box<dyn LlmBackend>>>>>,
     /// In-memory ring buffer of recent campaign events for LLM context.
     pub memory: Mutex<CampaignMemory>,
     /// Handle to the Ollama child process, if we started it.
@@ -109,6 +112,7 @@ pub trait Repository: Send + Sync {
     async fn delete_scene(&self, id: &str) -> Result<bool, DbError>;
     async fn update_scene_summary(&self, id: &str, summary: Option<&str>) -> Result<(), DbError>;
     async fn update_scene_chaos_factor(&self, id: &str, chaos_factor: i32) -> Result<(), DbError>;
+    async fn get_scene_summary(&self, id: &str) -> Result<Option<String>, DbError>;
 
     async fn append_log(
         &self,
@@ -590,6 +594,7 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
         "CREATE INDEX IF NOT EXISTS idx_npc_notes_scene ON npc_notes(scene_id);",
         "CREATE INDEX IF NOT EXISTS idx_exploration_nodes_zone ON exploration_nodes(zone_id);",
         "CREATE INDEX IF NOT EXISTS idx_plot_threads_status ON plot_threads(status);",
+        "CREATE INDEX IF NOT EXISTS idx_scenes_active ON campaign_scenes(is_active);",
     ];
     let mut tx = pool.begin().await?;
     for stmt in schema {
@@ -845,6 +850,15 @@ impl Repository for SqliteRepository {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    async fn get_scene_summary(&self, id: &str) -> Result<Option<String>, DbError> {
+        let row: Option<(Option<String>,)> =
+            sqlx::query_as("SELECT summary_text FROM campaign_scenes WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
+        Ok(row.and_then(|(s,)| s))
     }
 
     async fn append_log(

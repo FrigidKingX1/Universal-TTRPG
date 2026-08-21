@@ -40,21 +40,19 @@ async fn apply_session_effects(state: &AppState, request: &DmRequest, response: 
             if delta.trim().is_empty() {
                 return;
             }
-            // Append to the existing summary so prior context is preserved,
-            // trimming from the front if it grows beyond a sane size.
+            // Single-row fetch instead of loading all scenes (O(1) vs O(N) parse).
             let existing = state
                 .repo
-                .list_scenes()
+                .get_scene_summary(scene_id)
                 .await
                 .ok()
-                .and_then(|scenes| scenes.into_iter().find(|s| &s.id == scene_id))
-                .and_then(|s| s.summary_text)
+                .flatten()
                 .unwrap_or_default();
             let mut merged =
                 if existing.is_empty() { delta.clone() } else { format!("{existing}\n{delta}") };
-            if merged.chars().count() > 2000 {
-                let skip = merged.chars().count() - 2000;
-                merged = merged.chars().skip(skip).collect();
+            let char_count = merged.chars().count();
+            if char_count > 2000 {
+                merged = merged.chars().skip(char_count - 2000).collect();
             }
             if state.repo.update_scene_summary(scene_id, Some(&merged)).await.is_ok() {
                 response.mechanical_events.push("Scene record updated.".to_string());
@@ -835,15 +833,13 @@ pub async fn dm_resolve(
             request.veils = vv;
         }
     }
-    let mut response = state
-        .dm
-        .lock()
-        .await
-        .as_ref()
-        .ok_or_else(|| "DM backend not initialized".to_string())?
-        .resolve_action(&request)
-        .await
-        .map_err(err)?;
+    let pipeline = {
+        let dm = state.dm.lock().await;
+        dm.as_ref()
+            .cloned()
+            .ok_or_else(|| "DM backend not initialized".to_string())?
+    };
+    let mut response = pipeline.resolve_action(&request).await.map_err(err)?;
     apply_session_effects(&state, &request, &mut response).await;
     emit(&app, "dm:response", &response);
     Ok(response)
@@ -1108,8 +1104,12 @@ pub async fn generate_campaign(
     );
 
     let raw = {
-        let dm = state.dm.lock().await;
-        let pipeline = dm.as_ref().ok_or_else(|| "DM backend not initialized".to_string())?;
+        let pipeline = {
+            let dm = state.dm.lock().await;
+            dm.as_ref()
+                .cloned()
+                .ok_or_else(|| "DM backend not initialized".to_string())?
+        };
         pipeline
             .backend()
             .complete(CAMPAIGN_GENERATION_PROMPT, &seed, Some(4096))
@@ -1256,27 +1256,29 @@ pub async fn process_dm_intent(
         .unwrap_or_else(|| "global".to_string());
     let mut token_buffer = String::new();
     let mut token_count = 0usize;
-    let response = {
+    let pipeline = {
         let dm = state.dm.lock().await;
-        let pipeline = dm.as_ref().ok_or_else(|| "DM backend not initialized".to_string())?;
-        pipeline
-            .resolve_action_streaming(&req, None, &mut |token: &str| {
-                token_buffer.push_str(token);
-                token_count += 1;
-                let should_checkpoint = token_count.is_multiple_of(20) || token.contains("\n\n");
-                let _ = app_for_tokens.emit("dm:token", token);
-                if should_checkpoint {
-                    let content = token_buffer.clone();
-                    let repo = repo_for_checkpoint.clone();
-                    let id = checkpoint_id.clone();
-                    tauri::async_runtime::spawn(async move {
-                        let _ = repo.save_stream_checkpoint(&id, &content).await;
-                    });
-                }
-            })
-            .await
-            .map_err(|e| e.to_string())?
+        dm.as_ref()
+            .cloned()
+            .ok_or_else(|| "DM backend not initialized".to_string())?
     };
+    let response = pipeline
+        .resolve_action_streaming(&req, None, &mut |token: &str| {
+            token_buffer.push_str(token);
+            token_count += 1;
+            let should_checkpoint = token_count.is_multiple_of(20) || token.contains("\n\n");
+            let _ = app_for_tokens.emit("dm:token", token);
+            if should_checkpoint {
+                let content = token_buffer.clone();
+                let repo = repo_for_checkpoint.clone();
+                let id = checkpoint_id.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = repo.save_stream_checkpoint(&id, &content).await;
+                });
+            }
+        })
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Clear the checkpoint now that the full response is in hand.
     let _ = state
@@ -1416,7 +1418,9 @@ pub async fn set_ollama_model(state: State<'_, AppState>, model: String) -> CmdR
     let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
         Box::new(auto_dm_core::ollama::OllamaLlmBackend::new(Some(model)));
     let mut dm = state.dm.lock().await;
-    *dm = Some(auto_dm_core::llm::DmPipeline::new(backend));
+    *dm = Some(std::sync::Arc::new(auto_dm_core::llm::DmPipeline::new(
+        backend,
+    )));
     Ok(())
 }
 
