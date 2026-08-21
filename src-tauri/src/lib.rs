@@ -121,7 +121,7 @@ pub fn run() {
 
             let pool = tauri::async_runtime::block_on(async {
                 let pool = open_pool(&db_path).await?;
-                backup_before_migrate(&pool).await;
+                backup_before_migrate(&pool, &db_path).await;
                 run_migrations(&pool).await?;
                 Ok::<_, Box<dyn std::error::Error>>(pool)
             })?;

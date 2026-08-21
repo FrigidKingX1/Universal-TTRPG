@@ -345,14 +345,11 @@ fn execute_intent(
         } => {
             let mod_v = modifier.unwrap_or(0);
             let target_dc = clamp_dc(dc.unwrap_or(10));
-            let detail = dice
-                .evaluate(&format!("1d20 + {mod_v}"))
-                .map(|r| r.detail)
-                .unwrap_or_else(|_| format!("1d20 + {mod_v}"));
-            let total: i64 = detail
-                .rsplit_once("= ")
-                .and_then(|(_, s)| s.trim().parse::<i64>().ok())
-                .unwrap_or(0);
+            let roll = dice.evaluate(&format!("1d20 + {mod_v}"));
+            let (total, detail) = match &roll {
+                Ok(r) => (r.total, r.detail.clone()),
+                Err(_) => (mod_v as i64, format!("1d20 + {mod_v} (roll failed)")),
+            };
             let outcome = if total >= target_dc as i64 {
                 "Success"
             } else {

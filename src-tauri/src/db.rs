@@ -435,16 +435,25 @@ pub async fn open_pool(path: &std::path::Path) -> Result<SqlitePool, sqlx::Error
 }
 
 /// Snapshot the database before applying schema changes.
-/// Called from lib.rs before run_migrations to protect against partial migration.
-pub async fn backup_before_migrate(pool: &SqlitePool) {
-    // The pool's path isn't directly accessible, so we execute a backup via SQLite.
-    // On failure we log and continue — the migration is idempotent (CREATE IF NOT EXISTS),
-    // so a missing backup is preferable to blocking startup.
-    if let Err(e) = sqlx::query("VACUUM INTO 'backup_pre_migrate.db'")
-        .execute(pool)
-        .await
-    {
-        eprintln!("Warning: pre-migration backup failed: {e}");
+/// `db_path` is the on-disk location so the snapshot lands next to it in
+/// `app_data_dir`, not in the process CWD. On failure we log and continue —
+/// the migration is idempotent (CREATE IF NOT EXISTS), so a missing backup
+/// is preferable to blocking startup.
+pub async fn backup_before_migrate(pool: &SqlitePool, db_path: &std::path::Path) {
+    let backup_path = db_path
+        .parent()
+        .map(|d| d.join("backup_pre_migrate.db"))
+        .unwrap_or_else(|| std::path::PathBuf::from("backup_pre_migrate.db"));
+    // SQLite's VACUUM INTO needs a literal path, so we interpolate the
+    // already-dir-sanitized backup path (it is derived from app_data_dir,
+    // not user input) into the SQL string.
+    let escaped = backup_path.display().to_string().replace('\'', "''");
+    // query() requires a 'static str; leak the owned string — one allocation
+    // on a cold path (startup), never freed by design (the pool lives for the
+    // lifetime of the app).
+    let sql: &'static str = Box::leak(format!("VACUUM INTO '{escaped}'").into_boxed_str());
+    if let Err(e) = sqlx::query(sql).execute(pool).await {
+        log::warn!("Pre-migration backup failed: {e}");
     }
 }
 
@@ -552,7 +561,7 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
         );",
         "CREATE TABLE IF NOT EXISTS exploration_nodes (
             id TEXT PRIMARY KEY,
-            zone_id TEXT NOT NULL,
+            zone_id TEXT NOT NULL REFERENCES exploration_zones(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
             discovered BOOLEAN NOT NULL DEFAULT FALSE,
             safe BOOLEAN NOT NULL DEFAULT FALSE,
@@ -1736,14 +1745,16 @@ impl Repository for SqliteRepository {
     }
 
     async fn delete_exploration_zone(&self, id: &str) -> Result<bool, DbError> {
+        let mut tx = self.pool.begin().await?;
         sqlx::query("DELETE FROM exploration_nodes WHERE zone_id = ?")
             .bind(id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
         let r = sqlx::query("DELETE FROM exploration_zones WHERE id = ?")
             .bind(id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
+        tx.commit().await?;
         Ok(r.rows_affected() > 0)
     }
 
