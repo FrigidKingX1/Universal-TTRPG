@@ -8,13 +8,17 @@ export function DiceRoller() {
   const rollHistory = useStore((s) => s.rollHistory);
   const [expr, setExpr] = useState("1d20 + @attributes.STR.derived_modifier");
   const [result, setResult] = useState<string | null>(null);
+  const [rolling, setRolling] = useState(false);
 
   const roll = async () => {
+    setRolling(true);
     try {
       const r = await backend.rollDice(expr);
       setResult(`${r.total}  (${r.detail})`);
     } catch (e) {
       setResult(String(e));
+    } finally {
+      setRolling(false);
     }
   };
 
@@ -54,9 +58,15 @@ export function DiceRoller() {
           onChange={(e) => setExpr(e.currentTarget.value)}
           aria-label="Dice expression"
         />
-        <button type="submit">Roll</button>
+        <button type="submit" disabled={rolling} className={rolling ? "rolling" : ""}>
+          {rolling ? "🎲…" : "Roll"}
+        </button>
       </form>
-      {result && <p className="roll-result">{result}</p>}
+      {result && (
+        <p key={result} className={`roll-result ${rolling ? "" : "roll-landed"}`}>
+          {result}
+        </p>
+      )}
       {rollHistory.length > 0 && (
         <div className="roll-history">
           {rollHistory.slice().reverse().map((r, i) => (

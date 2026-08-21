@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 import type { Disposition } from "../types";
+import { ZoneMap } from "./ZoneMap";
 
 const DISPOSITIONS: Disposition[] = ["hostile", "unfriendly", "neutral", "friendly", "helpful"];
 const ZONE_TYPES = ["hex", "point", "dungeon"] as const;
@@ -131,9 +132,10 @@ function SceneSummaryEditor({ scene }: { scene: { id: string; summary_text?: str
   const save = async () => {
     setSaving(true);
     try {
-      await backend.updateSceneSummary(scene.id, text.trim() || null);
+      const summary = text.trim() || null;
+      await backend.updateSceneSummary(scene.id, summary);
       useStore.setState((s) => ({
-        scenes: s.scenes.map((sc) => sc.id === scene.id ? { ...sc, summary_text: text.trim() || null } : sc),
+        scenes: s.scenes.map((sc) => sc.id === scene.id ? { ...sc, summary_text: summary ?? undefined } : sc),
       }));
     } catch {
       // best-effort
@@ -596,6 +598,12 @@ export function ExplorationPanel() {
 
             {activeZoneId === z.id && (
               <div style={{ marginTop: "0.4rem" }}>
+                <ZoneMap
+                  zone={z}
+                  nodes={nodes}
+                  currentNodeId={currentNodeId}
+                  onTravel={(nid) => void travelToNode(nid)}
+                />
                 <form className="row" onSubmit={(e) => { e.preventDefault(); addNode(z.id); }}>
                   <input value={nodeName} onChange={(e) => setNodeName(e.currentTarget.value)} placeholder="Node name" style={{ flex: 1 }} />
                   <input value={nodeDesc} onChange={(e) => setNodeDesc(e.currentTarget.value)} placeholder="Description" style={{ flex: 1 }} />

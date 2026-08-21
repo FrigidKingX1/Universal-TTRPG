@@ -313,3 +313,112 @@ export interface ExplorationNode {
   contents: string[];
   notes?: string | null;
 }
+
+// ── Two-Mode Architecture Types ──────────────────────────────────────────
+
+export type AppMode = "setup" | "tabletop";
+
+export interface LinesAndVeils {
+  lines: string[];
+  veils: string[];
+}
+
+export interface CampaignPromptInput {
+  settingTheme: string;
+  partyLevel: number;
+  startingLocation: string;
+  dangerLevel: number;
+  linesAndVeils: LinesAndVeils;
+}
+
+export interface GeneratedNodeSchema {
+  nodeId: string;
+  name: string;
+  description: string;
+  dangerLevel: number;
+  connectedTo: string[];
+  isSafe: boolean;
+}
+
+export interface GeneratedNpcSchema {
+  name: string;
+  role: string;
+  disposition: "Friendly" | "Neutral" | "Hostile";
+  initialLocation: string;
+  knowledgeTags: string[];
+}
+
+export interface GeneratedClockSchema {
+  title: string;
+  maxTicks: number;
+  consequence: string;
+}
+
+export interface GeneratedCampaignPayload {
+  campaignTitle: string;
+  openingSceneTitle: string;
+  openingSceneSummary: string;
+  initialChaosFactor: number;
+  zoneName: string;
+  zoneType: "Hex" | "Point" | "Dungeon";
+  zoneDescription: string;
+  zoneDangerLevel: number;
+  nodes: GeneratedNodeSchema[];
+  npcs: GeneratedNpcSchema[];
+  doomClocks: GeneratedClockSchema[];
+  plotThreads: string[];
+}
+
+export interface StoryLogEntry {
+  id: string;
+  speaker: string;
+  role: "player" | "narrator" | "npc" | "system" | "combat" | "auto-dm";
+  content: string;
+  timestamp: string;
+}
+
+export interface GeneratedSceneInfo {
+  title: string;
+  chaos_factor: number;
+  summary: string;
+  hook: string;
+}
+
+export interface GeneratedNpcInfo {
+  name: string;
+  disposition: string;
+  notes: string;
+}
+
+export interface GeneratedDoomClockInfo {
+  id: string;
+  label: string;
+  tick_max: number;
+  consequence: string;
+}
+
+export interface GeneratedPlotThreadInfo {
+  description: string;
+  status: string;
+}
+
+export interface CampaignGenerationResult {
+  campaign_title: string;
+  campaign_theme: string;
+  campaign_summary: string;
+  scenes: GeneratedSceneInfo[];
+  npcs: GeneratedNpcInfo[];
+  doom_clocks: GeneratedDoomClockInfo[];
+  plot_threads: GeneratedPlotThreadInfo[];
+  lines: string[];
+  veils: string[];
+}
+
+export interface DmRequest {
+  scene_summary: string;
+  player_action: string;
+  chaos_factor: number;
+  memory_context?: string;
+  lines: string[];
+  veils: string[];
+}

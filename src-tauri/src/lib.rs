@@ -52,6 +52,23 @@ fn try_start_ollama() -> Option<std::process::Child> {
     }
 }
 
+/// Wait for Ollama to become reachable after a cold start, probing with
+/// exponential backoff. Returns true if it became reachable within `max_wait`.
+fn wait_for_ollama(max_wait: std::time::Duration) -> bool {
+    let started = std::time::Instant::now();
+    let mut delay = std::time::Duration::from_millis(250);
+    loop {
+        if OllamaLlmBackend::reachable() {
+            return true;
+        }
+        if started.elapsed() >= max_wait {
+            return false;
+        }
+        std::thread::sleep(delay);
+        delay = (delay * 2).min(std::time::Duration::from_secs(1));
+    }
+}
+
 /// Select the DM narrative backend: connect to Ollama when reachable,
 /// otherwise fall back to the deterministic stub so the app is always usable.
 fn choose_dm_backend() -> Box<dyn LlmBackend> {
@@ -111,6 +128,16 @@ pub fn run() {
             })?;
 
             let ollama_child = try_start_ollama();
+            if ollama_child.is_some() {
+                // A cold-started `ollama serve` needs time to bind its port;
+                // probe with backoff before choosing the backend so we don't
+                // permanently fall back to the stub on first launch.
+                if wait_for_ollama(std::time::Duration::from_secs(10)) {
+                    log::info!("Ollama became reachable after cold start");
+                } else {
+                    log::warn!("Ollama not reachable within 10s of cold start; using stub backend");
+                }
+            }
 
             app.manage(AppState {
                 repo: SqliteRepository::new(pool),
@@ -203,6 +230,9 @@ pub fn run() {
             commands::update_npc_character,
             commands::list_npc_characters,
             commands::delete_npc_character,
+            commands::generate_campaign,
+            commands::process_dm_intent,
+            commands::get_random_encounter,
         ])
         .run(tauri::generate_context!())
         .expect("fatal: Tauri runtime failed to start");

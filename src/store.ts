@@ -3,10 +3,12 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { backend } from "./backend";
 import type {
   ActionDefinition,
+  CampaignGenerationResult,
   CharacterProfile,
   CombatantState,
   Disposition,
   DoomClock,
+  DmResponse,
   EncounterStatBlock,
   EngineOutcome,
   EventMeaning,
@@ -20,6 +22,7 @@ import type {
   PrerequisiteCheck,
   RollResponse,
   Scene,
+  StoryLogEntry,
 } from "./types";
 
 export interface LootEntry {
@@ -43,6 +46,12 @@ export interface AutoDmState {
   loading: boolean;
   error: string | null;
   toast: string | null;
+
+  // Toast queue
+  toasts: Array<{ id: string; message: string; type: "info" | "success" | "warning" | "error"; duration?: number }>;
+  showToast: (message: string, type?: "info" | "success" | "warning" | "error", duration?: number) => void;
+  removeToast: (id: string) => void;
+  setToast: (msg: string | null) => void;
 
   characters: CharacterProfile[];
   actions: ActionDefinition[];
@@ -114,7 +123,6 @@ export interface AutoDmState {
   longRest: () => Promise<void>;
   shortRest: () => Promise<void>;
   toggleCondition: (entityId: string, condition: string) => void;
-  showToast: (msg: string) => void;
   cloneStatBlock: (id: string) => Promise<void>;
   completeScene: (cfAdjust?: "favor" | "against") => Promise<void>;
   deathSaves: Record<string, { successes: number; failures: number }>;
@@ -123,6 +131,8 @@ export interface AutoDmState {
   undoLastHpChange: () => void;
   exportCampaign: () => Promise<string>;
   importCampaign: (json: string) => Promise<void>;
+  autoSave: () => Promise<void>;
+  autoSaveTimer: ReturnType<typeof setInterval> | null;
 
   // Loot
   loot: LootEntry[];
@@ -178,6 +188,28 @@ export interface AutoDmState {
   startExpedition: (nodeId: string) => void;
   travelToNode: (nodeId: string) => Promise<void>;
   endExpedition: () => void;
+
+  // ── Two-Mode Architecture ──────────────────────────────────────────────
+  appMode: "setup" | "tabletop";
+  setAppMode: (mode: "setup" | "tabletop") => void;
+
+  // Active character for tabletop mode
+  activeCharacter: CharacterProfile | null;
+  setActiveCharacter: (profile: CharacterProfile | null) => void;
+  selectActiveCharacter: (id: string) => void;
+
+  // Campaign generation pipeline
+  generation: { status: "idle" | "generating" | "success" | "error"; progress?: string; result?: CampaignGenerationResult };
+  generateCampaign: (concept: string, levelRange?: string, sceneCount?: number) => Promise<void>;
+
+  // Active DM runtime loop
+  dmIntent: { loading: boolean; lastResponse: DmResponse | null };
+  processDmIntent: (input: string) => Promise<void>;
+
+  // Story log for narrative stream
+  storyLog: StoryLogEntry[];
+  addStoryEntry: (entry: Partial<StoryLogEntry>) => void;
+  clearStoryLog: () => void;
 }
 
 export function newCharacter(name: string): CharacterProfile {
@@ -262,6 +294,15 @@ export const useStore = create<AutoDmState>((set, get) => ({
   activeZoneId: null,
   currentNodeId: null,
   travelLog: [],
+  autoSaveTimer: null as ReturnType<typeof setInterval> | null,
+
+  // ── Two-Mode Architecture (initial state) ──────────────────────────────
+  appMode: "setup" as const,
+  activeCharacter: null,
+  generation: { status: "idle" },
+  dmIntent: { loading: false, lastResponse: null },
+  storyLog: [],
+  toasts: [],
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -356,7 +397,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
       // Load exploration zones.
       let explorationZones: ExplorationZone[] = [];
       try {
-        explorationZones = await backend.listExplorationZones();
+        explorationZones = (await backend.listExplorationZones()) as ExplorationZone[];
       } catch { /* best-effort */ }
       set({
         characters,
@@ -373,7 +414,15 @@ export const useStore = create<AutoDmState>((set, get) => ({
         npcCharacters,
         doomClocks,
         explorationZones,
+        // Auto-select the first character so the tabletop command deck and DM
+        // context have an actor; the user can change it in the Characters view.
+        activeCharacter: get().activeCharacter ?? characters[0] ?? null,
       });
+      // Start auto-save timer (every 30 seconds)
+      if (!get().autoSaveTimer) {
+        const timer = setInterval(() => get().autoSave(), 30000);
+        set({ autoSaveTimer: timer });
+      }
     } catch (e) {
       set({ loading: false, error: String(e) });
     }
@@ -396,7 +445,13 @@ export const useStore = create<AutoDmState>((set, get) => ({
 
   deleteCharacter: async (id) => {
     await backend.deleteCharacter(id);
-    set({ characters: (await backend.listCharacters()) });
+    const characters = await backend.listCharacters();
+    set((s) => ({
+      characters,
+      // Clear or advance the active character if it was deleted.
+      activeCharacter:
+        s.activeCharacter?.id === id ? characters[0] ?? null : s.activeCharacter,
+    }));
   },
 
   cloneCharacter: async (id) => {
@@ -463,7 +518,23 @@ export const useStore = create<AutoDmState>((set, get) => ({
   refreshLogs: async () => {
     const id = get().activeSceneId;
     if (!id) return;
-    set({ logs: (await backend.listLogs(id, 200)) });
+    const logs = await backend.listLogs(id, 200);
+    set((s) => ({
+      logs,
+      // Seed the tabletop story log from persisted history so returning to a
+      // session shows prior entries instead of starting empty. Only seeds when
+      // the in-memory log is empty to avoid duplicating live entries.
+      storyLog:
+        s.storyLog.length === 0
+          ? logs.map((l) => ({
+              id: l.id,
+              speaker: l.speaker,
+              role: logSpeakerToRole(l.speaker),
+              content: l.content,
+              timestamp: l.timestamp,
+            }))
+          : s.storyLog,
+    }));
   },
 
   recordRoll: (r) => set((s) => ({ lastRoll: r, rollHistory: [...s.rollHistory.slice(-49), r] })),
@@ -477,6 +548,9 @@ export const useStore = create<AutoDmState>((set, get) => ({
       scene_summary: scene?.summary_text ?? scene?.title ?? "",
       player_action: playerAction,
       chaos_factor: scene?.chaos_factor ?? 5,
+      memory_context: void 0,
+      lines: [],
+      veils: [],
     });
     set((s) => ({ lastDm: response, dmHistory: [...s.dmHistory.slice(-19), response] }));
     if (scene && response.narrative) {
@@ -671,13 +745,16 @@ export const useStore = create<AutoDmState>((set, get) => ({
     return { combatantConditions: { ...s.combatantConditions, [entityId]: updated } };
   }); persistCombat(); },
 
-  showToast: (msg) => {
-    set({ toast: msg });
+  showToast: (message: string, type: "info" | "success" | "warning" | "error" = "info", duration = 3000) => {
+    const id = crypto.randomUUID();
+    set((s) => ({ toasts: [...s.toasts, { id, message, type, duration }], toast: message }));
     setTimeout(() => {
-      const current = useStore.getState().toast;
-      if (current === msg) set({ toast: null });
-    }, 2500);
+      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id), toast: s.toasts.length > 1 ? s.toasts[s.toasts.length - 2].message : null }));
+    }, duration);
   },
+  removeToast: (id: string) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  // Legacy single toast support
+  setToast: (msg: string | null) => set({ toast: msg }),
 
   cloneStatBlock: async (id) => {
     const blocks = get().statBlocks;
@@ -781,6 +858,16 @@ export const useStore = create<AutoDmState>((set, get) => ({
     await backend.importCampaign(data);
     await get().bootstrap();
     get().showToast("Campaign imported");
+  },
+
+  autoSave: async () => {
+    try {
+      const data = await backend.exportCampaign();
+      const json = JSON.stringify(data);
+      localStorage.setItem("autodm-autosave", json);
+    } catch {
+      // Silent fail
+    }
   },
 
   setNumPredict: (n) => set((s) => ({ ollama: { ...s.ollama, numPredict: Math.max(64, Math.min(2048, n)) } })),
@@ -1052,7 +1139,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
     try {
       const result = await backend.tickDoomClock(id);
       if (result) {
-        const [current, max] = result;
+        const [current] = result;
         set((s) => ({
           doomClocks: s.doomClocks.map((c) => c.id === id ? { ...c, current } : c),
         }));
@@ -1119,7 +1206,7 @@ export const useStore = create<AutoDmState>((set, get) => ({
   addExplorationZone: async (name, zoneType, description, dangerLevel) => {
     try {
       const zone = await backend.createExplorationZone(name, zoneType, description, dangerLevel);
-      set((s) => ({ explorationZones: [...s.explorationZones, zone] }));
+      set((s) => ({ explorationZones: [...s.explorationZones, zone as ExplorationZone] }));
     } catch (e) {
       get().showToast(`Error: ${e}`);
     }
@@ -1210,9 +1297,125 @@ export const useStore = create<AutoDmState>((set, get) => ({
     }
     set({ currentNodeId: null, travelLog: [] });
   },
+
+  // ── Two-Mode Architecture Actions ──────────────────────────────────────
+
+  setAppMode: (mode) => set({ appMode: mode }),
+  setActiveCharacter: (profile) => set({ activeCharacter: profile, appMode: "tabletop" }),
+  selectActiveCharacter: (id) =>
+    set((s) => ({ activeCharacter: s.characters.find((c) => c.id === id) ?? null })),
+
+  generateCampaign: async (concept: string, levelRange?: string, sceneCount?: number) => {
+    set({ generation: { status: "generating", progress: "Generating campaign..." } });
+    try {
+      const result = await backend.generateCampaign(concept, levelRange, sceneCount);
+      get().showToast(`Campaign "${result.campaign_title}" generated!`);
+
+      // The backend persists the campaign in SQLite via a single transaction.
+      // Refresh the store to pick up the new data.
+      await get().bootstrap();
+      set({ generation: { status: "success", result }, appMode: "tabletop" });
+    } catch (e) {
+      get().setError(String(e));
+      set({ generation: { status: "error" }, appMode: "setup" });
+    }
+  },
+
+  processDmIntent: async (input: string) => {
+    const { activeSceneId, activeCharacter: char, scenes } = get();
+    const scene = activeSceneId ? scenes.find((s) => s.id === activeSceneId) : null;
+    if (!scene) return;
+
+    set((s) => ({ dmIntent: { ...s.dmIntent, loading: true } }));
+    try {
+      const response = await backend.processDmIntent({
+        scene_summary: scene.summary_text || scene.title,
+        player_action: input,
+        chaos_factor: scene.chaos_factor,
+        memory_context: char?.identity.name ? `${char.identity.name} is acting` : undefined,
+        lines: [],
+        veils: [],
+      });
+
+      set({ dmIntent: { loading: false, lastResponse: response } });
+
+      if (response.narrative) {
+        get().addStoryEntry({
+          speaker: "Dungeon Master",
+          role: "narrator",
+          content: response.narrative,
+        });
+      }
+
+      get().addStoryEntry({
+        speaker: "Player",
+        role: "player",
+        content: input,
+      });
+
+      // Mechanical events from the DM pipeline
+      for (const mech of response.mechanical_events) {
+        get().addStoryEntry({
+          speaker: "System",
+          role: "system",
+          content: mech,
+        });
+      }
+
+      // Fate interpretation
+      if (response.fate_interpretation) {
+        get().addStoryEntry({
+          speaker: "Oracle",
+          role: "narrator",
+          content: response.fate_interpretation,
+        });
+      }
+
+      // Update Chaos Factor if the backend adjusted it
+      if (response.chaos_factor !== undefined && response.chaos_factor !== scene.chaos_factor) {
+        set((s) => ({
+          scenes: s.scenes.map((sc) =>
+            sc.id === activeSceneId ? { ...sc, chaos_factor: response.chaos_factor } : sc
+          ),
+        }));
+        try {
+          await backend.updateSceneChaosFactor(scene.id, response.chaos_factor);
+        } catch { /* best-effort */ }
+      }
+
+      await get().refreshLogs();
+    } catch (e) {
+      get().setError(String(e));
+      set({ dmIntent: { loading: false, lastResponse: null } });
+    }
+  },
+
+  addStoryEntry: (entry: Partial<StoryLogEntry>) => {
+    const populated: StoryLogEntry = {
+      id: entry.id ?? crypto.randomUUID(),
+      speaker: entry.speaker ?? "System",
+      role: entry.role ?? "system",
+      content: entry.content ?? "",
+      timestamp: entry.timestamp ?? new Date().toISOString(),
+    };
+    set((s) => ({
+      storyLog: [...s.storyLog, populated],
+    }));
+  },
+
+  clearStoryLog: () => set({ storyLog: [] }),
 }));
 
 // Persist combat state to SQLite (best-effort).
+function logSpeakerToRole(speaker: string): StoryLogEntry["role"] {
+  const s = speaker.toLowerCase();
+  if (s === "player") return "player";
+  if (s === "dungeon master" || s === "dm" || s === "narrator") return "narrator";
+  if (s === "combat") return "combat";
+  if (s === "oracle" || s === "system") return "system";
+  return "npc";
+}
+
 function persistCombat() {
   const s = useStore.getState();
   const sceneId = s.activeSceneId;

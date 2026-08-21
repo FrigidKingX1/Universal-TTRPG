@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useStore } from "../store";
 import type { CharacterProfile, EncounterStatBlock, EngineOutcome } from "../types";
 
-const CONDITIONS = ["Poisoned", "Prone", "Stunned", "Frightened", "Blinded", "Charmed", "Invisible", "Exhaustion"];
+const CONDITIONS = ["Poisoned", "Prone", "Stunned", "Frightened", "Blinded", "Charmed", "Invisible", "Exhaustion", "Concentrating"];
 
 const CONDITION_DESC: Record<string, string> = {
   Poisoned: "Disadvantage on attack rolls and ability checks.",
@@ -13,6 +13,7 @@ const CONDITION_DESC: Record<string, string> = {
   Charmed: "Can't target the charmer with harmful abilities. Charmer has advantage on social checks.",
   Invisible: "Attacks against you have disadvantage. Your attacks have advantage.",
   Exhaustion: "6 levels. Level 1: disadvantage on ability checks. Level 2: halved speed. And worse...",
+  Concentrating: "Maintaining a spell or effect. Taking damage forces a CON save (DC 10 or half damage). Only one concentration at a time.",
 };
 
 const CONDITION_EFFECTS: Record<string, string[]> = {
@@ -24,6 +25,7 @@ const CONDITION_EFFECTS: Record<string, string[]> = {
   Charmed: ["can't target charmer with harmful effects", "charmer has advantage on social checks"],
   Invisible: ["attacks against you have disadvantage", "your attacks have advantage"],
   Exhaustion: ["level 1: disadvantage on ability checks", "level 2: halved speed", "level 3: disadvantage on attacks & saves"],
+  Concentrating: ["CON save when damaged (DC 10 or half damage)", "only one effect at a time", "ends if incapacitated"],
 };
 
 export function Combat() {
@@ -115,7 +117,11 @@ export function Combat() {
         lastHpChange: { entityId: entity.id, previousHp, newHp },
         combatantStates: {
           ...combatantStates,
-          [c.id]: { hit_points: newHp, status: combatantStates[c.id]?.status },
+          [c.id]: { 
+            ...combatantStates[c.id], 
+            hit_points: newHp, 
+            status: combatantStates[c.id]?.status 
+          },
         },
       });
       void saveCharacter({
@@ -135,7 +141,11 @@ export function Combat() {
         lastHpChange: { entityId: entity.id, previousHp, newHp },
         combatantStates: {
           ...combatantStates,
-          [b.id]: { hit_points: newHp, status: combatantStates[b.id]?.status },
+          [b.id]: { 
+            ...combatantStates[b.id], 
+            hit_points: newHp, 
+            status: combatantStates[b.id]?.status 
+          },
         },
       });
       void saveStatBlock({

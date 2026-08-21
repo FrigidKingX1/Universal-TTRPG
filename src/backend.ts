@@ -3,9 +3,10 @@ import type {
   ActionDefinition,
   CharacterProfile,
   CombatantState,
-  DoomClock,
+  CampaignGenerationResult,
   DmRequest,
   DmResponse,
+  DoomClock,
   EncounterStatBlock,
   EngineOutcome,
   EventMeaning,
@@ -17,6 +18,26 @@ import type {
   RollResponse,
   Scene,
 } from "./types";
+
+// ── New Interfaces for Two-Mode Architecture ───────────────────────────────
+
+export interface DmIntentRequest {
+  characterId?: string;
+  sceneId?: string;
+  userInput: string;
+}
+
+export interface DmIntentResponse {
+  narrative: string;
+  intentType: string;
+  updatedChaosFactor?: number;
+  mechanicalEvents?: string[];
+}
+
+export interface RandomEncounterResponse {
+  description: string;
+  combatants: string[];
+}
 
 // NOTE: Tauri converts Rust snake_case command args to camelCase on the JS side.
 
@@ -206,6 +227,23 @@ export const backend = {
     invoke<NpcCharacterRow[]>("list_npc_characters"),
   deleteNpcCharacter: (id: string) =>
     invoke<boolean>("delete_npc_character", { id }),
+
+  // ── Campaign Generation Pipeline ───────────────────────────────────────
+
+  generateCampaign: (concept: string, levelRange?: string, sceneCount?: number) =>
+    invoke<CampaignGenerationResult>("generate_campaign", {
+      input: { concept, levelRange, sceneCount },
+    }),
+
+  // ── Active DM Runtime Loop ─────────────────────────────────────────────
+
+  processDmIntent: (request: DmRequest) =>
+    invoke<DmResponse>("process_dm_intent", { request }),
+
+  // ── Dungeon Map / Exploration ──────────────────────────────────────────
+
+  getRandomEncounter: (difficulty: string) =>
+    invoke<string>("get_random_encounter", { difficulty }),
 };
 
 export interface CampaignExport {

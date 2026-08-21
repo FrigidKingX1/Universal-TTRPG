@@ -66,6 +66,8 @@ export function CharacterList() {
   const characters = useStore((s) => s.characters);
   const deleteCharacter = useStore((s) => s.deleteCharacter);
   const cloneCharacter = useStore((s) => s.cloneCharacter);
+  const activeCharacterId = useStore((s) => s.activeCharacter?.id ?? null);
+  const selectActiveCharacter = useStore((s) => s.selectActiveCharacter);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rollingId, setRollingId] = useState<string | null>(null);
 
@@ -75,7 +77,7 @@ export function CharacterList() {
       <NewCharacterForm />
       <ul className="card-list">
         {characters.map((c) => (
-          <li key={c.id} className="card">
+          <li key={c.id} className={`card ${activeCharacterId === c.id ? "active-card" : ""}`}>
             <div className="card-row">
               <strong>{c.identity.name}</strong>
               <span className="muted">
@@ -96,6 +98,13 @@ export function CharacterList() {
               />
             </div>
             <div className="card-row">
+              {activeCharacterId === c.id ? (
+                <span className="badge">⭐ Active</span>
+              ) : (
+                <button onClick={() => selectActiveCharacter(c.id)} title="Use this character in Tabletop mode">
+                  Set Active
+                </button>
+              )}
               <button onClick={() => setEditingId(editingId === c.id ? null : c.id)}>
                 {editingId === c.id ? "Close" : "Edit"}
               </button>
@@ -196,6 +205,25 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const toggleEquip = (id: string) =>
     setInventory(inventory.map((i) => (i.id === id ? { ...i, is_equipped: !i.is_equipped } : i)));
 
+  const adjustQuantity = (id: string, delta: number) =>
+    setInventory((inv) =>
+      inv.map((i) => (i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)),
+    );
+
+  const setItemWeight = (id: string, weight: number) =>
+    setInventory((inv) => inv.map((i) => (i.id === id ? { ...i, weight: Math.max(0, weight) } : i)));
+
+  const totalWeight = inventory.reduce((sum, i) => sum + i.weight * i.quantity, 0);
+  const carryCapacity = 15 * (attrs.STR?.base_value ?? 10);
+
+  const levelUp = () => {
+    const newLevel = level + 1;
+    const hpGain = Math.max(1, mod(attrs.CON?.base_value ?? 10) + 5);
+    setLevel(newLevel);
+    setMaxHp(maxHp + hpGain);
+    setHp(hp + hpGain);
+  };
+
   const addAbility = () => {
     if (!newAbility.trim()) return;
     setAbilities([...abilities, newAbility.trim()]);
@@ -214,6 +242,11 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
           <span>Level</span>
           <input type="number" min={1} value={level} onChange={(e) => setLevel(Number(e.currentTarget.value))} />
         </label>
+        <div className="attr level-up-group">
+          <button onClick={levelUp} title={`Gain a level: +HP (5 + CON mod)`}>
+            ⬆ Level Up
+          </button>
+        </div>
         <label className="attr">
           <span>Ancestry</span>
           <input value={ancestry} onChange={(e) => setAncestry(e.currentTarget.value)} placeholder="e.g. Human" />
@@ -264,11 +297,31 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
       </div>
 
       <h3>Inventory</h3>
+      <p className="muted" style={{ fontSize: "0.8rem", margin: "0 0 0.4rem 0" }}>
+        Carry weight: {totalWeight.toFixed(1)} / {carryCapacity} lbs
+        {totalWeight > carryCapacity && <span className="exceptional"> (overloaded!)</span>}
+      </p>
       <div className="inventory-list">
         {inventory.map((item) => (
-          <div key={item.id} className="card-row" style={{ gap: "0.4rem", marginBottom: "0.25rem" }}>
+          <div key={item.id} className="card-row inventory-row">
             <span className={item.is_equipped ? "" : "muted"}>{item.name}</span>
             {item.is_equipped && <span className="badge">equipped</span>}
+            <span className="qty-controls">
+              <button onClick={() => adjustQuantity(item.id, -1)} aria-label={`Decrease ${item.name} quantity`}>−</button>
+              <span>{item.quantity}</span>
+              <button onClick={() => adjustQuantity(item.id, 1)} aria-label={`Increase ${item.name} quantity`}>+</button>
+            </span>
+            <label className="weight-input">
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                value={item.weight}
+                onChange={(e) => setItemWeight(item.id, Number(e.currentTarget.value))}
+                aria-label={`${item.name} weight`}
+              />
+              <span className="muted">lbs</span>
+            </label>
             <button onClick={() => toggleEquip(item.id)}>
               {item.is_equipped ? "Unequip" : "Equip"}
             </button>

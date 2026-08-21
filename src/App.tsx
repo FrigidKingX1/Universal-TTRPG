@@ -1,15 +1,26 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useStore, subscribeToEvents } from "./store";
-import { CharacterList, ActionList } from "./components/Characters";
-import { Bestiary } from "./components/Bestiary";
+import { CampaignWizard } from "./components/CampaignWizard";
+import { PlayerCommandDeck } from "./components/PlayerCommandDeck";
+import { NarrativeStream } from "./components/NarrativeStream";
+import { TacticalMatrix } from "./components/TacticalMatrix";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { ToastContainer } from "./components/ToastContainer";
+import { CommandPalette } from "./components/CommandPalette";
 import { Scenes } from "./components/Scenes";
+import { CharacterList } from "./components/Characters";
+import { Bestiary } from "./components/Bestiary";
 import { Combat } from "./components/Combat";
-import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, CampaignData, NpcNotesPanel, LinesVeilPanel } from "./components/Tools";
+import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, NpcNotesPanel, LinesVeilPanel } from "./components/Tools";
+import { CampaignExport } from "./components/CampaignExport";
+import { ShortcutsHelp } from "./components/ShortcutsHelp";
+import { usePanelResize } from "./hooks/usePanelResize";
 import "./App.css";
 
-type NavItem = "scenes" | "characters" | "bestiary" | "combat" | "tools";
+type NavItem = "campaign" | "scenes" | "characters" | "bestiary" | "combat" | "tools";
 
 const NAV_ITEMS: { id: NavItem; label: string; icon: string }[] = [
+  { id: "campaign", label: "Campaign", icon: "🧙" },
   { id: "scenes", label: "Scenes", icon: "📖" },
   { id: "characters", label: "Characters", icon: "👥" },
   { id: "bestiary", label: "Bestiary", icon: "🐉" },
@@ -20,11 +31,16 @@ const NAV_ITEMS: { id: NavItem; label: string; icon: string }[] = [
 function App() {
   const [activeNav, setActiveNav] = useState<NavItem>("scenes");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const bootstrap = useStore((s) => s.bootstrap);
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
   const setError = useStore((s) => s.setError);
   const toast = useStore((s) => s.toast);
+  const appMode = useStore((s) => s.appMode);
+  const setAppMode = useStore((s) => s.setAppMode);
+  const activeCharacter = useStore((s) => s.activeCharacter);
   const activeScene = useStore((s) =>
     s.scenes.find((sc) => sc.id === s.activeSceneId),
   );
@@ -34,20 +50,33 @@ function App() {
   const sceneCount = useStore((s) => s.scenes.length);
   const ollamaStatus = useStore((s) => s.ollama.reachable);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const { sizes, handleMouseDown } = usePanelResize();
 
   useEffect(() => {
     void bootstrap();
     void subscribeToEvents();
   }, [bootstrap]);
 
-  // Keyboard shortcuts: 1-5 to switch tabs, Esc to dismiss errors/toasts, Ctrl+B to toggle sidebar
+  // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-    const navKeys: Record<string, NavItem> = { "1": "scenes", "2": "characters", "3": "bestiary", "4": "combat", "5": "tools" };
-    if (navKeys[e.key]) { setActiveNav(navKeys[e.key]); e.preventDefault(); }
+    
+    // Global shortcuts
     if (e.key === "Escape") { setError(null); }
     if (e.ctrlKey && e.key === "b") { setSidebarCollapsed(prev => !prev); e.preventDefault(); }
-  }, [setError]);
+    if (e.ctrlKey && e.key === "m") { setAppMode(appMode === "setup" ? "tabletop" : "setup"); e.preventDefault(); }
+    if (e.key === "?") { setShowShortcuts(true); e.preventDefault(); }
+    
+    if (appMode === "setup") {
+      const navKeys: Record<string, NavItem> = { "1": "campaign", "2": "scenes", "3": "characters", "4": "bestiary", "5": "combat", "6": "tools" };
+      if (navKeys[e.key]) { setActiveNav(navKeys[e.key]); e.preventDefault(); }
+    } else {
+      // Tabletop mode shortcuts
+      if (e.key === "f") { /* Focus DM input - handled by NarrativeStream */ }
+      if (e.key === "r") { /* Refresh - could trigger log refresh */ }
+      if (e.key === "Tab") { /* Panel navigation could be added */ }
+    }
+  }, [setError, appMode, setAppMode]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -64,10 +93,34 @@ function App() {
     }
   };
 
+  const renderSetupView = () => {
+    switch (activeNav) {
+      case "campaign": return <CampaignWizard />;
+      case "scenes": return <Scenes />;
+      case "characters": return <CharacterList />;
+      case "bestiary": return <Bestiary />;
+      case "combat": return <Combat />;
+      case "tools":
+        return (
+          <div className="tools-stack">
+            <CampaignExport />
+            <DiceRoller />
+            <OraclePanel />
+            <DmPanel />
+            <SessionLog />
+            <OllamaStatus />
+            <NpcNotesPanel />
+            <LinesVeilPanel />
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="app-shell">
       <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`} ref={sidebarRef}>
         <div className="sidebar-header">
+          <img src="/icon.svg" alt="" aria-hidden="true" className="app-logo" />
           {!sidebarCollapsed && (
             <h1 className="app-title">Auto-DM</h1>
           )}
@@ -114,9 +167,9 @@ function App() {
           )}
           {!sidebarCollapsed && (
             <div className="shortcuts-hint">
-              <kbd>1-5</kbd> <span>Navigate</span>
-              <kbd>Esc</kbd> <span>Dismiss</span>
-              <kbd>Ctrl+B</kbd> <span>Toggle Sidebar</span>
+              <kbd>1-6</kbd> <span>Navigate</span>
+              <kbd>Ctrl+K</kbd> <span>Commands</span>
+              <kbd>?</kbd> <span>Shortcuts</span>
             </div>
           )}
         </div>
@@ -139,7 +192,16 @@ function App() {
             )}
           </div>
           <div className="top-bar-right">
-            <button className="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
+            <button
+              className={`mode-toggle ${appMode === "setup" ? "setup-active" : "tabletop-active"}`}
+              onClick={() => setAppMode(appMode === "setup" ? "tabletop" : "setup")}
+              aria-label={appMode === "setup" ? "Switch to Tabletop Mode" : "Switch to Setup Mode"}
+              title={appMode === "setup" ? "Switch to Tabletop Mode" : "Switch to Setup Mode"}
+            >
+              {appMode === "setup" ? "🧙 Setup" : "🏰 Tabletop"}
+            </button>
+            <button className="icon-btn" onClick={() => setShowShortcuts(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">❔</button>
+            <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">⚙️</button>
           </div>
         </header>
 
@@ -150,32 +212,48 @@ function App() {
           </div>
         )}
         {toast && <div className="toast" role="status">{toast}</div>}
-        {loading && <div className="loading-overlay">Loading…</div>}
 
-        <div className="content-area">
-          {!loading && activeNav === "scenes" && <Scenes />}
-          {!loading && activeNav === "characters" && (
-            <>
-              <CharacterList />
-              <ActionList />
-            </>
-          )}
-          {!loading && activeNav === "bestiary" && <Bestiary />}
-          {!loading && activeNav === "combat" && <Combat />}
-          {!loading && activeNav === "tools" && (
-            <>
-              <OllamaStatus />
-              <DmPanel />
-              <DiceRoller />
-              <OraclePanel />
-              <NpcNotesPanel />
-              <LinesVeilPanel />
-              <SessionLog />
-              <CampaignData />
-            </>
-          )}
-        </div>
+        {loading ? (
+          <div className="loading-overlay" role="status">
+            Loading…
+          </div>
+        ) : appMode === "setup" ? (
+          <div className="wizard-wrapper">
+            {renderSetupView()}
+          </div>
+        ) : (
+          <div className="tabletop-layout" style={{ gridTemplateColumns: `${sizes.left}px 1fr ${sizes.right}px` }}>
+            <PlayerCommandDeck character={activeCharacter} />
+            <div
+              className="panel-gutter"
+              onMouseDown={(e) => handleMouseDown("left", e)}
+              aria-label="Resize left panel"
+              role="separator"
+              tabIndex={0}
+              aria-orientation="vertical"
+            />
+            <NarrativeStream />
+            <div
+              className="panel-gutter"
+              onMouseDown={(e) => handleMouseDown("right", e)}
+              aria-label="Resize right panel"
+              role="separator"
+              tabIndex={0}
+              aria-orientation="vertical"
+            />
+            <TacticalMatrix />
+          </div>
+        )}
       </main>
+
+      <ToastContainer />
+      <CommandPalette />
+      {showSettings && (
+        <SettingsPanel onClose={() => setShowSettings(false)} />
+      )}
+      {showShortcuts && (
+        <ShortcutsHelp onClose={() => setShowShortcuts(false)} />
+      )}
     </div>
   );
 }

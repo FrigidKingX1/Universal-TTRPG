@@ -1001,6 +1001,354 @@ pub fn ping() -> String {
     "pong".to_string()
 }
 
+// ---------- Campaign Generation (Zero-to-Campaign) -------------------------
+
+/// Input describing the seed concept for campaign generation.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CampaignSeedInput {
+    pub concept: String,
+    #[serde(default = "default_level_range")]
+    pub level_range: String,
+    #[serde(default = "default_scene_count")]
+    pub scene_count: u32,
+}
+
+fn default_level_range() -> String {
+    "1-3".to_string()
+}
+
+fn default_scene_count() -> u32 {
+    3
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GeneratedScene {
+    pub title: String,
+    pub chaos_factor: i32,
+    pub summary: String,
+    pub hook: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GeneratedNpc {
+    pub name: String,
+    pub disposition: String,
+    pub notes: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GeneratedDoomClock {
+    pub id: String,
+    pub label: String,
+    pub tick_max: u32,
+    pub consequence: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GeneratedPlotThread {
+    pub description: String,
+    pub status: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct CampaignGenerationResult {
+    pub campaign_title: String,
+    pub campaign_theme: String,
+    pub campaign_summary: String,
+    pub scenes: Vec<GeneratedScene>,
+    pub npcs: Vec<GeneratedNpc>,
+    pub doom_clocks: Vec<GeneratedDoomClock>,
+    pub plot_threads: Vec<GeneratedPlotThread>,
+    pub lines: Vec<String>,
+    pub veils: Vec<String>,
+}
+
+const CAMPAIGN_GENERATION_PROMPT: &str = "\
+You are Auto-DM's campaign architect. Generate a complete opening campaign for a tabletop RPG session in JSON. The campaign should be self-contained and ready to play.
+
+Return ONLY a JSON object with this exact structure:
+{\"campaign_title\":\"string\",\"campaign_theme\":\"string\",\"campaign_summary\":\"2-3 sentence overview\",\"scenes\":[{\"title\":\"Scene name\",\"chaos_factor\":1,\"summary\":\"Brief description\",\"hook\":\"What draws the PCs in\"}],\"npcs\":[{\"name\":\"NPC name\",\"disposition\":\"neutral\",\"notes\":\"Key trait + secret\"}],\"doom_clocks\":[{\"id\":\"clocks:1\",\"label\":\"Clock name\",\"tick_max\":4,\"consequence\":\"What happens when full\"}],\"plot_threads\":[{\"description\":\"Thread name\",\"status\":\"open\"}],\"lines\":[\"banned topic\"],\"veils\":[\"faded topic\"]}
+Do not include any explanatory text — only the JSON object.";
+
+/// Zero-to-Campaign: generate a campaign from a seed concept using the
+/// configured Ollama backend, then persist it atomically within a single
+/// SQLite transaction.
+#[tauri::command]
+pub async fn generate_campaign(
+    state: State<'_, AppState>,
+    input: CampaignSeedInput,
+) -> Result<CampaignGenerationResult, String> {
+    let seed = format!(
+        "Campaign concept: {}\nPlayer level range: {}\nNumber of opening scenes: {}",
+        input.concept, input.level_range, input.scene_count
+    );
+
+    let raw = {
+        let dm = state.dm.lock().await;
+        let pipeline = dm
+            .as_ref()
+            .ok_or_else(|| "DM backend not initialized".to_string())?;
+        pipeline
+            .backend()
+            .complete(CAMPAIGN_GENERATION_PROMPT, &seed, Some(4096))
+            .await
+            .map_err(|e| e.to_string())?
+    };
+
+    let cleaned = auto_dm_core::intent::stripped_json(raw.trim()).unwrap_or(raw.trim());
+    let result: CampaignGenerationResult = serde_json::from_str(cleaned)
+        .map_err(|e| format!("Failed to parse campaign JSON from LLM: {e}"))?;
+
+    if result.scenes.is_empty() {
+        return Err(
+            "Generated campaign contained no scenes; try rephrasing the concept.".to_string(),
+        );
+    }
+
+    let mut tx = state.repo.begin_tx().await.map_err(err)?;
+
+    let mut first_scene_id = String::new();
+    for scene in &result.scenes {
+        let created = state
+            .repo
+            .db_create_scene_txn(&mut tx, &scene.title, scene.chaos_factor)
+            .await
+            .map_err(err)?;
+        if first_scene_id.is_empty() {
+            first_scene_id = created.id;
+        }
+    }
+
+    for npc in &result.npcs {
+        state
+            .repo
+            .db_save_npc_txn(&mut tx, &npc.name, &npc.disposition, &npc.notes)
+            .await
+            .map_err(err)?;
+    }
+
+    for clock in &result.doom_clocks {
+        state
+            .repo
+            .db_save_doom_clock_txn(
+                &mut tx,
+                &clock.id,
+                &clock.label,
+                clock.tick_max,
+                &clock.consequence,
+                None,
+            )
+            .await
+            .map_err(err)?;
+    }
+
+    for (idx, thread) in result.plot_threads.iter().enumerate() {
+        let desc = format!("{idx}: {}", thread.description);
+        state
+            .repo
+            .db_save_thread_txn(&mut tx, &desc, &thread.status, Some(&first_scene_id))
+            .await
+            .map_err(err)?;
+    }
+
+    if !result.lines.is_empty() {
+        state
+            .repo
+            .db_set_setting_txn(
+                &mut tx,
+                "lines",
+                &serde_json::to_string(&result.lines).map_err(err)?,
+            )
+            .await
+            .map_err(err)?;
+    }
+    if !result.veils.is_empty() {
+        state
+            .repo
+            .db_set_setting_txn(
+                &mut tx,
+                "veils",
+                &serde_json::to_string(&result.veils).map_err(err)?,
+            )
+            .await
+            .map_err(err)?;
+    }
+
+    state
+        .repo
+        .db_set_setting_txn(&mut tx, "campaign_title", &result.campaign_title)
+        .await
+        .map_err(err)?;
+    state
+        .repo
+        .db_set_setting_txn(&mut tx, "campaign_theme", &result.campaign_theme)
+        .await
+        .map_err(err)?;
+    state
+        .repo
+        .db_set_setting_txn(&mut tx, "campaign_summary", &result.campaign_summary)
+        .await
+        .map_err(err)?;
+
+    tx.commit().await.map_err(err)?;
+
+    {
+        let mut mem = state.memory.lock().map_err(err)?;
+        mem.push("Campaign", &result.campaign_summary);
+    }
+
+    Ok(result)
+}
+
+/// Resolve a player intent into structured narrative via the DM pipeline.
+#[tauri::command]
+pub async fn process_dm_intent(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    request: DmRequest,
+) -> Result<DmResponse, String> {
+    let mut req = request;
+    {
+        let mem = state.memory.lock().map_err(err)?;
+        if !mem.is_empty() {
+            req.memory_context = Some(mem.to_context(20));
+        }
+    }
+    if let Ok(Some(lines_json)) = state.repo.get_setting("lines").await {
+        if let Ok(lv) = serde_json::from_str::<Vec<String>>(&lines_json) {
+            req.lines = lv;
+        }
+    }
+    if let Ok(Some(veils_json)) = state.repo.get_setting("veils").await {
+        if let Ok(vv) = serde_json::from_str::<Vec<String>>(&veils_json) {
+            req.veils = vv;
+        }
+    }
+
+    let response = state
+        .dm
+        .lock()
+        .await
+        .as_ref()
+        .ok_or_else(|| "DM backend not initialized".to_string())?
+        .resolve_action(&req)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    state
+        .memory
+        .lock()
+        .map_err(err)?
+        .push("Dungeon Master", &response.narrative);
+
+    emit(&app, "dm:intent", &response);
+    Ok(response)
+}
+
+/// Roll on a random encounter table using the deterministic dice engine.
+#[tauri::command]
+pub async fn get_random_encounter(
+    _state: State<'_, AppState>,
+    difficulty: String,
+) -> Result<String, String> {
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u64;
+    let mut dice = DiceEngine::with_seed(seed);
+
+    let roll = dice.evaluate("1d100").map_err(|e| e.to_string())?;
+    let total = roll.total as usize;
+
+    let table: &[&str] = match difficulty.as_str() {
+        "easy" => &EASY_ENCOUNTERS,
+        "hard" => &HARD_ENCOUNTERS,
+        _ => &STANDARD_ENCOUNTERS,
+    };
+
+    let idx = if total == 0 {
+        0
+    } else {
+        total.min(table.len()) - 1
+    };
+    Ok(format!(
+        "[{}] d100={}: {}",
+        difficulty.to_uppercase(),
+        total,
+        table[idx]
+    ))
+}
+
+const STANDARD_ENCOUNTERS: [&str; 20] = [
+    "A lone wolf",
+    "Two wolves",
+    "Three wolves",
+    "A wounded wolf",
+    "Wolf pack leader (Dire Wolf)",
+    "Four wolves",
+    "A hungry bear",
+    "A territorial eagle",
+    "Swarm of bats",
+    "A giant spider",
+    "Two giant spiders",
+    "A hungry owlbear",
+    "A band of 3 goblins",
+    "A goblin scout",
+    "Two goblins with wolf riders",
+    "A lone orc",
+    "Two orcs",
+    "An ogre",
+    "A troll",
+    "A young green dragon (CR adjusted)",
+];
+
+const EASY_ENCOUNTERS: [&str; 20] = [
+    "A curious squirrel",
+    "An injured rabbit",
+    "A lost traveler",
+    "A friendly dog",
+    "A flock of birds",
+    "A gentle rain",
+    "A helpful sprite",
+    "An old hermit",
+    "A wandering merchant",
+    "A sign of recent travel",
+    "A broken wagon wheel",
+    "A campsite remains",
+    "A strange footprint",
+    "A glint of metal in the grass",
+    "A distant howl",
+    "A weathered monument",
+    "An abandoned shrine",
+    "A natural spring",
+    "A patch of berry bushes",
+    "A smooth river stone",
+];
+
+const HARD_ENCOUNTERS: [&str; 20] = [
+    "A veteran orc warrior",
+    "Two ogres",
+    "A wight rises from a grave",
+    "A pack of worgs",
+    "A stone troll guarding a bridge",
+    "A will-o'-wisp lures",
+    "A nest of stirges",
+    "A chuul in a pond",
+    "A manticore on a cliff",
+    "A bone naga emerges",
+    "A deathlock wight",
+    "A shadow mastema",
+    "A drider patrol",
+    "A hezrou demon (minor gate)",
+    "A young copper dragon",
+    "A frost giant patrol",
+    "An ettin in the hills",
+    "Two minotaurs",
+    "A wyrmscale bounty hunter",
+    "The campaign's primary antagonist appears",
+];
+
 // ---------- Ollama integration ------------------------------------------
 
 /// List installed Ollama model names.

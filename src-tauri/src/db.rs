@@ -247,6 +247,44 @@ pub trait Repository: Send + Sync {
         notes: Option<&str>,
     ) -> Result<(), DbError>;
     async fn delete_exploration_node(&self, id: &str) -> Result<bool, DbError>;
+
+    // Transaction support for atomic campaign generation
+    async fn begin_tx(&self) -> Result<sqlx::Transaction<'_, Sqlite>, DbError>;
+    async fn db_create_scene_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        title: &str,
+        chaos_factor: i32,
+    ) -> Result<crate::db::Scene, DbError>;
+    async fn db_save_npc_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        name: &str,
+        disposition: &str,
+        notes: &str,
+    ) -> Result<(), DbError>;
+    async fn db_save_doom_clock_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        id: &str,
+        label: &str,
+        tick_max: u32,
+        consequence: &str,
+        scene_id: Option<&str>,
+    ) -> Result<(), DbError>;
+    async fn db_save_thread_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        description: &str,
+        status: &str,
+        resolved_scene_id: Option<&str>,
+    ) -> Result<crate::db::ThreadRow, DbError>;
+    async fn db_set_setting_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        key: &str,
+        value: &str,
+    ) -> Result<(), DbError>;
 }
 
 /// A loot entry (items dropped by monsters, assigned to characters).
@@ -1621,6 +1659,126 @@ impl Repository for SqliteRepository {
             .execute(&self.pool)
             .await?;
         Ok(r.rows_affected() > 0)
+    }
+
+    async fn begin_tx(&self) -> Result<sqlx::Transaction<'_, Sqlite>, DbError> {
+        self.pool.begin().await.map_err(DbError::Database)
+    }
+
+    async fn db_create_scene_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        title: &str,
+        chaos_factor: i32,
+    ) -> Result<Scene, DbError> {
+        let id = Uuid::new_v4().to_string();
+        let scene_number = {
+            let row: (i64,) =
+                sqlx::query_as("SELECT COALESCE(MAX(scene_number), 0) + 1 FROM campaign_scenes")
+                    .fetch_one(&mut **tx)
+                    .await?;
+            row.0 as i32
+        };
+        sqlx::query(
+            "INSERT INTO campaign_scenes (id, scene_number, title, chaos_factor, is_active) VALUES (?, ?, ?, ?, 0)",
+        )
+        .bind(&id)
+        .bind(scene_number)
+        .bind(title)
+        .bind(chaos_factor)
+        .execute(&mut **tx)
+        .await?;
+        Ok(Scene {
+            id,
+            scene_number,
+            title: title.to_string(),
+            chaos_factor,
+            summary_text: None,
+            is_active: false,
+        })
+    }
+
+    async fn db_save_npc_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        name: &str,
+        disposition: &str,
+        notes: &str,
+    ) -> Result<(), DbError> {
+        let id = Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO npc_characters (id, name, disposition, alive, knows_json, notes) VALUES (?, ?, ?, 1, '[]', ?)",
+        )
+        .bind(&id)
+        .bind(name)
+        .bind(disposition)
+        .bind(notes)
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    async fn db_save_doom_clock_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        id: &str,
+        label: &str,
+        tick_max: u32,
+        consequence: &str,
+        scene_id: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT OR REPLACE INTO doom_clocks (id, label, tick_current, tick_max, consequence, scene_id, active) VALUES (?, ?, 0, ?, ?, ?, 1)",
+        )
+        .bind(id)
+        .bind(label)
+        .bind(tick_max as i32)
+        .bind(consequence)
+        .bind(scene_id)
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    async fn db_save_thread_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        description: &str,
+        status: &str,
+        opened_scene_id: Option<&str>,
+    ) -> Result<ThreadRow, DbError> {
+        let id = Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO plot_threads (id, description, status, opened_scene_id) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(description)
+        .bind(status)
+        .bind(opened_scene_id)
+        .execute(&mut **tx)
+        .await?;
+        Ok(ThreadRow {
+            id,
+            description: description.to_string(),
+            status: status.to_string(),
+            opened_scene_id: opened_scene_id.unwrap_or_default().to_string(),
+            resolved_scene_id: None,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        })
+    }
+
+    async fn db_set_setting_txn(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        key: &str,
+        value: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query("INSERT OR REPLACE INTO campaign_settings (key, value) VALUES (?, ?)")
+            .bind(key)
+            .bind(value)
+            .execute(&mut **tx)
+            .await?;
+        Ok(())
     }
 }
 

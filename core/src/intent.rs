@@ -124,7 +124,7 @@ impl RawIntent {
 
 /// If `s` is wrapped in a ```json (or bare ```) fence, return the inner body.
 /// Also handles fences with leading/trailing whitespace.
-fn stripped_json(s: &str) -> Option<&str> {
+pub fn stripped_json(s: &str) -> Option<&str> {
     let body = s
         .strip_prefix("```json")
         .or_else(|| s.strip_prefix("```"))?;
