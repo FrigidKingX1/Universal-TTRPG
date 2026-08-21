@@ -264,12 +264,21 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                 className="btn btn-secondary btn-small"
                 onClick={() => {
                   try { localStorage.removeItem("autodm.theme"); } catch {}
-                  try { localStorage.removeItem("autodm-onboarding-complete"); } catch {}
                   updateTheme({ accent: "#c9a86a", fontSize: 14, density: "comfortable" });
                   showToast("Appearance reset to defaults", "success");
                 }}
               >
                 Reset appearance
+              </button>
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={() => {
+                  try { localStorage.removeItem("autodm-onboarding-complete"); } catch {}
+                  showToast("Tutorial will show on next restart — or close Settings and reload (Ctrl+R)", "info", 6000);
+                  setTestResult("The Game Master's Handbook will reappear after an app restart.");
+                }}
+              >
+                Replay tutorial
               </button>
               <span className="muted" style={{ fontSize: "0.75rem", alignSelf: "center" }}>v0.1.0</span>
               <button
