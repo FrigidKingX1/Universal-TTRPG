@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../store";
 import { backend } from "../backend";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -271,6 +272,25 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                 Reset appearance
               </button>
               <span className="muted" style={{ fontSize: "0.75rem", alignSelf: "center" }}>v0.1.0</span>
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={async () => {
+                  setTestResult("Checking for updates…");
+                  try {
+                    const update = await invoke<unknown>("plugin:updater|check");
+                    if (update) {
+                      setTestResult("Update available — download from releases.");
+                      showToast("Update available!", "success");
+                    } else {
+                      setTestResult("You are on the latest version (v0.1.0).");
+                    }
+                  } catch (e) {
+                    setTestResult(`Update check failed: ${String(e).slice(0, 120)}`);
+                  }
+                }}
+              >
+                Check for updates
+              </button>
             </div>
           </section>
 
