@@ -29,11 +29,19 @@ export interface ResourcePool {
   reset_condition: ResetCondition;
 }
 
+/**
+ * Possession state of an item in a character's inventory.
+ * A *dropped* item leaves the inventory entirely and becomes an unowned
+ * scene-scoped loot entry (`assigned_to = null`) — pickup queries
+ * "unowned loot at this scene".
+ */
+export type ItemState = "equipped" | "stowed";
+
 export interface InventoryItem {
   id: string;
   name: string;
   quantity: number;
-  is_equipped: boolean;
+  state: ItemState;
   weight: number;
   tags: string[];
 }

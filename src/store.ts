@@ -90,6 +90,7 @@ export interface AutoDmState {
   createCharacter: (name: string) => Promise<void>;
   saveCharacter: (profile: CharacterProfile) => Promise<void>;
   deleteCharacter: (id: string) => Promise<void>;
+  dropItemToScene: (characterId: string, item: import("./types").InventoryItem) => Promise<void>;
   cloneCharacter: (id: string) => Promise<void>;
 
   saveAction: (action: ActionDefinition) => Promise<void>;
@@ -470,6 +471,22 @@ export const useStore = create<AutoDmState>()(
   },
 
   setError: (msg) => set({ error: msg }),
+
+  dropItemToScene: async (characterId, item) => {
+    const s = get();
+    const sceneId = s.activeSceneId;
+    if (!sceneId) { s.showToast("No active scene — can't drop items"); return; }
+    const character = s.characters.find((ch) => ch.id === characterId);
+    if (!character) return;
+    // Ownership decouples from possession: dropped = unowned scene loot.
+    await backend.saveLoot(sceneId, item.name, item.quantity, character.identity.name);
+    const updated: import("./types").CharacterProfile = {
+      ...character,
+      inventory: character.inventory.filter((i) => i.id !== item.id),
+    };
+    await s.saveCharacter(updated);
+    s.showToast(`Dropped ${item.quantity}× ${item.name} on the ground`);
+  },
 
   createCharacter: async (name) => {
     const profile = newCharacter(name || "Unnamed Adventurer");

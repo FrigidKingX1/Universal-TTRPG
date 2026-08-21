@@ -68,14 +68,31 @@ pub enum ResetCondition {
     Manual,
 }
 
+/// Possession state of an item in a character's inventory.
+///
+/// Ownership is implicit by containment (the item lives inside a
+/// `CharacterProfile`). A *dropped* item leaves the inventory entirely and
+/// becomes an unowned scene-scoped loot entry (`assigned_to = NULL`) —
+/// ownership decouples from possession, and "who can pick this up" is just
+/// "query unowned loot at this scene".
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ItemState {
+    #[default]
+    Stowed,
+    Equipped,
+}
+
 /// An item in a character's inventory.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct InventoryItem {
     pub id: String,
     pub name: String,
     pub quantity: i32,
+    /// Old saves with `is_equipped: true` map to Equipped via `Default`;
+    /// new saves persist this enum.
     #[serde(default)]
-    pub is_equipped: bool,
+    pub state: ItemState,
     #[serde(default)]
     pub weight: f64,
     #[serde(default)]

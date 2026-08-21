@@ -144,6 +144,7 @@ export function CharacterList() {
 
 function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const saveCharacter = useStore((s) => s.saveCharacter);
+  const dropItemToScene = useStore((s) => s.dropItemToScene);
   const [name, setName] = useState(profile.identity.name);
   const [ancestry, setAncestry] = useState(profile.identity.ancestry ?? "");
   const [archetype, setArchetype] = useState(profile.identity.archetype ?? "");
@@ -209,7 +210,7 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
     if (!newItemName.trim()) return;
     setInventory([
       ...inventory,
-      { id: crypto.randomUUID(), name: newItemName.trim(), quantity: 1, is_equipped: false, weight: 0, tags: [] },
+      { id: crypto.randomUUID(), name: newItemName.trim(), quantity: 1, state: "stowed", weight: 0, tags: [] },
     ]);
     setNewItemName("");
   };
@@ -217,7 +218,7 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const removeItem = (id: string) => setInventory(inventory.filter((i) => i.id !== id));
 
   const toggleEquip = (id: string) =>
-    setInventory(inventory.map((i) => (i.id === id ? { ...i, is_equipped: !i.is_equipped } : i)));
+    setInventory(inventory.map((i) => (i.id === id ? { ...i, state: i.state === "equipped" ? "stowed" : "equipped" } : i)));
 
   const adjustQuantity = (id: string, delta: number) =>
     setInventory((inv) =>
@@ -318,8 +319,8 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
       <div className="inventory-list">
         {inventory.map((item) => (
           <div key={item.id} className="card-row inventory-row">
-            <span className={item.is_equipped ? "" : "muted"}>{item.name}</span>
-            {item.is_equipped && <span className="badge">equipped</span>}
+            <span className={item.state === "equipped" ? "" : "muted"}>{item.name}</span>
+            {item.state === "equipped" && <span className="badge">equipped</span>}
             <span className="qty-controls">
               <button onClick={() => adjustQuantity(item.id, -1)} aria-label={`Decrease ${item.name} quantity`}>−</button>
               <span>{item.quantity}</span>
@@ -336,8 +337,14 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
               />
               <span className="muted">lbs</span>
             </label>
+            <button
+              onClick={() => void dropItemToScene(profile.id, item)}
+              title="Drop on the ground — anyone at this scene can pick it up"
+            >
+              Drop
+            </button>
             <button onClick={() => toggleEquip(item.id)}>
-              {item.is_equipped ? "Unequip" : "Equip"}
+              {item.state === "equipped" ? "Unequip" : "Equip"}
             </button>
             <button className="danger" onClick={() => removeItem(item.id)}>
               Remove
