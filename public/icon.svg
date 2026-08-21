@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
     <linearGradient id="d20face" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#7aa2f7"/>
-      <stop offset="100%" stop-color="#4166b8"/>
+      <stop offset="0%" stop-color="#ddbe86"/>
+      <stop offset="100%" stop-color="#8a6b2e"/>
     </linearGradient>
     <linearGradient id="d20edge" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2a3f6e"/>
-      <stop offset="100%" stop-color="#16233f"/>
+      <stop offset="0%" stop-color="#2e2418"/>
+      <stop offset="100%" stop-color="#120e14"/>
     </linearGradient>
   </defs>
 
@@ -16,19 +16,19 @@
   <!-- Top face -->
   <polygon points="32,9 50,20 32,31 14,20" fill="url(#d20face)"/>
   <!-- Lower-left face -->
-  <polygon points="14,20 32,31 26,52 11,44" fill="#5c85d6"/>
+  <polygon points="14,20 32,31 26,52 11,44" fill="#b8975a"/>
   <!-- Lower-right face -->
-  <polygon points="50,20 53,44 38,52 32,31" fill="#3d63ad"/>
+  <polygon points="50,20 53,44 38,52 32,31" fill="#7a5a22"/>
 
-  <!-- Face edges -->
-  <g stroke="#0e1830" stroke-width="1.5" stroke-linejoin="round" fill="none">
+  <!-- Face edges — warm ink -->
+  <g stroke="#1a120c" stroke-width="1.5" stroke-linejoin="round" fill="none">
     <polygon points="32,9 50,20 32,31 14,20"/>
     <polyline points="14,20 11,44 26,52 38,52 53,44 50,20"/>
     <polyline points="26,52 32,31 38,52"/>
   </g>
 
   <!-- Spark: critical-hit star on the top face -->
-  <g fill="#ffffff">
+  <g fill="#fff8e6">
     <path d="M32 13 L34.2 19.8 L41 22 L34.2 24.2 L32 31 L29.8 24.2 L23 22 L29.8 19.8 Z" opacity="0.95"/>
   </g>
 </svg>

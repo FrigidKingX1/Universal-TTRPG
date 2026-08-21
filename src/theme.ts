@@ -5,19 +5,19 @@ export interface ThemeSettings {
 }
 
 export const ACCENT_PRESETS: { name: string; value: string }[] = [
+  { name: "Gilded Rune", value: "#c9a86a" },
+  { name: "Ember Forge", value: "#ff7a45" },
+  { name: "Moss & Thorn", value: "#4ade80" },
+  { name: "Crimson Sigil", value: "#e05a4f" },
+  { name: "Arcane Amethyst", value: "#9b8ec4" },
+  { name: "Frostglass", value: "#7dcfff" },
   { name: "Tokyo Blue", value: "#7aa2f7" },
-  { name: "Ember", value: "#ff7a45" },
-  { name: "Emerald", value: "#4ade80" },
-  { name: "Rose", value: "#f7768e" },
-  { name: "Amethyst", value: "#bb9af7" },
-  { name: "Gold", value: "#e0af68" },
-  { name: "Cyan", value: "#7dcfff" },
 ];
 
 const STORAGE_KEY = "autodm.theme";
 
 export const DEFAULT_THEME: ThemeSettings = {
-  accent: "#7aa2f7",
+  accent: "#c9a86a",
   fontSize: 14,
   density: "comfortable",
 };

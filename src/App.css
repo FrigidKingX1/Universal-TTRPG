@@ -1,40 +1,53 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0a0b0f;
-  --panel: #14161a;
-  --card: #1d1f26;
-  --border: #2a2e37;
-  --border-hover: #3d4351;
-  --text: #e6e8eb;
-  --muted: #8a93a1;
-  --accent: #7aa2f7;
-  --accent-hover: #8cace0;
-  --danger: #f7768e;
-  --danger-hover: #ff899d;
-  --warning: #e0af68;
-  --success: #9ece6a;
-  --info: #bb9af7;
-  --sidebar-bg: #0f1115;
-  --sidebar-border: #22252e;
-  --sidebar-active-bg: rgba(122, 162, 247, 0.15);
+  /* Fantasy palette — warm ink, gilded brass, arcane amethyst */
+  --bg: #0f0d0f;
+  --panel: #1b1614;
+  --card: #231e18;
+  --border: #3b2e22;
+  --border-hover: #5c4430;
+  --text: #f0e6cf;
+  --muted: #a89a82;
+  --accent: #c9a86a;
+  --accent-hover: #ddbe86;
+  --danger: #e05a4f;
+  --danger-hover: #ff6b5c;
+  --warning: #d9a441;
+  --success: #7ec46a;
+  --info: #9b8ec4;
+  --sidebar-bg: #131011;
+  --sidebar-border: #2e2418;
+  --sidebar-active-bg: rgba(201, 168, 106, 0.14);
   --sidebar-active-text: var(--accent);
-  --top-bar-bg: rgba(20, 22, 26, 0.85);
+  --top-bar-bg: rgba(27, 22, 20, 0.9);
   --top-bar-border: var(--sidebar-border);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --shadow: 0 4px 10px -1px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.55), 0 6px 12px -2px rgba(0, 0, 0, 0.4);
   --transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  --radius: 8px;
-  --radius-sm: 6px;
-  --radius-lg: 12px;
+  --radius: 10px;
+  --radius-sm: 7px;
+  --radius-lg: 14px;
+  /* System serif for fantasy headings — offline-safe, no CSP change */
+  --font-display: Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
+  --font-body: 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', monospace;
 }
 
 * { box-sizing: border-box; }
 
+::selection {
+  background: rgba(201, 168, 106, 0.35);
+  color: var(--text);
+}
+
 body {
   margin: 0;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg);
+  font-family: var(--font-body);
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(201, 168, 106, 0.07), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(155, 142, 196, 0.06), transparent 55%),
+    var(--bg);
   color: var(--text);
 }
 
@@ -67,14 +80,30 @@ body {
   justify-content: space-between;
   padding: 1rem;
   border-bottom: 1px solid var(--sidebar-border);
+  position: relative;
+}
+
+/* Hairline gold rule under the header — fantasy flourish, GPU-cheap */
+.sidebar-header::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 106, 0.35), transparent);
+  pointer-events: none;
 }
 
 .sidebar-header .app-title {
   margin: 0;
-  font-size: 1.3rem;
+  font-family: var(--font-display);
+  font-size: 1.32rem;
   font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
   color: var(--accent);
-  letter-spacing: -0.02em;
+  text-shadow: 0 0 14px rgba(201, 168, 106, 0.25);
 }
 
 .app-logo {
@@ -214,7 +243,7 @@ body {
   background: var(--bg);
 }
 
-/* Top Bar */
+/* Top Bar — warm glass with a gilded bottom edge */
 .top-bar {
   display: flex;
   align-items: center;
@@ -226,6 +255,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 5;
+  box-shadow: 0 1px 0 rgba(201, 168, 106, 0.12);
 }
 
 .top-bar-left { display: flex; align-items: center; }
@@ -337,8 +367,24 @@ body {
 }
 
 .panel:hover { border-color: var(--border-hover); }
-.panel h2 { margin: 0 0 0.75rem; font-size: 1.1rem; color: var(--text); font-weight: 600; }
-.panel h3 { margin: 0.75rem 0 0.4rem; font-size: 0.95rem; color: var(--text); font-weight: 600; }
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-size: 1.05rem;
+  color: var(--text);
+  font-weight: 700;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(201, 168, 106, 0.14);
+}
+.panel h3 {
+  margin: 0.75rem 0 0.4rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--text);
+  font-weight: 600;
+}
 .panel h4 { margin: 0.5rem 0 0.3rem; font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 
 /* Forms */
@@ -430,9 +476,12 @@ button.muted:hover, button.secondary:hover {
 /* Card */
 .card-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 0.7rem 0.85rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent), var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem;
   transition: var(--transition);
+  box-shadow: inset 0 0 0 1px rgba(201, 168, 106, 0.06);
 }
 .card:hover { border-color: var(--border-hover); }
 .card.active-card {
@@ -768,7 +817,14 @@ button.rolling {
   border-radius: var(--radius); padding: 1.5rem;
   max-width: 500px; width: 100%; box-shadow: var(--shadow-lg);
 }
-.modal h3 { margin: 0 0 1rem; font-size: 1.2rem; color: var(--text); }
+.modal h3 {
+  margin: 0 0 1rem;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-size: 1.2rem;
+  color: var(--text);
+}
 .modal p { margin: 0.4rem 0; color: var(--text); }
 .modal .muted { color: var(--muted); }
 .modal .exceptional { color: var(--accent); font-weight: 600; }
@@ -1945,6 +2001,21 @@ details > div { margin-top: 0.5rem; padding-left: 0.5rem; }
 }
 
 /* ── Reduced Motion ─────────────────────────────────── */
+/* Fantasy scrollbars — warm brass on dark oak */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #5c4430 #1b1614;
+}
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: #1b1614; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #5c4430, #3b2e22);
+  border-radius: 999px;
+  border: 1px solid #2e2418;
+}
+*::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #6e5238, #4a3828); }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
