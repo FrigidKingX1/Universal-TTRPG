@@ -127,20 +127,51 @@ pub async fn apply_session_effects(
         }
         GameIntent::AdvanceClock { clock_id, ticks } => {
             let ticks_u = (*ticks).max(0) as u32;
-            let id: Option<String> = match clock_id {
-                Some(id) => Some(id.clone()),
-                None => state.repo.list_doom_clocks().await.ok().and_then(|clocks| {
-                    clocks.into_iter().find(|cl| cl.active).map(|cl| cl.id)
-                }),
-            };
-            if let Some(id) = id {
-                if let Ok(Some((current, max))) = state.repo.advance_doom_clock(&id, ticks_u).await {
-                    events.push(GameEvent::ClockAdvanced { clock_id: id, ticks: *ticks });
-                    if current == 0 {
-                        response.mechanical_events.push("DOOM CLOCK EXPIRED".to_string());
-                    } else {
-                        response.mechanical_events.push(format!("Doom clock: {current}/{max}"));
+            // Generic disambiguation (shared shape with Phase B narrative
+            // pronouns): resolve by exact id/name; if ambiguous or missing,
+            // surface candidates instead of guessing.
+            let clocks = state.repo.list_doom_clocks().await.unwrap_or_default();
+            let active: Vec<_> = clocks.iter().filter(|cl| cl.active).collect();
+            let resolution = match clock_id {
+                Some(id) => {
+                    let matches: Vec<_> =
+                        active.iter().filter(|cl| cl.id == *id || cl.label == *id).collect();
+                    match matches.len() {
+                        1 => Ok(*matches[0]),
+                        0 => Err(active.iter().map(|cl| cl.label.clone()).collect::<Vec<_>>()),
+                        _ => Err(matches.iter().map(|cl| cl.label.clone()).collect::<Vec<_>>()),
                     }
+                }
+                None => {
+                    if active.len() == 1 {
+                        Ok(active[0])
+                    } else {
+                        Err(active.iter().map(|cl| cl.label.clone()).collect::<Vec<_>>())
+                    }
+                }
+            };
+            match resolution {
+                Ok(cl) => {
+                    if let Ok(Some((current, max))) =
+                        state.repo.advance_doom_clock(&cl.id, ticks_u).await
+                    {
+                        events.push(GameEvent::ClockAdvanced { clock_id: cl.id.clone(), ticks: *ticks });
+                        if current == 0 {
+                            response.mechanical_events.push("DOOM CLOCK EXPIRED".to_string());
+                        } else {
+                            response.mechanical_events.push(format!("Doom clock: {current}/{max}"));
+                        }
+                    }
+                }
+                Err(candidates) if !candidates.is_empty() => {
+                    events.push(GameEvent::AmbiguousTarget {
+                        kind: "clock".into(),
+                        message: "Multiple doom clocks are active — specify which one.".into(),
+                        candidates,
+                    });
+                }
+                Err(_) => {
+                    response.mechanical_events.push("No active doom clock to advance.".to_string());
                 }
             }
         }

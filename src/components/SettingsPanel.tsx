@@ -23,6 +23,12 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [theme, setThemeState] = useState<ThemeSettings>(() => loadTheme());
 
+  const [tone, setTone] = useState("classic");
+
+  useEffect(() => {
+    backend.getTone().then(setTone).catch(() => {});
+  }, []);
+
   const updateTheme = useCallback((next: Partial<ThemeSettings>) => {
     setThemeState((prev) => {
       const merged = { ...prev, ...next };
@@ -201,6 +207,34 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
           <section className="settings-section">
             <h3>Appearance</h3>
+
+            <div className="form-group">
+              <label htmlFor="tone-select">Narrative Tone</label>
+              <div className="model-selector">
+                <select
+                  id="tone-select"
+                  className="form-select"
+                  value={tone}
+                  onChange={async (e) => {
+                    const t = e.target.value;
+                    setTone(t);
+                    try {
+                      await backend.setTone(t);
+                      showToast(`Tone set to ${t}`, "success");
+                    } catch (err) {
+                      showToast(`Failed to set tone: ${err}`, "error");
+                    }
+                  }}
+                >
+                  {["classic", "gritty", "heroic", "comedic", "cosmic"].map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="form-hint">
+                Shapes the DM's narration style — injected into every generation.
+              </p>
+            </div>
 
             <div className="form-group">
               <label>Accent Color</label>

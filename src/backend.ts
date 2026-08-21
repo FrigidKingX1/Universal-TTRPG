@@ -179,6 +179,8 @@ export const backend = {
     invoke<{ action: string[]; subject: string[]; descriptor: string[]; focus: string[] }>(
       "meaning_table_words",
     ),
+  getTone: () => invoke<string>("get_tone"),
+  setTone: (tone: string) => invoke<void>("set_tone", { tone }),
 
   // Seed
   seedDefaults: () => invoke<void>("seed_defaults"),
