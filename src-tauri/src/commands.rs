@@ -739,6 +739,7 @@ pub async fn delete_exploration_node(state: State<'_, AppState>, id: String) -> 
 // ---------- Combat -----------------------------------------------------
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn combat_attack(
     state: State<'_, AppState>,
     app: AppHandle,
@@ -747,10 +748,16 @@ pub async fn combat_attack(
     action_id: String,
     prereq: Option<PrerequisiteCheck>,
     scene_id: Option<String>,
+    attacker_conditions: Option<Vec<String>>,
+    target_conditions: Option<Vec<String>>,
 ) -> CmdResult<EngineOutcome> {
     let mut dice = DiceEngine::new();
-    let actor = combatant_from_value(&attacker)?;
+    let mut actor = combatant_from_value(&attacker)?;
     let mut victim = combatant_from_value(&target)?;
+    // Thread live condition tags into the engine so advantage/disadvantage
+    // semantics actually fire (Poisoned → disadv, Invisible → adv, etc.).
+    actor.conditions = attacker_conditions.unwrap_or_default();
+    victim.conditions = target_conditions.unwrap_or_default();
     let action = state
         .repo
         .load_action(&action_id)
@@ -829,6 +836,40 @@ pub async fn initiative(
     let entries = roll_initiative(&mut dice, &participants, &formula).map_err(err)?;
     emit(&app, "combat:initiative", &entries);
     Ok(entries)
+}
+
+/// Heal a combatant through the engine (max-clamped, revives at >0 HP,
+/// clears conditions). Returns the new HP and status.
+#[tauri::command]
+pub async fn combat_heal(
+    app: AppHandle,
+    target: Value,
+    amount: i32,
+) -> CmdResult<serde_json::Value> {
+    let mut victim = combatant_from_value(&target)?;
+    let healed = auto_dm_core::engine::apply_healing(&mut victim, amount);
+    emit(
+        &app,
+        "combatant:state",
+        &serde_json::json!({
+            "id": victim.id,
+            "name": victim.name,
+            "hit_points": victim.hit_points,
+            "status": victim.status,
+        }),
+    );
+    Ok(serde_json::json!({
+        "healed": healed,
+        "hit_points": victim.hit_points,
+        "status": victim.status,
+    }))
+}
+
+/// Expose the engine's canonical Mythic meaning tables so the UI reference
+/// always matches what the oracle actually samples.
+#[tauri::command]
+pub fn meaning_table_words() -> CmdResult<auto_dm_core::oracle::MeaningTable> {
+    Ok(auto_dm_core::oracle::MeaningTable::default_table())
 }
 
 // ---------- Misc -------------------------------------------------------

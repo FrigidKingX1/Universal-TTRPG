@@ -291,6 +291,8 @@ pub fn run() {
             commands::delete_exploration_node,
             commands::combat_attack,
             commands::initiative,
+            commands::combat_heal,
+            commands::meaning_table_words,
             commands::dm_resolve,
             commands::seed_defaults,
             commands::ping,

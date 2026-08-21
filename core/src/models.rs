@@ -275,6 +275,7 @@ pub enum DamageType {
     Radiant,
     Force,
     Thunder,
+    Acid,
 }
 
 impl DamageType {
@@ -292,6 +293,7 @@ impl DamageType {
             Self::Radiant => "radiant",
             Self::Force => "force",
             Self::Thunder => "thunder",
+            Self::Acid => "acid",
         }
     }
 
@@ -309,6 +311,7 @@ impl DamageType {
             "radiant" => Some(Self::Radiant),
             "force" => Some(Self::Force),
             "thunder" => Some(Self::Thunder),
+            "acid" => Some(Self::Acid),
             _ => None,
         }
     }

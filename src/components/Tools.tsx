@@ -94,33 +94,16 @@ export function OraclePanel() {
   });
   const [odds, setOdds] = useState("fifty_fifty");
   const [showTable, setShowTable] = useState(false);
+  // Load the engine's canonical meaning tables so the reference always
+  // matches what the oracle actually samples.
+  const [tables, setTables] = useState<{ action: string[]; subject: string[] } | null>(null);
 
-  const ACTIONS = [
-    "Altered", "Attitude", "Arrival", "Betrayal", "Communication", "Complication",
-    "Council", "Danger", "Discovery", "Enemy", "Expedition", "Favor",
-    "Flow", "Goal", "Grave", "Guard", "Harm", "Hatred",
-    "Health", "Help", "Hierarchy", "Humor", "Inattention", "Injury",
-    "Interest", "Intrigue", "Journey", "Judge", "Knowledge", "Leadership",
-    "Location", "Military", "Move", "Mundane", "Nature", "Neutral",
-    "Object", "Obstacle", "Open", "Oppose", "Outdoor", "Peace",
-    "Physical", "Plot", "Possessions", "Prison", "Promise", "Reason",
-    "Report", "Resistance", "Revival", "Ruin", "Rumor", "Setback",
-    "Siege", "Stranger", "Struggle", "Supply", "Suspense", "Theme",
-    "Time", "Tradition", "Trap", "Trouble", "Truth", "Use",
-    "Vengeance", "Victory", "Vulnerability", "Waste", "Weapon", "Weather",
-  ];
-  const SUBJECTS = [
-    "Adversity", "Allies", "An enemy", "An object", "Bad news", "Benefits",
-    "Bounty", "Capabilities", "Clues", "Communication", "Complications", "Disaster",
-    "Evidence", "Familiar face", "Forgotten lore", "Friend", "Grants", "Guardian",
-    "Harm", "Helpers", "Information", "Interruption", "Location", "Messengers",
-    "Misfortune", "Mundane thing", "Nature", "NPC", "Obstacle", "Ominous signs",
-    "Opposition", "Outdoor", "Pain", "Peace", "Person", "Possessions",
-    "Power", "Prize", "Rival", "Rumor", "Ruin", "Setback",
-    "Something", "Stress", "Success", "Surprise", "Threat", "Time",
-    "Tools", "Trouble", "Truth", "Unknown", "Valuable", "Vehicle",
-    "Vulnerability", "Weapon", "Weather", "Work", "Wound", "Your objective",
-  ];
+  useEffect(() => {
+    backend
+      .meaningTableWords()
+      .then((t) => setTables({ action: t.action, subject: t.subject }))
+      .catch(() => {});
+  }, []);
 
   const fate = async () => {
     try {
@@ -211,15 +194,15 @@ export function OraclePanel() {
         {showTable && (
           <div className="meaning-tables">
             <div className="meaning-col">
-              <h4>Actions ({ACTIONS.length})</h4>
+              <h4>Actions ({(tables?.action.length ?? 0)})</h4>
               <div className="meaning-grid">
-                {ACTIONS.map((a) => <span key={a} className="meaning-entry">{a}</span>)}
+                {(tables?.action ?? []).map((a) => <span key={a} className="meaning-entry">{a}</span>)}
               </div>
             </div>
             <div className="meaning-col">
-              <h4>Subjects ({SUBJECTS.length})</h4>
+              <h4>Subjects ({(tables?.subject.length ?? 0)})</h4>
               <div className="meaning-grid">
-                {SUBJECTS.map((s) => <span key={s} className="meaning-entry">{s}</span>)}
+                {(tables?.subject ?? []).map((s) => <span key={s} className="meaning-entry">{s}</span>)}
               </div>
             </div>
           </div>

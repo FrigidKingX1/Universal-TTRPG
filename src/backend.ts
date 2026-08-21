@@ -153,6 +153,8 @@ export const backend = {
     actionId: string,
     prereq: PrerequisiteCheck | null,
     sceneId?: string,
+    attackerConditions?: string[],
+    targetConditions?: string[],
   ) =>
     invoke<EngineOutcome>("combat_attack", {
       attacker,
@@ -160,12 +162,23 @@ export const backend = {
       actionId,
       prereq,
       sceneId,
+      attackerConditions: attackerConditions ?? [],
+      targetConditions: targetConditions ?? [],
     }),
   initiative: (
     combatants: (CharacterProfile | EncounterStatBlock)[],
     formula: string,
   ) =>
     invoke<InitiativeEntry[]>("initiative", { combatants, formula }),
+  combatHeal: (target: CharacterProfile | EncounterStatBlock, amount: number) =>
+    invoke<{ healed: number; hit_points: number; status: string | null }>("combat_heal", {
+      target,
+      amount,
+    }),
+  meaningTableWords: () =>
+    invoke<{ action: string[]; subject: string[]; descriptor: string[]; focus: string[] }>(
+      "meaning_table_words",
+    ),
 
   // Seed
   seedDefaults: () => invoke<void>("seed_defaults"),

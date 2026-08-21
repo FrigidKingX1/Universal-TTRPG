@@ -700,7 +700,23 @@ export const useStore = create<AutoDmState>()(
   runAttack: async (attacker, target, actionId, prereq) => {
     const sceneId = get().activeSceneId ?? undefined;
     const prevHp = get().combatantStates[target.id]?.hit_points ?? ("resource_pools" in target ? target.resource_pools.hp?.current ?? 0 : target.hit_points.current);
-    const outcome = await backend.combatAttack(attacker, target, actionId, prereq ?? null, sceneId);
+    // Overlay live combat HP so wounded targets don't reset to DB values,
+    // and thread live conditions so advantage/disadvantage fires in the engine.
+    const states = get().combatantStates;
+    const liveTarget = states[target.id]
+      ? ("hit_points" in target
+        ? { ...target, hit_points: { ...target.hit_points, current: states[target.id].hit_points } }
+        : { ...target, resource_pools: { ...target.resource_pools, hp: { ...target.resource_pools.hp!, current: states[target.id].hit_points } } })
+      : target;
+    const outcome = await backend.combatAttack(
+      attacker,
+      liveTarget,
+      actionId,
+      prereq ?? null,
+      sceneId,
+      get().combatantConditions[attacker.id] ?? [],
+      get().combatantConditions[target.id] ?? [],
+    );
     set((s) => ({
       lastCombat: outcome,
       lastHpChange: { entityId: target.id, previousHp: prevHp, newHp: outcome.target_hp_remaining },
@@ -767,6 +783,11 @@ export const useStore = create<AutoDmState>()(
       const max = c.resource_pools.hp?.maximum ?? 10;
       const current = currentStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       if (current < max) {
+        // Route through the engine's apply_healing: max-clamped, revives,
+        // clears conditions — one source of truth for healing rules.
+        try {
+          await backend.combatHeal(c, max - current);
+        } catch { /* fall back to direct save below */ }
         await s.saveCharacter({
           ...c,
           resource_pools: {
@@ -802,6 +823,9 @@ export const useStore = create<AutoDmState>()(
       if (current < max && halfMax > 0) {
         const restored = Math.min(halfMax, max - current);
         const newHp = current + restored;
+        try {
+          await backend.combatHeal(c, restored);
+        } catch { /* fall through to direct save */ }
         await s.saveCharacter({
           ...c,
           resource_pools: {
@@ -1603,7 +1627,12 @@ export async function subscribeToEvents() {
             }
           : c,
       );
-      useStore.setState({ combatantStates: updated, characters });
+      // Keep monster HP in sync too so damage accumulates across attacks
+      // instead of resetting to DB values on every swing.
+      const statBlocks = s.statBlocks.map((b) =>
+        b.id === p.id ? { ...b, hit_points: { ...b.hit_points, current: p.hit_points } } : b,
+      );
+      useStore.setState({ combatantStates: updated, characters, statBlocks });
       persistCombat();
     }),
     listen<Scene>("scene:created", async () => {

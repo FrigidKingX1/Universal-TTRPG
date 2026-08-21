@@ -387,9 +387,9 @@ pub fn execute_attack(
             attack_detail = Some(roll.detail.clone());
 
             // Natural 20 always hits (and crits); natural 1 always misses.
-            let nat_max = roll.raw_rolls.iter().filter(|r| **r == 20).count() > 0
+            let nat_max = roll.kept_rolls.iter().filter(|r| **r == 20).count() > 0
                 && base.trim_start().starts_with("1d20");
-            let nat_min = roll.raw_rolls.contains(&1)
+            let nat_min = roll.kept_rolls.contains(&1)
                 && base.trim_start().starts_with("1d20");
 
             let target_value = if resolution.resolution_type == ResolutionType::OpposedRoll {
@@ -458,9 +458,9 @@ pub fn execute_attack(
             attack_detail = Some(roll.detail.clone());
             let dc = resolve_defense(action, target)?;
 
-            let nat_max = roll.raw_rolls.iter().filter(|r| **r == 20).count() > 0
+            let nat_max = roll.kept_rolls.iter().filter(|r| **r == 20).count() > 0
                 && base.trim_start().starts_with("1d20");
-            let nat_min = roll.raw_rolls.contains(&1)
+            let nat_min = roll.kept_rolls.contains(&1)
                 && base.trim_start().starts_with("1d20");
 
             let hit = if nat_min {
