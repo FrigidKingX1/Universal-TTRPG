@@ -8,7 +8,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use auto_dm_engine::{apply_session_effects, LogEntry, Repository};
+use auto_dm_engine::{apply_session_effects, CampaignExport, LogEntry, Repository};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -55,6 +55,7 @@ async fn main() {
         .route("/sessions/{session_id}/combat/join", post(join_combat_queue))
         .route("/sessions/{session_id}/combat/skip", post(skip_turn))
         .route("/sessions/{session_id}/combat/status", get(combat_status))
+        .route("/sessions/{session_id}/campaign", post(import_campaign))
         .with_state(state);
 
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());
@@ -239,6 +240,44 @@ async fn list_logs(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(logs))
+}
+
+// ── Campaign import (host uploads campaign data to session DB) ─────
+
+async fn import_campaign(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(data): Json<CampaignExport>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| {
+            (StatusCode::UNAUTHORIZED, e)
+        })?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+
+    // Only the host can import campaign data.
+    let players = session.players.read().await;
+    let is_host = players.first().map_or(false, |p| p.id == player_id);
+    drop(players);
+    if !is_host {
+        return Err((StatusCode::FORBIDDEN, "Only the host can import campaign data".into()));
+    }
+
+    // Import into the session's database.
+    session.game.repo.import_campaign(&data).await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Import failed: {e}"))
+    })?;
+
+    // Broadcast resync so all connected clients pick up the new data.
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(WsMessage::Resync(resync));
+
+    tracing::info!(session = %session_id, scenes = data.scenes.len(), "Campaign imported");
+    Ok(Json(json!({ "ok": true })))
 }
 
 // ── Combat management (C4) ───────────────────────────────────────────

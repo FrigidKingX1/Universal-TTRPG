@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { backend } from "./backend";
+import { isInMultiplayerSession, useMultiplayerStore } from "./multiplayer";
 import type {
   ActionDefinition,
   CampaignGenerationResult,
@@ -671,7 +672,8 @@ export const useStore = create<AutoDmState>()(
   resolveDmAction: async (playerAction) => {
     const s = useStore.getState();
     const scene = s.scenes.find((sc) => sc.id === s.activeSceneId);
-    const response = await backend.dmResolve({
+
+    const request = {
       scene_summary: scene?.summary_text ?? scene?.title ?? "",
       player_action: playerAction,
       chaos_factor: scene?.chaos_factor ?? 5,
@@ -680,29 +682,46 @@ export const useStore = create<AutoDmState>()(
       veils: [],
       scene_id: s.activeSceneId ?? undefined,
       num_predict: get().ollama.numPredict,
-    });
-    set((s) => ({ lastDm: response, dmHistory: [...s.dmHistory.slice(-19), response] }));
-    if (scene && response.narrative) {
-      // Auto-update scene summary with the latest narrative.
-      try {
-        const newSummary = response.narrative.slice(0, 500);
-        await backend.updateSceneSummary(scene.id, newSummary);
-        set((s) => ({
-          scenes: s.scenes.map((sc) =>
-            sc.id === scene.id ? { ...sc, summary_text: newSummary } : sc,
-          ),
-        }));
-      } catch {
-        // best-effort
-      }
-      try {
-        await backend.appendLog(scene.id, "Auto-DM", response.narrative);
-      } catch {
-        // Best-effort log write; don't block the DM flow.
-      }
-      await get().ingestToMemory("Auto-DM", response.narrative);
+    };
+
+    let response: DmResponse;
+
+    if (isInMultiplayerSession()) {
+      const mp = useMultiplayerStore.getState();
+      response = await mp.resolveAction(request);
+    } else {
+      response = await backend.dmResolve(request);
     }
-    await get().ingestToMemory("Player", playerAction);
+
+    set((s) => ({ lastDm: response, dmHistory: [...s.dmHistory.slice(-19), response] }));
+
+    if (scene && response.narrative) {
+      // In multiplayer mode the server handles scene summary + log writes.
+      if (!isInMultiplayerSession()) {
+        try {
+          const newSummary = response.narrative.slice(0, 500);
+          await backend.updateSceneSummary(scene.id, newSummary);
+          set((s) => ({
+            scenes: s.scenes.map((sc) =>
+              sc.id === scene.id ? { ...sc, summary_text: newSummary } : sc,
+            ),
+          }));
+        } catch {
+          // best-effort
+        }
+        try {
+          await backend.appendLog(scene.id, "Auto-DM", response.narrative);
+        } catch {
+          // Best-effort log write; don't block the DM flow.
+        }
+      }
+    }
+
+    if (!isInMultiplayerSession()) {
+      await get().ingestToMemory("Auto-DM", response.narrative);
+      await get().ingestToMemory("Player", playerAction);
+    }
+
     try {
       await get().refreshLogs();
     } catch {
@@ -1558,8 +1577,9 @@ export const useStore = create<AutoDmState>()(
     if (!scene) return;
 
     set((s) => ({ dmIntent: { ...s.dmIntent, loading: true, streamingText: "" } }));
+
     try {
-      const response = await backend.processDmIntent({
+      const request = {
         scene_summary: scene.summary_text || scene.title,
         player_action: input,
         chaos_factor: scene.chaos_factor,
@@ -1568,7 +1588,19 @@ export const useStore = create<AutoDmState>()(
         veils: [],
         scene_id: activeSceneId ?? undefined,
         num_predict: get().ollama.numPredict,
-      });
+      };
+
+      let response: DmResponse;
+
+      if (isInMultiplayerSession()) {
+        // Route through the server — the server handles LLM, effects, broadcast.
+        const mp = useMultiplayerStore.getState();
+        response = await mp.resolveAction(request);
+        // Server handles scene summary, log writes, memory — skip local DB writes.
+      } else {
+        // Solo path — Tauri IPC to local engine.
+        response = await backend.processDmIntent(request);
+      }
 
       set({ dmIntent: { loading: false, lastResponse: response, streamingText: "" } });
 
@@ -1611,12 +1643,18 @@ export const useStore = create<AutoDmState>()(
             sc.id === activeSceneId ? { ...sc, chaos_factor: response.chaos_factor } : sc
           ),
         }));
-        try {
-          await backend.updateSceneChaosFactor(scene.id, response.chaos_factor);
-        } catch { /* best-effort */ }
+        // In multiplayer mode the server persists this; solo needs local write.
+        if (!isInMultiplayerSession()) {
+          try {
+            await backend.updateSceneChaosFactor(scene.id, response.chaos_factor);
+          } catch { /* best-effort */ }
+        }
       }
 
-      await get().refreshLogs();
+      // Solo: refresh logs from local DB. Multiplayer: server pushes via resync.
+      if (!isInMultiplayerSession()) {
+        await get().refreshLogs();
+      }
     } catch (e) {
       get().setError(String(e));
       set({ dmIntent: { loading: false, lastResponse: null, streamingText: "" } });

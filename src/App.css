@@ -3058,6 +3058,16 @@ details > div { margin-top: 0.5rem; padding-left: 0.5rem; }
   color: var(--muted);
 }
 
+.lobby-import-status {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  color: var(--success);
+  background: rgba(126, 196, 106, 0.1);
+  border: 1px solid rgba(126, 196, 106, 0.25);
+  border-radius: 6px;
+}
+
 /* ── Player List ─────────────────────────────────────────────────── */
 
 .player-list {

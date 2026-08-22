@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Wand2, BookOpen, Users, Skull, Swords, Wrench, Castle, HelpCircle, Settings, ChevronLeft, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { useStore, subscribeToEvents } from "./store";
-import { useMultiplayerStore } from "./multiplayer";
+import { useMultiplayerStore, initMultiplayerBridge } from "./multiplayer";
 import { SessionLobby } from "./components/SessionLobby";
 import { PlayerList } from "./components/PlayerList";
 import { TurnIndicator } from "./components/TurnIndicator";
@@ -91,11 +91,26 @@ function App() {
   const mpSetLobbyOpen = useMultiplayerStore((s) => s.setLobbyOpen);
   const mpJoinCode = useMultiplayerStore((s) => s.joinCode);
   const mpGameMode = useMultiplayerStore((s) => s.gameMode);
+  const mpIsHost = useMultiplayerStore((s) => s.isHost);
+  const mpRestoreSession = useMultiplayerStore((s) => s.restoreSession);
 
   useEffect(() => {
+    // Wire the multiplayer→main store bridge once on mount.
+    initMultiplayerBridge(
+      () => useStore.getState(),
+      (fn) => useStore.setState(fn),
+    );
     void bootstrap();
     void subscribeToEvents();
+    mpRestoreSession();
   }, [bootstrap]);
+
+  // Non-host players in multiplayer are forced into tabletop mode.
+  useEffect(() => {
+    if (mpSessionId && !mpIsHost && appMode === "setup") {
+      setAppMode("tabletop");
+    }
+  }, [mpSessionId, mpIsHost, appMode, setAppMode]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {

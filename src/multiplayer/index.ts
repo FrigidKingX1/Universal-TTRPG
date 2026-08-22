@@ -1,5 +1,10 @@
 export { MultiplayerClient } from "./client";
-export { useMultiplayerStore } from "./store";
+export {
+  useMultiplayerStore,
+  isInMultiplayerSession,
+  getMultiplayerClient,
+  initMultiplayerBridge,
+} from "./store";
 export type {
   GameEvent,
   GameMode,

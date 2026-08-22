@@ -3,7 +3,8 @@
 
 import { useState } from "react";
 import { useMultiplayerStore } from "../multiplayer";
-import { Users, Plus, LogIn, X, Copy, Check } from "lucide-react";
+import { backend } from "../backend";
+import { Users, Plus, LogIn, X, Copy, Check, Upload } from "lucide-react";
 
 export function SessionLobby() {
   const lobbyOpen = useMultiplayerStore((s) => s.lobbyOpen);
@@ -17,6 +18,7 @@ export function SessionLobby() {
   const joinCode = useMultiplayerStore((s) => s.joinCode);
   const isHost = useMultiplayerStore((s) => s.isHost);
   const leaveSession = useMultiplayerStore((s) => s.leaveSession);
+  const importCampaign = useMultiplayerStore((s) => s.importCampaign);
 
   const [tab, setTab] = useState<"create" | "join">("join");
   const [title, setTitle] = useState("Campaign");
@@ -25,6 +27,8 @@ export function SessionLobby() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
 
   if (!lobbyOpen) return null;
 
@@ -61,6 +65,21 @@ export function SessionLobby() {
     }
   };
 
+  const handleImportCampaign = async () => {
+    setImporting(true);
+    setImportStatus(null);
+    setError(null);
+    try {
+      const data = await backend.exportCampaign();
+      await importCampaign(data);
+      setImportStatus("Campaign loaded successfully!");
+    } catch (e) {
+      setError(`Import failed: ${e}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // If already in a session, show session info.
   if (sessionId) {
     return (
@@ -94,6 +113,18 @@ export function SessionLobby() {
                 {isHost ? "You are the host" : "You are a player"}
               </div>
             </div>
+            {isHost && (
+              <button
+                className="btn btn-primary"
+                onClick={handleImportCampaign}
+                disabled={importing}
+              >
+                <Upload size={14} />
+                {importing ? "Loading Campaign..." : "Load Campaign to Server"}
+              </button>
+            )}
+            {importStatus && <div className="lobby-import-status">{importStatus}</div>}
+            {error && <div className="lobby-error">{error}</div>}
             <button className="btn btn-danger" onClick={leaveSession}>
               Leave Session
             </button>

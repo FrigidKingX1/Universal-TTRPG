@@ -33,7 +33,16 @@ export type GameEvent =
   | { type: "npc_spoke"; speaker: string }
   | { type: "clock_advanced"; clock_id: string; ticks: number }
   | { type: "item_added"; name: string; quantity: number }
-  | { type: "damage_applied"; target: string; amount: number }
+  | {
+      type: "damage_applied";
+      target_id: string;
+      target_name: string;
+      amount: number;
+      temp_absorbed: number;
+      hp_remaining: number;
+      defeated: boolean;
+      shock: boolean;
+    }
   | { type: "condition_applied"; target: string; condition: string }
   | { type: "ambiguous_target"; kind: string; message: string; candidates: string[] }
   | { type: "rule_answered"; question: string };

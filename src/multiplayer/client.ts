@@ -1,6 +1,8 @@
 // WebSocket client for the auto-dm multiplayer server.
-// Handles connection, resync, event dispatch, and ping/pong heartbeat.
+// Handles connection, resync, event dispatch, ping/pong heartbeat,
+// and HTTP resolve (DM actions routed through the server).
 
+import type { DmRequest, DmResponse } from "../types";
 import type { GameEvent, ResyncPayload, WsMessage } from "./types";
 
 export type WsEventHandler = (event: GameEvent) => void;
@@ -14,6 +16,9 @@ const RECONNECT_MAX_MS = 30_000;
 export class MultiplayerClient {
   private ws: WebSocket | null = null;
   private url: string;
+  private httpBase: string;
+  private sessionId: string;
+  private token: string;
   private onEvent: WsEventHandler;
   private onResync: ResyncHandler;
   private onConnection: ConnectionHandler;
@@ -33,6 +38,9 @@ export class MultiplayerClient {
   }) {
     // Strip trailing slash from server URL.
     const base = opts.serverUrl.replace(/\/+$/, "");
+    this.httpBase = base;
+    this.sessionId = opts.sessionId;
+    this.token = opts.token;
     this.url = `${base}/sessions/${opts.sessionId}/ws?token=${encodeURIComponent(opts.token)}`;
     this.onEvent = opts.onEvent;
     this.onResync = opts.onResync;
@@ -93,6 +101,42 @@ export class MultiplayerClient {
       this.reconnectTimer = null;
     }
     this.cleanup();
+  }
+
+  // ── HTTP helpers ──────────────────────────────────────────────────
+
+  /** POST a DM action through the server's /resolve endpoint. */
+  async resolve(request: DmRequest): Promise<DmResponse> {
+    return this.httpPost<DmResponse>("/resolve", request);
+  }
+
+  /** Generic authenticated POST to the session's REST API. */
+  async httpPost<T>(path: string, body?: unknown): Promise<T> {
+    const res = await fetch(`${this.httpBase}/sessions/${this.sessionId}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Server ${path} failed (${res.status}): ${text}`);
+    }
+    return res.json() as Promise<T>;
+  }
+
+  /** Generic authenticated GET to the session's REST API. */
+  async httpGet<T>(path: string): Promise<T> {
+    const res = await fetch(`${this.httpBase}/sessions/${this.sessionId}${path}`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Server ${path} failed (${res.status}): ${text}`);
+    }
+    return res.json() as Promise<T>;
   }
 
   get connected(): boolean {
