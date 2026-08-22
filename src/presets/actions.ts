@@ -78,6 +78,8 @@ const mkHeal = (
       on_success: { formula, damage_type: undefined, applied_status: undefined, heal: true },
     },
   },
+  // All healing spells draw from the caster's level-1 spell slot pool.
+  slot_cost: { pool: "spell_slots_l1", amount: 1 },
 });
 
 /** Spell-like abilities for casters (attack-roll approximation of save spells). */

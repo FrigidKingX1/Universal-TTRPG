@@ -858,6 +858,7 @@ pub async fn seed_defaults(state: State<'_, GameState>) -> CmdResult<()> {
             shape: None,
             size_feet: 0,
         }),
+        slot_cost: None,
         resolution: Resolution {
             resolution_type: ResolutionType::TargetDc,
             primary_attribute: Some("STR".to_string()),
@@ -886,6 +887,7 @@ pub async fn seed_defaults(state: State<'_, GameState>) -> CmdResult<()> {
             shape: None,
             size_feet: 0,
         }),
+        slot_cost: None,
         resolution: Resolution {
             resolution_type: ResolutionType::TargetDc,
             primary_attribute: Some("DEX".to_string()),

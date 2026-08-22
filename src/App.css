@@ -854,6 +854,15 @@ button.rolling {
 
 .exceptional { color: var(--accent); font-weight: 600; }
 .heal-text { color: #4caf7d; font-weight: 600; }
+.pool-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
+.pool-chip {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+.pool-chip.pool-empty { opacity: 0.5; }
 
 /* DM Response */
 .dm-response { margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }

@@ -93,6 +93,7 @@ Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
 
 import { useStore, newCharacter, newStatBlock } from "../store";
 import { PRESET_CLASSES, findClassByArchetype, applyClassTemplate } from "../presets/classes";
+import { findPresetAction } from "../presets/actions";
 
 describe("Store pure logic", () => {
   beforeEach(() => {
@@ -500,5 +501,61 @@ describe("Class templates", () => {
       mocks.saveCharacter.mockImplementation((c) => Promise.resolve(c));
       mocks.listCharacters.mockImplementation(() => Promise.resolve([]));
     }
+  });
+});
+
+describe("Spell slot consumption", () => {
+  const makeCleric = () =>
+    applyClassTemplate(newCharacter("Mira"), PRESET_CLASSES.find((c) => c.id === "cleric")!);
+
+  const setUp = (cleric: ReturnType<typeof makeCleric>) => {
+    const cure = findPresetAction("act_cure_wounds")!;
+    const goblin = newStatBlock("Goblin Snarl");
+    goblin.armor_class = 10;
+    useStore.setState({ characters: [cleric], actions: [cure], statBlocks: [goblin] });
+    return { cure, goblin };
+  };
+
+  it("casting Cure Wounds expends one level-1 spell slot", async () => {
+    const { backend } = await import("../backend");
+    const saved: { resource_pools?: Record<string, { current?: number }> }[] = [];
+    vi.mocked(backend.saveCharacter).mockImplementation(async (c) => {
+      saved.push(c as never);
+      return c;
+    });
+    const cleric = makeCleric();
+    expect(cleric.resource_pools.spell_slots_l1?.current).toBe(2);
+    const { goblin } = setUp(cleric);
+
+    await useStore.getState().runAttack(cleric, goblin, "act_cure_wounds");
+
+    expect(vi.mocked(backend.combatAttack)).toHaveBeenCalledTimes(1);
+    const last = saved[saved.length - 1];
+    expect(last?.resource_pools?.spell_slots_l1?.current).toBe(1);
+  });
+
+  it("casting with an empty pool is blocked before the attack fires", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.combatAttack).mockClear();
+    const cleric = makeCleric();
+    cleric.resource_pools.spell_slots_l1!.current = 0;
+    setUp(cleric);
+
+    await useStore.getState().runAttack(cleric, cleric, "act_cure_wounds");
+
+    expect(vi.mocked(backend.combatAttack)).not.toHaveBeenCalled();
+  });
+
+  it("monsters and cantrips ignore slot costs", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.combatAttack).mockClear();
+    const { goblin } = setUp(makeCleric());
+    // A monster casting a slot-costed action has no profile pool to spend.
+    const lurker = newStatBlock("Healing Lurker");
+    lurker.actions = ["act_cure_wounds"];
+    useStore.setState({ statBlocks: [goblin, lurker] });
+
+    await useStore.getState().runAttack(lurker, goblin, "act_cure_wounds");
+    expect(vi.mocked(backend.combatAttack)).toHaveBeenCalledTimes(1);
   });
 });

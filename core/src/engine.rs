@@ -745,6 +745,7 @@ mod tests {
                 shape: None,
                 size_feet: 0,
             }),
+            slot_cost: None,
             resolution: Resolution {
                 resolution_type: ResolutionType::ContestedCheck,
                 primary_attribute: Some("STR".to_string()),
@@ -850,6 +851,7 @@ mod tests {
                 shape: None,
                 size_feet: 0,
             }),
+            slot_cost: None,
             resolution: Resolution {
                 resolution_type: ResolutionType::GuaranteedEffect,
                 primary_attribute: Some("WIS".to_string()),
@@ -955,6 +957,7 @@ mod tests {
             name: "Cairn Swing".to_string(),
             action_cost: ActionCost { cost_type: CostType::Action, amount: 1 },
             targeting: None,
+            slot_cost: None,
             resolution: Resolution {
                 resolution_type: ResolutionType::GuaranteedEffect,
                 primary_attribute: Some("STR".to_string()),

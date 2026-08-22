@@ -166,6 +166,9 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const [attrs, setAttrs] = useState(profile.attributes);
   const [hp, setHp] = useState(profile.resource_pools.hp?.current ?? 10);
   const [maxHp, setMaxHp] = useState(profile.resource_pools.hp?.maximum ?? 10);
+  // Non-HP resource pools (spell slots, rage uses…), edited via level-up/rests.
+  const [extraPools, setExtraPools] = useState(() =>
+    Object.fromEntries(Object.entries(profile.resource_pools).filter(([k]) => k !== "hp")));
   const [inventory, setInventory] = useState<InventoryItem[]>(profile.inventory);
   const [abilities, setAbilities] = useState(profile.abilities);
 
@@ -179,6 +182,7 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
     setAttrs(profile.attributes);
     setHp(profile.resource_pools.hp?.current ?? 10);
     setMaxHp(profile.resource_pools.hp?.maximum ?? 10);
+    setExtraPools(Object.fromEntries(Object.entries(profile.resource_pools).filter(([k]) => k !== "hp")));
     setInventory(profile.inventory);
     setAbilities(profile.abilities);
   }, [profile]);
@@ -206,6 +210,7 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
       ),
       resource_pools: {
         ...profile.resource_pools,
+        ...extraPools,
         hp: {
           current: Math.max(0, hp),
           maximum: Math.max(1, maxHp),
@@ -265,6 +270,12 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
     setLevel(newLevel);
     setMaxHp(maxHp + hpGain);
     setHp(hp + hpGain);
+    // Caster progression: every resource pool grows by one use per level.
+    setExtraPools((pools) =>
+      Object.fromEntries(
+        Object.entries(pools).map(([k, p]) => [k, { ...p, maximum: p.maximum + 1 }]),
+      ),
+    );
   };
 
   const addAbility = () => {
@@ -370,6 +381,23 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
           style={{ transform: `scaleX(${Math.max(0, Math.min(100, (hp / maxHp) * 100)) / 100})` }}
         />
       </div>
+
+      {Object.keys(extraPools).length > 0 && (
+        <>
+          <h3>Resources</h3>
+          <div className="pool-chips">
+            {Object.entries(extraPools).map(([name, p]) => (
+              <span
+                key={name}
+                className={`pool-chip ${p.current === 0 ? "pool-empty" : ""}`}
+                title={`${p.current}/${p.maximum} — resets on ${String(p.reset_condition).replace(/_/g, " ")}`}
+              >
+                {name.replace(/_/g, " ")}: <strong>{p.current}/{p.maximum}</strong>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
 
       <h3>Inventory</h3>
       <p className="muted" style={{ fontSize: "0.8rem", margin: "0 0 0.4rem 0" }}>

@@ -94,11 +94,19 @@ export interface Resolution {
   outcomes?: Outcomes;
 }
 
+export interface SlotCost {
+  /** ResourcePool name on the caster's profile, e.g. "spell_slots_l1". */
+  pool: string;
+  amount: number;
+}
+
 export interface ActionDefinition {
   id: string;
   name: string;
   action_cost: ActionCost;
   targeting?: Targeting;
+  /** Resource cost drawn from the caster's profile pools (spell slots etc.). */
+  slot_cost?: SlotCost;
   resolution: Resolution;
 }
 

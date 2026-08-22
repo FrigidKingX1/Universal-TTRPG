@@ -109,7 +109,18 @@ pub struct ActionDefinition {
     pub action_cost: ActionCost,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub targeting: Option<Targeting>,
+    /// Resource cost drawn from the caster's profile pools (spell slots etc.).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slot_cost: Option<SlotCost>,
     pub resolution: Resolution,
+}
+
+/// A resource expenditure (e.g. one level-1 spell slot).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SlotCost {
+    /// ResourcePool name on the caster's profile, e.g. "spell_slots_l1".
+    pub pool: String,
+    pub amount: i32,
 }
 
 /// Action cost (action, bonus action, reaction, etc.).

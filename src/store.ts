@@ -20,6 +20,7 @@ import type {
   EventMeaning,
   ExplorationNode,
   ExplorationZone,
+  ResourcePool,
   FateCheckResponse,
   InitiativeEntry,
   LogEntry,
@@ -262,6 +263,23 @@ export function newCharacter(name: string): CharacterProfile {
 
 export const entityName = (e: CharacterProfile | EncounterStatBlock): string =>
   "identity" in e ? e.identity.name : e.name;
+
+/**
+ * Pools (other than HP) whose reset_condition matches this rest type,
+ * restored to maximum — spell slots, rage uses, second wind, etc.
+ */
+function resetPools(
+  pools: Record<string, ResourcePool>,
+  condition: "long_rest" | "short_rest",
+): Record<string, ResourcePool> {
+  const out: Record<string, ResourcePool> = {};
+  for (const [name, p] of Object.entries(pools)) {
+    if (name !== "hp" && p.reset_condition === condition && p.current < p.maximum) {
+      out[name] = { ...p, current: p.maximum };
+    }
+  }
+  return out;
+}
 
 export function newStatBlock(name: string): EncounterStatBlock {
   return {
@@ -791,6 +809,34 @@ export const useStore = create<AutoDmState>()(
 
   runAttack: async (attacker, target, actionId, prereq) => {
     const sceneId = get().activeSceneId ?? undefined;
+    // Spell-slot gate: character casters must have the pool to spend.
+    const action = get().actions.find((a) => a.id === actionId);
+    const slotCost = action?.slot_cost;
+    const casterIsChar = "identity" in attacker;
+    if (slotCost && casterIsChar) {
+      const pool = attacker.resource_pools[slotCost.pool];
+      if ((pool?.current ?? 0) < slotCost.amount) {
+        get().showToast(`No ${slotCost.pool.replace(/_/g, " ")} left for ${action!.name}!`);
+        const blocked: EngineOutcome = {
+          check_result: undefined,
+          check_roll: undefined,
+          check_detail: undefined,
+          attack_result: "NO_SLOTS",
+          attack_roll: undefined,
+          attack_detail: undefined,
+          target_ac: undefined,
+          damage_dealt: 0,
+          heal_amount: 0,
+          target_hp_remaining: "hit_points" in target ? target.hit_points.current : target.resource_pools.hp?.current ?? 0,
+          target_status: "ALIVE",
+          applied_status: undefined,
+          damage_type: undefined,
+          damage_modifier: undefined,
+        };
+        set({ lastCombat: blocked });
+        return blocked;
+      }
+    }
     const prevHp = get().combatantStates[target.id]?.hit_points ?? ("resource_pools" in target ? target.resource_pools.hp?.current ?? 0 : target.hit_points.current);
     // Overlay live combat HP so wounded targets don't reset to DB values,
     // and thread live conditions so advantage/disadvantage fires in the engine.
@@ -824,6 +870,22 @@ export const useStore = create<AutoDmState>()(
       );
     }
     playCombatSfx(sfxForOutcome(outcome));
+    // Expend the declared resource (the spell was cast — hit or miss).
+    if (slotCost && casterIsChar) {
+      const caster = get().characters.find((c) => c.id === attacker.id);
+      const pool = caster?.resource_pools[slotCost.pool];
+      if (caster && pool) {
+        const remaining = Math.max(0, pool.current - slotCost.amount);
+        await get().saveCharacter({
+          ...caster,
+          resource_pools: {
+            ...caster.resource_pools,
+            [slotCost.pool]: { ...pool, current: remaining },
+          },
+        });
+        get().showToast(`${action!.name}: ${remaining}/${pool.maximum} ${slotCost.pool.replace(/_/g, " ")} left`);
+      }
+    }
     set((s) => ({
       lastCombat: outcome,
       lastHpChange: { entityId: target.id, previousHp: prevHp, newHp: outcome.target_hp_remaining },
@@ -891,10 +953,14 @@ export const useStore = create<AutoDmState>()(
   longRest: async () => {
     const s = useStore.getState();
     let healed = 0;
+    let recharged = 0;
     for (const c of s.characters) {
       const currentStates = useStore.getState().combatantStates;
       const max = c.resource_pools.hp?.maximum ?? 10;
       const current = currentStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
+      const poolResets = resetPools(c.resource_pools, "long_rest");
+      const needsPools = Object.keys(poolResets).length > 0;
+      if (current >= max && !needsPools) continue;
       if (current < max) {
         // Route through the engine's apply_healing: max-clamped, revives,
         // clears conditions — one source of truth for healing rules.
@@ -908,13 +974,16 @@ export const useStore = create<AutoDmState>()(
             await backend.combatHeal(c, max - current);
           } catch { /* fall back to direct save below */ }
         }
-        await s.saveCharacter({
-          ...c,
-          resource_pools: {
-            ...c.resource_pools,
-            hp: { ...c.resource_pools.hp!, current: max },
-          },
-        });
+      }
+      await s.saveCharacter({
+        ...c,
+        resource_pools: {
+          ...c.resource_pools,
+          ...(current < max ? { hp: { ...c.resource_pools.hp!, current: max } } : {}),
+          ...poolResets,
+        },
+      });
+      if (current < max) {
         const latest = useStore.getState().combatantStates;
         useStore.setState({
           combatantStates: {
@@ -924,10 +993,11 @@ export const useStore = create<AutoDmState>()(
         });
         healed++;
       }
+      if (needsPools) recharged++;
     }
-    get().showToast(`Long Rest: ${healed} character${healed !== 1 ? "s" : ""} healed to full`);
-    if (s.activeSceneId && healed > 0) {
-      await backend.appendLog(s.activeSceneId, "System", `Party takes a Long Rest. ${healed} character${healed !== 1 ? "s" : ""} fully healed.`);
+    get().showToast(`Long Rest: ${healed} character${healed !== 1 ? "s" : ""} healed to full${recharged > 0 ? `, ${recharged} recharged` : ""}`);
+    if (s.activeSceneId && (healed > 0 || recharged > 0)) {
+      await backend.appendLog(s.activeSceneId, "System", `Party takes a Long Rest. ${healed} character${healed !== 1 ? "s" : ""} fully healed${recharged > 0 ? `, ${recharged} pool${recharged !== 1 ? "s" : ""} recharged` : ""}.`);
     }
     persistCombat();
   },
@@ -935,31 +1005,39 @@ export const useStore = create<AutoDmState>()(
   shortRest: async () => {
     const s = useStore.getState();
     let healed = 0;
+    let recharged = 0;
     for (const c of s.characters) {
       const currentStates = useStore.getState().combatantStates;
       const max = c.resource_pools.hp?.maximum ?? 10;
       const current = currentStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       const halfMax = Math.floor(max / 2);
-      if (current < max && halfMax > 0) {
-        const restored = Math.min(halfMax, max - current);
-        const newHp = current + restored;
+      const poolResets = resetPools(c.resource_pools, "short_rest");
+      const needsPools = Object.keys(poolResets).length > 0;
+      const wounded = current < max && halfMax > 0;
+      if (!wounded && !needsPools) continue;
+      let newHp = current;
+      if (wounded) {
+        newHp = current + Math.min(halfMax, max - current);
         if (isInMultiplayerSession()) {
           try {
             const client = (await import("./multiplayer")).getMultiplayerClient();
-            await client?.combatHeal(c, restored);
+            await client?.combatHeal(c, newHp - current);
           } catch { /* fall through to direct save */ }
         } else {
           try {
-            await backend.combatHeal(c, restored);
+            await backend.combatHeal(c, newHp - current);
           } catch { /* fall through to direct save */ }
         }
-        await s.saveCharacter({
-          ...c,
-          resource_pools: {
-            ...c.resource_pools,
-            hp: { ...c.resource_pools.hp!, current: newHp },
-          },
-        });
+      }
+      await s.saveCharacter({
+        ...c,
+        resource_pools: {
+          ...c.resource_pools,
+          ...(wounded ? { hp: { ...c.resource_pools.hp!, current: newHp } } : {}),
+          ...poolResets,
+        },
+      });
+      if (wounded) {
         const latest = useStore.getState().combatantStates;
         useStore.setState({
           combatantStates: {
@@ -969,10 +1047,11 @@ export const useStore = create<AutoDmState>()(
         });
         healed++;
       }
+      if (needsPools) recharged++;
     }
-    get().showToast(`Short Rest: ${healed} character${healed !== 1 ? "s" : ""} recovered HP`);
-    if (s.activeSceneId && healed > 0) {
-      await backend.appendLog(s.activeSceneId, "System", `Party takes a Short Rest. ${healed} character${healed !== 1 ? "s" : ""} recovered hit points.`);
+    get().showToast(`Short Rest: ${healed} character${healed !== 1 ? "s" : ""} recovered HP${recharged > 0 ? `, ${recharged} recharged` : ""}`);
+    if (s.activeSceneId && (healed > 0 || recharged > 0)) {
+      await backend.appendLog(s.activeSceneId, "System", `Party takes a Short Rest. ${healed} character${healed !== 1 ? "s" : ""} recovered hit points${recharged > 0 ? `, ${recharged} pool${recharged !== 1 ? "s" : ""} recharged` : ""}.`);
     }
     persistCombat();
   },
