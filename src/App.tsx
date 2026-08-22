@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Wand2, BookOpen, Users, Skull, Swords, Wrench, Castle, HelpCircle, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import { Wand2, BookOpen, Users, Skull, Swords, Wrench, Castle, HelpCircle, Settings, ChevronLeft, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { useStore, subscribeToEvents } from "./store";
+import { useMultiplayerStore } from "./multiplayer";
+import { SessionLobby } from "./components/SessionLobby";
+import { PlayerList } from "./components/PlayerList";
+import { TurnIndicator } from "./components/TurnIndicator";
+import { CombatQueue } from "./components/CombatQueue";
 import { CampaignWizard } from "./components/CampaignWizard";
 import { PlayerCommandDeck } from "./components/PlayerCommandDeck";
 import { NarrativeStream } from "./components/NarrativeStream";
@@ -79,6 +84,13 @@ function App() {
   const ollamaStatus = useStore((s) => s.ollama.reachable);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { sizes, beginDrag, resizeByKeyboard } = usePanelResize();
+
+  // Multiplayer state
+  const mpConnected = useMultiplayerStore((s) => s.connected);
+  const mpSessionId = useMultiplayerStore((s) => s.sessionId);
+  const mpSetLobbyOpen = useMultiplayerStore((s) => s.setLobbyOpen);
+  const mpJoinCode = useMultiplayerStore((s) => s.joinCode);
+  const mpGameMode = useMultiplayerStore((s) => s.gameMode);
 
   useEffect(() => {
     void bootstrap();
@@ -224,6 +236,21 @@ function App() {
           </div>
           <div className="top-bar-right">
             <LastSavedIndicator />
+            {mpSessionId && (
+              <div className="mp-status-badge">
+                {mpConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                <span>{mpJoinCode ?? "..."}</span>
+                {mpGameMode === "combat" && <Swords size={12} className="combat-icon" />}
+              </div>
+            )}
+            <button
+              className={`icon-btn ${mpSessionId ? "mp-active" : ""}`}
+              onClick={() => mpSetLobbyOpen(true)}
+              title={mpSessionId ? "Session info" : "Start multiplayer session"}
+              aria-label="Multiplayer session"
+            >
+              <Users size={16} />
+            </button>
             <button
               className={`mode-toggle ${appMode === "setup" ? "setup-active" : "tabletop-active"}`}
               onClick={() => setAppMode(appMode === "setup" ? "tabletop" : "setup")}
@@ -300,6 +327,14 @@ function App() {
       <ToastContainer />
       <CommandPalette />
       <OnboardingOverlay />
+      <SessionLobby />
+      {mpSessionId && (
+        <>
+          <PlayerList />
+          <TurnIndicator />
+          <CombatQueue />
+        </>
+      )}
       {settingsOpen && (
         <SettingsPanel onClose={() => setSettingsOpen(false)} />
       )}

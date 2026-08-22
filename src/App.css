@@ -2834,3 +2834,426 @@ details > div { margin-top: 0.5rem; padding-left: 0.5rem; }
   background-size: 14px 14px, auto;
   text-shadow: 0 0 18px rgba(201, 168, 106, 0.45);
 }
+
+/* ── Multiplayer ─────────────────────────────────────────────────── */
+
+.mp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.mp-status-badge .combat-icon {
+  color: var(--accent);
+}
+
+.icon-btn.mp-active {
+  color: var(--accent);
+  background: var(--sidebar-active-bg);
+}
+
+/* ── Lobby ───────────────────────────────────────────────────────── */
+
+.lobby-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.lobby-modal {
+  width: min(420px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.lobby-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.lobby-header h2 {
+  flex: 1;
+  margin: 0;
+  font-family: "Cinzel", serif;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.lobby-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+}
+
+.lobby-close:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lobby-server {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.lobby-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.lobby-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.6rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.lobby-tab:hover {
+  color: var(--text);
+}
+
+.lobby-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.lobby-body {
+  padding: 1rem 1.25rem;
+}
+
+.lobby-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lobby-input {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.lobby-input:focus {
+  border-color: var(--accent);
+}
+
+.lobby-error {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  color: var(--danger);
+  background: rgba(224, 90, 79, 0.1);
+  border: 1px solid rgba(224, 90, 79, 0.25);
+  border-radius: 6px;
+}
+
+.session-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.session-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.join-code-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.join-code-display .label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.code-row .code {
+  font-family: "Courier New", monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 12px rgba(201, 168, 106, 0.35);
+}
+
+.copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.copy-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.session-role {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ── Player List ─────────────────────────────────────────────────── */
+
+.player-list {
+  position: fixed;
+  top: 52px;
+  left: 12px;
+  z-index: 50;
+  width: 180px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.player-list .panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-dot-sm {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: auto;
+}
+
+.status-dot-sm.online {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.status-dot-sm.offline {
+  background: var(--danger);
+}
+
+.player-list-body {
+  padding: 0.4rem 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.player-list-empty {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.player-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.player-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.player-dot.online {
+  background: var(--success);
+}
+
+.player-dot.offline {
+  background: var(--muted);
+}
+
+/* ── Turn Indicator ──────────────────────────────────────────────── */
+
+.turn-indicator {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.turn-indicator.my-turn {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 14px rgba(201, 168, 106, 0.25);
+}
+
+.turn-label {
+  font-weight: 600;
+}
+
+/* ── Combat Queue ────────────────────────────────────────────────── */
+
+.combat-queue {
+  position: fixed;
+  top: 52px;
+  right: 12px;
+  z-index: 50;
+  width: 200px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.combat-queue .panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.combat-queue-body {
+  padding: 0.5rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.combat-queue-empty {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  padding: 0.3rem 0;
+}
+
+.queue-current {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+}
+
+.queue-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  min-width: 4.5rem;
+}
+
+.queue-player {
+  font-size: 0.8rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.queue-waiting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+}
+
+.queue-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+  font-size: 0.78rem;
+}
+
+.queue-pos {
+  color: var(--muted);
+  font-size: 0.7rem;
+  min-width: 1.2rem;
+}
+
+.combat-queue .btn {
+  margin-top: 0.3rem;
+}
