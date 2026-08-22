@@ -218,6 +218,19 @@ pub trait Repository: Send + Sync {
     async fn reset_doom_clock(&self, id: &str) -> Result<(), DbError>;
     async fn delete_doom_clock(&self, id: &str) -> Result<bool, DbError>;
 
+    // ── Audit-log rewind ───────────────────────────────────────────
+
+    /// Restore a doom clock to a previous state.
+    async fn restore_clock(&self, id: &str, current: u32, max: u32) -> Result<(), DbError>;
+    /// Set a scene summary directly (for rewind restoration).
+    async fn set_scene_summary(&self, scene_id: &str, summary: &str) -> Result<(), DbError>;
+    /// Delete all log entries for a scene with timestamp > target_log's timestamp.
+    /// Returns the deleted log IDs (for episodic summary staleness checks).
+    async fn delete_logs_after(&self, scene_id: &str, target_log_id: &str) -> Result<Vec<String>, DbError>;
+    /// Delete episodic summaries whose last_log_id appears in the given set.
+    /// Returns the IDs of deleted summaries.
+    async fn invalidate_stale_summaries(&self, scene_id: &str, stale_log_ids: &[String]) -> Result<Vec<String>, DbError>;
+
     async fn save_exploration_zone(
         &self,
         id: &str,
@@ -1872,6 +1885,74 @@ impl Repository for SqliteRepository {
             .execute(&self.pool)
             .await?;
         Ok(r.rows_affected() > 0)
+    }
+
+    // ── Audit-log rewind ───────────────────────────────────────────
+
+    async fn restore_clock(&self, id: &str, current: u32, max: u32) -> Result<(), DbError> {
+        sqlx::query("UPDATE doom_clocks SET tick_current = ?, tick_max = ? WHERE id = ?")
+            .bind(current as i64)
+            .bind(max as i64)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn set_scene_summary(&self, scene_id: &str, summary: &str) -> Result<(), DbError> {
+        sqlx::query("UPDATE campaign_scenes SET summary_text = ? WHERE id = ?")
+            .bind(summary)
+            .bind(scene_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_logs_after(&self, scene_id: &str, target_log_id: &str) -> Result<Vec<String>, DbError> {
+        // Find the timestamp of the target log entry, then delete everything after it.
+        let target = sqlx::query("SELECT timestamp FROM log_entries WHERE id = ? AND scene_id = ?")
+            .bind(target_log_id)
+            .bind(scene_id)
+            .fetch_optional(&self.pool)
+            .await?;
+        let Some(target_row) = target else {
+            return Ok(vec![]);
+        };
+        let target_ts: String = target_row.try_get("timestamp")?;
+        // Collect IDs of entries that will be deleted (for staleness checks).
+        let stale: Vec<(String,)> = sqlx::query_as(
+            "SELECT id FROM log_entries WHERE scene_id = ? AND timestamp >= ? AND id != ? ORDER BY timestamp DESC",
+        )
+        .bind(scene_id)
+        .bind(&target_ts)
+        .bind(target_log_id)
+        .fetch_all(&self.pool)
+        .await?;
+        let stale_ids: Vec<String> = stale.into_iter().map(|(id,)| id).collect();
+        if !stale_ids.is_empty() {
+            sqlx::query("DELETE FROM log_entries WHERE scene_id = ? AND timestamp >= ? AND id != ?")
+                .bind(scene_id)
+                .bind(&target_ts)
+                .bind(target_log_id)
+                .execute(&self.pool)
+                .await?;
+        }
+        Ok(stale_ids)
+    }
+
+    async fn invalidate_stale_summaries(&self, scene_id: &str, stale_log_ids: &[String]) -> Result<Vec<String>, DbError> {
+        let mut deleted = Vec::new();
+        for log_id in stale_log_ids {
+            let r = sqlx::query("DELETE FROM episodic_summaries WHERE scene_id = ? AND last_log_id = ?")
+                .bind(scene_id)
+                .bind(log_id)
+                .execute(&self.pool)
+                .await?;
+            if r.rows_affected() > 0 {
+                deleted.push(log_id.clone());
+            }
+        }
+        Ok(deleted)
     }
 
     async fn save_exploration_zone(

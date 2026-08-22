@@ -14,7 +14,8 @@ pub use combat::combatant_from_value;
 pub use error::{DbError, EngineError};
 pub use events::{GameEvent, VersionedEvent, GAME_EVENT_SCHEMA_VERSION};
 pub use session::{
-    apply_session_effects, remember, resolve_entity_descriptor, EntityRef, ResolveResult,
+    apply_session_effects, remember, resolve_entity_descriptor, rewind_to_log, EntityRef,
+    ResolveResult, Snapshot,
 };
 pub use state::{
     backup_before_migrate, is_summary_stale, open_pool, run_migrations, CampaignExport,

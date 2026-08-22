@@ -1747,3 +1747,16 @@ pub async fn check_summary_stale(
     let ids: Vec<String> = logs.into_iter().map(|l| l.id).collect();
     Ok(auto_dm_engine::is_summary_stale(&last_log_id, &ids))
 }
+
+/// Rewind the audit log to a target entry: restore entity state from
+/// snapshots, delete rewound entries, and invalidate stale summaries.
+#[tauri::command]
+pub async fn rewind_to_log(
+    state: State<'_, GameState>,
+    scene_id: String,
+    target_log_id: String,
+) -> CmdResult<Vec<String>> {
+    auto_dm_engine::rewind_to_log(&state, &scene_id, &target_log_id)
+        .await
+        .map_err(err)
+}

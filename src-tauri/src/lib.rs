@@ -328,6 +328,7 @@ pub fn run() {
             commands::summarize_scene,
             commands::list_episodic_summaries,
             commands::check_summary_stale,
+            commands::rewind_to_log,
             commands::generate_campaign,
             commands::process_dm_intent,
             commands::get_random_encounter,

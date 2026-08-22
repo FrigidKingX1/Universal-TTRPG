@@ -257,6 +257,8 @@ export const backend = {
     invoke<EpisodicSummaryRow[]>("list_episodic_summaries", { sceneId }),
   checkSummaryStale: (sceneId: string, lastLogId: string) =>
     invoke<boolean>("check_summary_stale", { sceneId, lastLogId }),
+  rewindToLog: (sceneId: string, targetLogId: string) =>
+    invoke<string[]>("rewind_to_log", { sceneId, targetLogId }),
 
   // ── Campaign Generation Pipeline ───────────────────────────────────────
 
