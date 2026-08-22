@@ -435,7 +435,8 @@ describe("Class templates", () => {
   it("findClassByArchetype matches case-insensitively", () => {
     expect(findClassByArchetype("fighter")?.id).toBe("fighter");
     expect(findClassByArchetype("WIZARD")?.hit_die).toBe(6);
-    expect(findClassByArchetype("Bard")).toBeUndefined();
+    expect(findClassByArchetype("paladin")?.id).toBe("paladin");
+    expect(findClassByArchetype("Warlord")).toBeUndefined();
     expect(findClassByArchetype(undefined)).toBeUndefined();
   });
 

@@ -75,6 +75,58 @@ const monster = (
   key,
 });
 
+// Type-based defaults for the compact builder below.
+const DARKSIGHT_TYPES = new Set(["undead", "fiend", "aberration", "dragon", "monstrosity"]);
+const TYPE_IMMUNITIES: Record<string, string[]> = {
+  undead: ["poisoned", "exhaustion"],
+  construct: ["poisoned", "charmed", "frightened", "exhaustion"],
+  ooze: ["blinded", "charmed", "deafened", "frightened", "prone", "restrained"],
+};
+
+/** Average of a dice formula like "5d8+10" or "2d6" (rounded down, min 1). */
+function avgHp(formula: string): number {
+  const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(formula.replace(/\s/g, ""));
+  if (!m) return 10;
+  const [, n, sides, mod] = m;
+  const avg = Number(n) * (Number(sides) + 1) / 2 + (mod ? parseInt(mod, 10) : 0);
+  return Math.max(1, Math.floor(avg));
+}
+
+/**
+ * Compact one-line monster builder: qm(key, name, CR, type, AC,
+ * "5d8+10", "18/12/15/6/10/8", [actions], blurb, opts?).
+ */
+const qm = (
+  key: string,
+  name: string,
+  cr: number,
+  type: string,
+  armor_class: number,
+  hpFormula: string,
+  attrs: string,
+  actions: string[],
+  description: string,
+  opts: Partial<EncounterStatBlock> = {},
+): Preset => {
+  const [STR, DEX, CON, INT, WIS, CHA] = attrs.split("/").map(Number);
+  return {
+    name,
+    challenge_rating: cr,
+    type,
+    alignment: opts.alignment ?? (type === "beast" ? "unaligned" : "any"),
+    armor_class,
+    hit_points: { current: avgHp(hpFormula), maximum: avgHp(hpFormula), formula: hpFormula },
+    attributes: { STR, DEX, CON, INT, WIS, CHA },
+    actions,
+    loot_table: [],
+    description,
+    ...(DARKSIGHT_TYPES.has(type) ? { senses: ["darkvision 60 ft.", "passive Perception 10"] } : {}),
+    ...(TYPE_IMMUNITIES[type] ? { condition_immunities: TYPE_IMMUNITIES[type] } : {}),
+    ...opts,
+    key,
+  };
+};
+
 export const PRESET_MONSTERS: Preset[] = [
   monster("goblin", "Goblin", 0.25, {
     size: "small",
@@ -2671,4 +2723,218 @@ export const PRESET_MONSTERS: Preset[] = [
     loot_table: [{ name: "Arena Gold", quantity_formula: "1", chance: 50 }],
     description: "A crowd-pleasing killer of the blood-sands.",
   }),
+
+  // ═══ Expanded library — humanoid nations & tribes ═══════════════════
+  qm("gnoll_pack_lord", "Gnoll Pack Lord", 2, "humanoid", 15, "8d8+16", "16/12/13/8/9/12", ["act_greataxe", "act_longbow"], "Scarred matriarch who leads the hunt by strength alone.", { size: "medium" }),
+  qm("gnoll_chieftain", "Gnoll Chieftain", 3, "humanoid", 16, "11d8+22", "18/12/14/7/10/13", ["act_greataxe", "act_bite_md"], "Hyena-headed tyrant whose laughter means the pack feeds tonight."),
+  qm("orc_eye", "Orc Eye", 2, "humanoid", 13, "5d8+5", "16/10/13/9/12/10", ["act_greataxe", "act_fire_bolt"], "One-eyed war-priest reading omens in spilled blood."),
+  qm("orog", "Orog", 2, "humanoid", 15, "6d8+6", "17/11/13/10/10/9", ["act_greatsword", "act_javelin"], "Underdark-bred orc elite, disciplined where its kin are not.", { senses: ["darkvision 60 ft."] }),
+  qm("hobgoblin_captain", "Hobgoblin Captain", 3, "humanoid", 17, "10d8+20", "16/14/14/12/12/14", ["act_longsword", "act_longbow"], "Legion officer drilling soldiers into a single killing machine."),
+  qm("hobgoblin_warmage", "Hobgoblin Warmage", 4, "humanoid", 15, "9d8+9", "12/14/12/16/13/12", ["act_fireball", "act_longsword"], "Battle-caster weaving fire between shield walls.", { alignment: "lawful evil" }),
+  qm("goblin_boss", "Goblin Boss", 1, "humanoid", 17, "4d8-4", "10/14/10/10/8/10", ["act_scimitar", "act_handaxe"], "Bully with a bodyguard complex and a redirect-the-blame talent."),
+  qm("goblin_hexer", "Goblin Hexer", 2, "humanoid", 12, "5d8", "10/14/10/14/12/9", ["act_vicious_mockery", "act_poison_spray"], "Lash-wielding shaman cursing foes with spite and spite's cousins."),
+  qm("kobold_sorcerer", "Kobold Sorcerer", 1, "humanoid", 12, "4d8-4", "8/14/10/13/9/14", ["act_ray_of_frost", "act_acid_splash"], "Wyrmpriest humming dragon-syllables that mostly work."),
+  qm("kobold_inventor", "Kobold Inventor", 0.5, "humanoid", 12, "3d6", "8/14/10/14/9/10", ["act_sling", "act_spit_acid"], "Carries six badly-labeled flasks and no fear of consequences."),
+  qm("lizardfolk_monarch", "Lizardfolk Monarch", 2, "humanoid", 15, "7d8+7", "16/11/13/9/11/10", ["act_claw_rend", "act_bite_md"], "Cold-blooded king judging warmth as a character flaw.", { size: "large" }),
+  qm("lizardfolk_shaman", "Lizardfolk Shaman", 2, "humanoid", 13, "5d8+5", "12/12/13/11/15/9", ["act_thorn_whip", "act_bite_sm"], "Marsh mystic trading swamp-secrets for fresh offerings."),
+  qm("troglodyte", "Troglodyte", 0.5, "humanoid", 13, "4d6+4", "14/10/14/6/8/8", ["act_claw", "act_bite_sm"], "Cave reptile whose stench arrives one round before it does.", { condition_immunities: undefined, senses: ["darkvision 60 ft."] }),
+  qm("grimlock", "Grimlock", 0.25, "humanoid", 11, "3d6", "14/10/12/5/7/6", ["act_claw"], "Blind troglodyte cousin hunting by echo in lightless halls.", { senses: ["blindsight 30 ft."] }),
+  qm("merrow", "Merrow", 2, "giant", 13, "7d10+14", "18/10/14/6/10/8", ["act_greatclub", "act_bite_md"], "Fish-bellied ogre of the reefs, all hunger and anchor-chain.", { size: "large", speed_feet: 10, alignment: "chaotic evil" }),
+  qm("cave_ape", "Cave Ape", 2, "beast", 13, "6d8+9", "17/12/14/3/8/6", ["act_claw_rend", "act_bite_md"], "White-furred bruiser of high passes; hugs first, asks never.", { size: "large" }),
+  qm("fishfolk_zealot", "Fishfolk Zealot", 0.25, "humanoid", 11, "2d8+2", "10/12/10/8/10/10", ["act_spear"], "Bubble-mouthed worshipper of what sleeps below the tide line.", { alignment: "neutral evil" }),
+  qm("fishfolk_scout", "Fishfolk Scout", 0.125, "humanoid", 12, "1d8+1", "9/14/10/9/10/8", ["act_dagger"], "Reed-skiff outrider mapping coastlines for the deep choirs.", { alignment: "neutral evil" }),
+  qm("duergar", "Duergar", 0.5, "humanoid", 16, "4d8+4", "14/10/14/11/10/9", ["act_warhammer"], "Ashen dwarf smith-enforcer; grudges measured in centuries.", { senses: ["darkvision 120 ft."], alignment: "lawful evil" }),
+  qm("duergar_warlord", "Duergar Warlord", 3, "humanoid", 18, "10d8+20", "18/11/16/12/11/10", ["act_warhammer", "act_javelin"], "Deep-king claiming every tunnel his shadow touches.", { senses: ["darkvision 120 ft."], alignment: "lawful evil" }),
+  qm("drow", "Drow", 0.25, "humanoid", 15, "2d8+2", "10/14/10/12/11/12", ["act_shortsword", "act_handaxe"], "Spider-sworn surface raider; poison on the blade, poisons in the words.", { senses: ["darkvision 120 ft."], alignment: "any" }),
+  qm("drow_priestess", "Drow Priestess", 8, "humanoid", 16, "13d8+39", "14/16/14/13/17/18", ["act_shortsword", "act_lightning_bolt", "act_cone_of_cold"], "Matron's voice in the underdark, spider-god's will made silk.", { senses: ["darkvision 120 ft."], alignment: "lawful evil" }),
+  qm("deep_gnome", "Deep Gnome", 0.5, "humanoid", 15, "3d6+3", "10/14/12/12/13/9", ["act_warhammer"], "Stone-grey gnome prospector who heard you coming an hour ago.", { senses: ["darkvision 120 ft."], alignment: "neutral good" }),
+  qm("astral_raider", "Astral Raider", 5, "humanoid", 18, "13d8+26", "18/15/16/13/14/12", ["act_greatsword", "act_longbow"], "Silver-armored reaver riding thought-ships between worlds.", { alignment: "lawful evil" }),
+
+  // ═══ Expanded beasts & mounts ══════════════════════════════════════
+  qm("cave_bear", "Cave Bear", 2, "beast", 12, "5d10+15", "19/10/16/2/13/7", ["act_claw_rend", "act_bite_md"], "Pleistocene bulk with a temper preserved perfectly.", { size: "large" }),
+  qm("sabertooth", "Sabertooth Tiger", 2, "beast", 13, "5d10+8", "16/16/13/2/11/6", ["act_bite_lg", "act_claw"], "Leap, puncture, done — prehistory's neatest solution.", { size: "large" }),
+  qm("cave_lion", "Cave Lion", 2, "beast", 12, "5d10+10", "18/14/15/2/12/6", ["act_claw", "act_bite_md"], "Maned giant stalking mammoth-steppe shadows.", { size: "large" }),
+  qm("woolly_rhino", "Woolly Rhino", 3, "beast", 13, "8d12+16", "21/8/17/2/10/4", ["act_gore", "act_trample"], "Two-ton snowplow with a very pointed opinion.", { size: "huge" }),
+  qm("mastodon", "Mastodon", 4, "beast", 12, "8d12+24", "22/8/17/2/10/4", ["act_gore", "act_trample", "act_slam_generic"], "Tusked hill that remembers every slight since the ice age.", { size: "huge" }),
+  qm("aurochs", "Aurochs", 2, "beast", 11, "6d10+12", "20/10/16/2/9/4", ["act_gore", "act_trample"], "Ancestor of cattle, twice the size and ten times the grudge.", { size: "large" }),
+  qm("elk", "Elk", 0.25, "beast", 10, "2d10+2", "14/14/11/2/10/4", ["act_slam_generic"], "Autumn bugle echoing across frost meadows."),
+  qm("hyena", "Hyena", 0, "beast", 11, "1d8+1", "9/12/11/2/10/5", ["act_bite_sm"], "Giggling scavenger patient enough to be dangerous in numbers."),
+  qm("warhorse", "Warhorse", 0.5, "beast", 11, "3d10+3", "18/12/13/2/12/6", ["act_hooves"], "Armor-trained destrier; tramples on command.", { size: "large" }),
+  qm("draft_horse", "Draft Horse", 0.25, "beast", 10, "3d10+3", "18/10/12/2/10/4", ["act_hooves"], "Gentle colossus hauling what four men cannot.", { size: "large" }),
+  qm("camel", "Camel", 0.125, "beast", 9, "2d8+2", "14/8/13/2/8/4", ["act_bite_sm"], "Desert ship storing water, spite, and dramatic sighs."),
+  qm("mule", "Mule", 0.125, "beast", 10, "2d8+2", "16/8/13/2/8/5", ["act_hooves"], "Carries everything; moves when philosophically ready."),
+  qm("blood_hawk", "Blood Hawk", 0.125, "beast", 12, "1d6+1", "6/16/10/2/12/6", ["act_peck"], "Flocks scent one drop and become a red cloud.", { size: "tiny" }),
+  qm("axe_beak", "Axe Beak", 0.25, "beast", 11, "2d8+2", "14/12/12/2/10/5", ["act_bite_md"], "Six-foot terror-bird shearing grasslands at a sprint.", { size: "large" }),
+  qm("boar", "Boar", 0.25, "beast", 11, "2d8+3", "13/11/13/2/9/4", ["act_gore"], "Bristleback orchard-raider; charges first, thinks never."),
+  qm("vault_weaver", "Vault Weaver", 1, "beast", 14, "4d10+4", "12/15/12/2/10/3", ["act_bite_md", "act_grasp"], "Tomb-architect spider spinning alarm-threads across treasure.", { size: "large", senses: ["darkvision 60 ft.", "tremorsense"] }),
+  qm("snapping_turtle", "Giant Snapping Turtle", 1, "beast", 15, "5d10+5", "15/8/13/1/9/3", ["act_bite_lg"], "Algae-backed boulder with trap-jaw patience.", { size: "large" }),
+  qm("reef_shark", "Reef Shark", 0.5, "beast", 12, "3d8+3", "13/14/11/1/8/2", ["act_bite_md"], "Silver flash over coral, then the water goes quiet.", { speed_feet: 0 }),
+  qm("giant_pike", "Giant Pike", 0.5, "beast", 12, "3d8+3", "14/14/11/1/8/2", ["act_bite_md"], "River torpedo ambushing from the lily shallows.", { speed_feet: 0 }),
+  qm("electric_eel", "Electric Eel", 0.5, "beast", 12, "2d10+2", "10/14/11/1/8/2", ["act_shocking_grasp", "act_bite_sm"], "Marsh ribbon that answers touch with lightning.", { speed_feet: 0 }),
+  qm("snow_leopard", "Snow Leopard", 1, "beast", 12, "4d8+4", "15/15/12/3/12/6", ["act_claw", "act_bite_md"], "Ghost of the white ridges, seen only as falling snow shifting."),
+  qm("mountain_goat", "Mountain Goat", 0, "beast", 11, "1d8", "12/12/12/2/10/4", ["act_slam_generic"], "Defies gravity, ledges, and your patience with equal ease."),
+  qm("badger", "Badger", 0, "beast", 10, "1d6+1", "8/12/11/2/10/4", ["act_bite_sm"], "Striped fury defending a hole in the ground."),
+  qm("giant_badger", "Giant Badger", 0.25, "beast", 11, "2d8+2", "12/10/13/2/9/4", ["act_claw", "act_bite_sm"], "Digging machine with a bad attitude and bigger claws."),
+
+  // ═══ Expanded undead ═══════════════════════════════════════════════
+  qm("revenant", "Revenant", 5, "undead", 13, "9d8+18", "18/14/16/12/14/16", ["act_claw_rend", "act_constrict"], "Murdered soul wearing its own corpse, hunting its killer across any distance."),
+  qm("flameskull", "Flameskull", 4, "undead", 17, "6d6+6", "6/18/10/16/12/16", ["act_fireball", "act_ray_of_frost"], "Grinning skull wreathed in green flame; laughs in cackling bursts.", { size: "small", speed_feet: 0 }),
+  qm("bone_swarm", "Bone Swarm", 2, "undead", 13, "8d8+8", "10/15/12/2/8/4", ["act_claw", "act_quills"], "A cyclone of grasping skeletons pretending to be weather.", { condition_immunities: ["charmed", "frightened", "grappled", "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned"] }),
+  qm("plague_zombie", "Plague Zombie", 1, "undead", 8, "4d8+4", "13/6/16/2/7/4", ["act_slam_generic", "act_poison_bite"], "Its rot is contagious; its grip is final."),
+  qm("skeleton_champion", "Skeleton Champion", 5, "undead", 17, "11d8+22", "18/14/16/8/10/8", ["act_greatsword", "act_longbow"], "Tournament knight whose oath outlasted the flesh that swore it."),
+  qm("bone_archer", "Bone Archer", 1, "undead", 14, "3d8+3", "12/16/12/6/8/5", ["act_longbow", "act_dagger"], "Ribcage full of arrows and nothing else."),
+  qm("gravehound", "Grave Hound", 1, "undead", 13, "3d8+6", "14/14/14/3/10/5", ["act_bite_trip"], "Churchyard hound that kept guarding past its last heartbeat."),
+  qm("drowned_dead", "Drowned Dead", 2, "undead", 10, "6d8", "15/8/14/5/8/6", ["act_claw", "act_grasp"], "Sailors tangled in weed, still pulling others under.", { speed_feet: 20 }),
+  qm("spirit_naga", "Spirit Naga", 8, "undead", 16, "14d10+28", "17/17/15/16/15/16", ["act_bite_md", "act_fireball", "act_cone_of_cold"], "Serpent sage refusing death through forbidden syllables.", { size: "large" }),
+  qm("death_knight", "Death Knight", 17, "undead", 20, "29d10+87", "24/14/23/18/16/22", ["act_greatsword", "act_fireball", "act_chain_lightning"], "Fallen paladin-king commanding legions from a helm of horns.", { size: "large", alignment: "lawful evil" }),
+  qm("lich", "Lich", 21, "undead", 17, "22d8+88", "11/16/16/20/14/16", ["act_draining_touch", "act_meteor_swarm", "act_chain_lightning"], "Archmage who traded mortality for eternity and paid in souls."),
+  qm("ghast_queen", "Ghast Queen", 5, "undead", 15, "12d8+24", "17/17/14/11/11/12", ["act_claw_rend", "act_bite_md"], "Corpse-court monarch attended by whispering ghouls."),
+  qm("zombie_lord", "Zombie Lord", 6, "undead", 15, "13d8+26", "19/9/17/8/10/10", ["act_slam_lg", "act_life_drain"], "Necromancer's mistake that learned command instead of obedience."),
+  qm("grave_beetle_swarm", "Grave Beetle Swarm", 1, "undead", 12, "6d6", "6/14/11/1/6/2", ["act_bite_sm"], "Chitin tide stripping grave-goods and gravekeepers alike.", { condition_immunities: ["charmed", "frightened", "grappled", "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned"] }),
+  qm("phantom_warrior", "Phantom Warrior", 3, "undead", 14, "8d8", "12/16/10/10/12/14", ["act_longsword"], "Spectral soldier replaying a battle no one won."),
+  qm("grave_warden", "Grave Warden", 4, "undead", 16, "9d8+18", "17/10/16/6/12/8", ["act_halberd", "act_life_drain"], "Tomb sentinel pruning visitors with methodical hate."),
+  qm("rotting_titan", "Rotting Titan", 12, "undead", 17, "22d10+66", "27/10/21/5/9/6", ["act_slam_lg", "act_crush"], "Colossal corpse stitched from giants and older mistakes.", { size: "huge" }),
+  qm("bone_colossus", "Bone Colossus", 14, "undead", 18, "24d10+72", "25/10/21/5/9/6", ["act_giant_axe", "act_crush"], "Cathedral skeleton walking; bells toll inside its ribs.", { size: "huge" }),
+  qm("skeletal_wyvern", "Skeletal Wyvern", 6, "undead", 15, "13d10+26", "19/12/16/3/8/5", ["act_bite_md", "act_barbed_tail"], "Flyless wyrm-bones bound to a rider long dead.", { size: "large" }),
+  qm("vampire_familiar", "Vampire Familiar", 1, "undead", 13, "3d8+3", "8/17/12/8/10/12", ["act_bite_sm"], "Counts a master's enemies by the taste of their blood.", { size: "tiny" }),
+
+  // ═══ Dragons & drakes ══════════════════════════════════════════════
+  qm("dragon_turtle", "Dragon Turtle", 17, "dragon", 21, "33d12+165", "27/10/25/12/16/14", ["act_bite_lg", "act_breath_fire_blue"], "Island-sized leviathan taxing shipping lanes in gold or hulls.", { size: "gargantuan", speed_feet: 20 }),
+  qm("fire_drake", "Fire Drake", 4, "dragon", 16, "9d10+18", "17/12/15/8/11/9", ["act_bite_md", "act_fire_breath_sm"], "Wingless lava-lizard dripping molten slag.", { size: "large" }),
+  qm("frost_drake", "Frost Drake", 4, "dragon", 16, "9d10+18", "17/12/15/8/11/9", ["act_bite_md", "act_breath_cold_white"], "Glacier-wyrm frosting valleys with each exhale.", { size: "large" }),
+  qm("storm_drake", "Storm Drake", 5, "dragon", 16, "10d10+20", "18/14/15/8/11/9", ["act_bite_md", "act_breath_lightning"], "Rides thunderheads; strikes before the warning clap.", { size: "large" }),
+  qm("venom_drake", "Venom Drake", 4, "dragon", 16, "9d10+18", "16/14/15/8/11/9", ["act_bite_md", "act_poison_breath"], "Jungle wyrm whose shadow sickens the leaves beneath it.", { size: "large" }),
+  qm("rock_drake", "Rock Drake", 4, "dragon", 17, "10d10+20", "18/10/16/6/11/7", ["act_bite_md", "act_tail_sweep"], "Cliff-camo grazer that turns territorial at dusk.", { size: "large" }),
+  qm("faerie_dragon", "Faerie Dragon", 2, "dragon", 15, "10d4+10", "4/20/12/16/14/17", ["act_eldritch_blast"], "Butterfly-wing prankster exhaling euphoric mischief.", { size: "tiny", alignment: "chaotic good" }),
+  qm("pseudodragon", "Pseudodragon", 0.25, "dragon", 13, "2d4+2", "6/15/13/10/12/10", ["act_bite_sm"], "Cat-sized familiar bargaining in purrs and stings.", { size: "tiny", alignment: "neutral good" }),
+  qm("guard_drake", "Guard Drake", 2, "dragon", 14, "6d8+12", "17/10/15/2/8/5", ["act_bite_md", "act_tail_sweep"], "Kennel-raised dragonkin; loyal as gravity.", { size: "large", alignment: "unaligned" }),
+  qm("gold_wyrmling", "Gold Dragon Wyrmling", 3, "dragon", 17, "6d8+6", "16/10/13/12/13/15", ["act_bite_md", "act_fire_breath_sm"], "Noble hatchling already practicing its benevolent roar."),
+  qm("silver_wyrmling", "Silver Dragon Wyrmling", 2, "dragon", 17, "5d8+5", "15/10/13/10/11/14", ["act_bite_md", "act_breath_cold_white"], "Moonlit hatchling adopting lost travelers as projects."),
+  qm("bronze_wyrmling", "Bronze Dragon Wyrmling", 2, "dragon", 16, "5d8+5", "15/10/13/12/11/13", ["act_bite_md", "act_breath_poison_bronze"], "Surf-hatchling rescuing swimmers whether they like it or not."),
+  qm("adult_bronze_dragon", "Adult Bronze Dragon", 14, "dragon", 19, "21d12+105", "25/10/21/16/15/19", ["act_dragon_bite", "act_breath_poison_bronze", "act_tail_sweep"], "Coastal sentinel sinking slavers and praising swimmers.", { alignment: "lawful good" }),
+  qm("adult_copper_dragon", "Adult Copper Dragon", 12, "dragon", 18, "18d12+90", "23/12/19/18/15/17", ["act_dragon_bite", "act_acid_breath_line"], "Hilltop trickster collecting jokes, riddles, and grudges.", { alignment: "chaotic good" }),
+  qm("ancient_gold_dragon", "Ancient Gold Dragon", 24, "dragon", 22, "34d12+238", "30/10/27/18/17/23", ["act_wyrm_bite", "act_fire_breath_lg", "act_wyrm_tail"], "The sun given scales; evil kneels or burns.", { size: "gargantuan", alignment: "lawful good" }),
+
+  // ═══ Elementals & genies ═══════════════════════════════════════════
+  qm("water_elemental", "Water Elemental", 5, "elemental", 14, "11d10+33", "18/14/18/5/10/8", ["act_slam_lg", "act_engulf"], "Living flood that drowns rooms and drags rivers uphill.", { size: "large", speed_feet: 30, alignment: "neutral" }),
+  qm("earth_elemental", "Earth Elemental", 5, "elemental", 17, "11d12+33", "20/8/18/5/10/5", ["act_slam_lg", "act_crush"], "Quarry given legs; patience of strata, fists of landslides.", { size: "large", speed_feet: 30, alignment: "neutral" }),
+  qm("invisible_stalker", "Invisible Stalker", 6, "elemental", 14, "12d10+36", "16/19/16/11/13/11", ["act_wind_slam", "act_claw"], "Air genie-tasked to hunt; unseen until it is a conclusion.", { alignment: "neutral" }),
+  qm("azer", "Azer", 2, "elemental", 17, "6d8+9", "17/12/15/12/13/10", ["act_warhammer"], "Bronze-skinned forge-dwarf hammering order into chaos.", { size: "medium", speed_feet: 30, alignment: "lawful neutral" }),
+  qm("galeb_duhr", "Galeb Duhr", 6, "elemental", 17, "12d12+36", "20/12/20/11/12/11", ["act_slam_lg", "act_rock_throw"], "Boulder-elder herding stones like sheepdogs.", { size: "large", speed_feet: 30, alignment: "neutral" }),
+  qm("fire_snake", "Fire Snake", 1, "elemental", 14, "3d8+3", "10/15/12/4/10/6", ["act_fire_touch", "act_bite_sm"], "Ember-serpent slithering through coals and kindling alike.", { alignment: "neutral" }),
+  qm("xorn", "Xorn", 5, "elemental", 19, "9d10+27", "17/10/20/11/10/11", ["act_claw_rend"], "Three-eyed gem-eater browsing veins of ore like fruit.", { alignment: "neutral" }),
+  qm("magmin", "Magmin", 1, "elemental", 14, "3d8+3", "10/15/12/8/11/10", ["act_fire_touch"], "Molten imp igniting whatever it hugs, including hugs.", { size: "small", alignment: "chaotic neutral" }),
+  qm("ice_mephit", "Ice Mephit", 0.5, "elemental", 12, "6d6", "8/14/10/9/11/12", ["act_frost_touch", "act_ray_of_frost"], "Frost sprite giggling blizzards and freezing opinions.", { size: "small", alignment: "neutral evil" }),
+  qm("magma_mephit", "Magma Mephit", 0.5, "elemental", 12, "6d6", "8/14/12/8/11/12", ["act_fire_touch", "act_spit_acid"], "Slag-sprite spitting burning globs and worse puns.", { size: "small", alignment: "neutral evil" }),
+  qm("efreeti", "Efreeti", 11, "elemental", 17, "17d10+51", "23/12/20/16/15/16", ["act_flame_strike", "act_fireball"], "Brass-brined wish-tyrant ruling a furnace court.", { size: "large", alignment: "lawful evil" }),
+  qm("djinni", "Djinni", 11, "elemental", 17, "17d10+68", "20/15/21/15/16/20", ["act_wind_slam", "act_lightning_bolt"], "Sky-palace noble granting boons with bureaucratic delight.", { size: "large", alignment: "chaotic good" }),
+  qm("salamander", "Salamander", 5, "elemental", 15, "10d10+20", "17/12/16/11/10/12", ["act_spear", "act_fire_touch", "act_constrict"], "Serpent-smith forging weapons in its own coils of flame.", { size: "large", alignment: "neutral evil" }),
+  qm("thunderbird", "Thunderbird", 9, "elemental", 16, "16d10+48", "20/18/18/8/14/12", ["act_talons", "act_lightning_bolt"], "Storm-front eagle whose wingbeats are the front.", { size: "huge", alignment: "chaotic good" }),
+
+  // ═══ Monstrosities & classic horrors ═══════════════════════════════
+  qm("cockatrice", "Cockatrice", 0.5, "monstrosity", 11, "2d8+2", "7/12/11/2/12/5", ["act_peck"], "Chicken-basilisk petrifying farmers one peck at a time.", { size: "small" }),
+  qm("gorgon", "Gorgon", 5, "monstrosity", 19, "10d10+40", "20/10/21/2/12/6", ["act_gore", "act_poison_breath"], "Iron-plated bull whose breath turns flesh to statue.", { size: "large", alignment: "unaligned" }),
+  qm("bulette", "Bulette", 5, "monstrosity", 17, "11d10+33", "22/13/17/2/10/5", ["act_bite_lg"], "Land-shark breaching through roads and regret.", { size: "huge", alignment: "unaligned" }),
+  qm("ankheg", "Ankheg", 2, "monstrosity", 14, "6d10+12", "16/8/14/1/10/4", ["act_bite_lg", "act_spit_acid"], "Orchard-burrowing larva horror with acid reflux.", { size: "large", alignment: "unaligned" }),
+  qm("grick", "Grick", 2, "monstrosity", 14, "5d10", "14/15/11/1/9/6", ["act_claw", "act_bite_sm"], "Rock-mimic worm dragging carrion to its stony lair.", { size: "large", alignment: "unaligned" }),
+  qm("darkmantle", "Darkmantle", 0.5, "monstrosity", 11, "2d8+2", "11/15/13/2/10/5", ["act_constrict"], "Cave-ceiling squid dropping onto torchlit heads.", { size: "small", alignment: "unaligned" }),
+  qm("piercer", "Piercer", 0.125, "monstrosity", 15, "4d6", "10/16/13/1/7/3", ["act_bite_sm"], "Stalactite that is not a stalactite, briefly.", { size: "small", alignment: "unaligned" }),
+  qm("rust_monster", "Rust Monster", 0.5, "monstrosity", 14, "5d8", "13/12/13/2/13/6", ["act_bite_sm"], "Antenna'd scavenger turning heirloom swords into breakfast.", { alignment: "unaligned" }),
+  qm("phase_panther", "Phase Panther", 3, "monstrosity", 13, "6d10+6", "14/15/12/12/13/10", ["act_claw_rend", "act_bite_md"], "Midnight cat stepping through stone like smoke.", { size: "large", senses: ["darkvision 120 ft."] }),
+  qm("swarm_piranhas", "Swarm of Piranhas", 1, "swarm", 13, "6d6+6", "13/14/13/1/7/2", ["act_bite_sm"], "Silver hunger stripping a swimmer to a story.", { speed_feet: 0, condition_immunities: ["charmed", "frightened", "grappled", "paralyzed", "petrified", "prone", "restrained", "stunned"] }),
+  qm("winter_wolf", "Winter Wolf", 3, "monstrosity", 13, "6d10+9", "18/13/14/7/11/8", ["act_bite_md", "act_breath_cold_white"], "Snowpack alpha howling blizzards down the pass.", { size: "large", alignment: "neutral evil" }),
+  qm("chimera", "Chimera", 6, "monstrosity", 14, "11d10+33", "19/11/19/3/14/10", ["act_bite_lg", "act_gore", "act_fire_breath_sm"], "Lion-dragon-goat committee with three bad ideas per turn.", { size: "large", alignment: "chaotic evil" }),
+  qm("hydra", "Hydra", 8, "monstrosity", 15, "13d12+52", "22/12/20/2/10/7", ["act_bite_md"], "Swamp tyrant growing two grudges for every one settled.", { size: "huge", alignment: "unaligned" }),
+  qm("kraken", "Kraken", 23, "monstrosity", 18, "32d12+224", "30/10/26/22/18/20", ["act_constrict", "act_bite_lg", "act_lightning_bolt"], "Ocean-floor god crushing fleets for the crime of sailing.", { size: "gargantuan", speed_feet: 20, alignment: "chaotic evil" }),
+  qm("roc", "Roc", 11, "monstrosity", 15, "20d12+60", "28/10/20/3/10/9", ["act_talons", "act_bite_lg"], "Mountain-eagle carrying elephants home to its chicks.", { size: "gargantuan", alignment: "unaligned" }),
+  qm("sphinx", "Sphinx", 11, "monstrosity", 17, "19d10+76", "22/14/18/18/18/17", ["act_claw_rend", "act_eye_ray"], "Riddle-keeper gating tombs behind correct grammar.", { size: "large", alignment: "lawful neutral" }),
+  qm("couatl", "Couatl", 4, "celestial", 19, "9d8+18", "16/16/17/18/20/18", ["act_bite_md", "act_sacred_flame"], "Rainbow-feathered serpent guarding oaths and prophecies.", { size: "large", alignment: "lawful good", condition_immunities: undefined }),
+  qm("nightmare", "Nightmare", 3, "fiend", 13, "6d10+12", "18/15/16/10/13/15", ["act_hooves", "act_fire_touch"], "Equine nightmare bridled only by the wicked.", { size: "large", alignment: "neutral evil" }),
+  qm("yuan_ti_pureblood", "Yuan-ti Pureblood", 1, "humanoid", 12, "3d8", "11/14/11/13/12/14", ["act_scimitar", "act_poison_spray"], "Snake-blooded courtier smiling with too many teeth.", { alignment: "neutral evil" }),
+  qm("yuan_ti_malison", "Yuan-ti Malison", 3, "humanoid", 14, "7d8+7", "16/14/13/13/13/12", ["act_bite_md", "act_scimitar", "act_constrict"], "Coils under the robe; cold calculation above it.", { alignment: "neutral evil" }),
+  qm("death_dog", "Death Dog", 2, "monstrosity", 12, "6d10+9", "16/13/14/3/12/6", ["act_bite_md", "act_bite_trip"], "Two heads arguing over which bites first; both are rabid.", { size: "large", alignment: "neutral evil" }),
+  qm("frost_worm", "Frost Worm", 8, "monstrosity", 16, "15d10+45", "23/8/19/2/10/6", ["act_bite_lg", "act_breath_cold_white"], "Glacier-serpent singing prey onto the ice.", { size: "huge", alignment: "unaligned" }),
+  qm("jaculi", "Jaculi", 1, "monstrosity", 13, "4d8+4", "14/16/12/2/8/4", ["act_bite_md"], "Spring-coiled tree serpent launching like a spear.", { alignment: "unaligned" }),
+  qm("cave_fisher", "Cave Fisher", 3, "monstrosity", 16, "7d10+14", "16/14/16/4/10/6", ["act_claw", "act_grasp"], "Cliff fisherman baiting ledges with glue and patience.", { size: "large", alignment: "unaligned" }),
+  qm("sea_serpent", "Sea Serpent", 10, "monstrosity", 16, "17d10+51", "23/14/19/2/10/6", ["act_bite_lg", "act_constrict", "act_tail_sweep"], "Ship-coiling legend that sailors refuse to name aloud.", { size: "huge", speed_feet: 0, alignment: "unaligned" }),
+
+  // ═══ Plants, oozes, swarms ═════════════════════════════════════════
+  qm("treant", "Treant", 9, "plant", 16, "14d12+56", "23/8/21/12/16/12", ["act_slam_lg", "act_crush"], "Ancient forest walking to war against the axe.", { size: "huge", alignment: "chaotic good" }),
+  qm("awakened_tree", "Awakened Tree", 2, "plant", 13, "7d10+14", "19/6/15/7/12/7", ["act_slam_generic"], "Druid's ally grown ambitious about doorways.", { size: "huge", alignment: "neutral" }),
+  qm("awakened_shrub", "Awakened Shrub", 0, "plant", 9, "1d6", "6/8/11/10/10/6", ["act_thorn_whip"], "Opinionated topiary with newfound mobility.", { size: "small", alignment: "neutral" }),
+  qm("needle_blight", "Needle Blight", 0.25, "plant", 12, "1d8+2", "12/10/12/4/8/3", ["act_quills"], "Thicket-thug flinging barbed darts from hedgerows.", { alignment: "neutral evil" }),
+  qm("twig_blight", "Twig Blight", 0.125, "plant", 13, "4d4", "6/16/10/4/8/3", ["act_claw"], "Kindling-sized ambush that comes in bundles.", { size: "small", alignment: "neutral evil" }),
+  qm("vine_blight", "Vine Blight", 0.5, "plant", 12, "3d8+6", "15/8/14/10/8/6", ["act_grasp"], "Wall of ivy reaching for ankles and throats equally.", { size: "medium", alignment: "neutral evil" }),
+  qm("gas_spore", "Gas Spore", 0.5, "plant", 8, "1d8+1", "5/1/10/1/3/1", ["act_poison_spray"], "Floating mimic of an eye tyrant; pops catastrophically.", { size: "large", speed_feet: 5, alignment: "unaligned" }),
+  qm("bark_warden", "Bark Warden", 5, "plant", 16, "11d10+33", "19/10/17/8/14/8", ["act_slam_lg", "act_grasp"], "Grove guardian grown armor rings and a grudge.", { size: "large", alignment: "neutral" }),
+  qm("swarm_spiders", "Swarm of Spiders", 0.5, "swarm", 12, "5d6+5", "3/13/10/1/7/1", ["act_bite_sm"], "Eight thousand eyes and one appetite.", { size: "medium", condition_immunities: ["charmed", "frightened", "grappled", "paralyzed", "petrified", "prone", "restrained", "stunned"] }),
+  qm("swarm_centipedes", "Swarm of Centipedes", 0.25, "swarm", 12, "4d6", "3/13/10/1/7/1", ["act_poison_bite"], "Floor becomes legs becomes regret.", { size: "medium", condition_immunities: ["charmed", "frightened", "grappled", "paralyzed", "petrified", "prone", "restrained", "stunned"] }),
+  qm("swarm_wasps", "Swarm of Wasps", 0.5, "swarm", 12, "5d6+5", "3/13/10/1/7/1", ["act_wyvern_sting"], "Angry weather with stripes.", { size: "medium", condition_immunities: ["charmed", "frightened", "grappled", "paralyzed", "petrified", "prone", "restrained", "stunned"] }),
+
+  // ═══ Fey & celestials ══════════════════════════════════════════════
+  qm("pegasus", "Pegasus", 2, "celestial", 12, "4d10+8", "18/15/16/10/15/13", ["act_hooves"], "Winged steed choosing riders by the weight of their honor.", { size: "large", alignment: "good", condition_immunities: undefined }),
+  qm("unicorn", "Unicorn", 5, "celestial", 12, "9d10+27", "18/14/15/11/17/16", ["act_horn", "act_hooves"], "Forest saint healing the worthy and goring the rest.", { size: "large", alignment: "lawful good", condition_immunities: undefined }),
+  qm("angelic_sentinel", "Angelic Sentinel", 9, "celestial", 17, "15d10+45", "20/14/18/15/16/18", ["act_greatsword", "act_flame_strike"], "Wardens of gateways between mortal planes and brighter ones.", { size: "large", alignment: "lawful good", condition_immunities: undefined }),
+  qm("planetar", "Planetar", 16, "celestial", 19, "24d10+96", "24/20/23/19/22/25", ["act_greatsword", "act_flame_strike", "act_meteor_swarm"], "Battle-angel whose sword is a verdict.", { size: "large", alignment: "lawful good", condition_immunities: undefined }),
+  qm("solar", "Solar", 21, "celestial", 21, "24d12+120", "26/22/26/25/25/30", ["act_greatsword", "act_flame_strike", "act_meteor_swarm"], "Last authority most tyrants ever hear.", { size: "large", alignment: "lawful good", condition_immunities: undefined }),
+  qm("empyrean", "Empyrean", 23, "celestial", 22, "33d12+198", "30/21/29/26/24/33", ["act_slam_lg", "act_crush", "act_flame_strike"], "Divine titan whose mood decides kingdoms' weather.", { size: "huge", alignment: "any", condition_immunities: undefined }),
+  qm("fey_knight", "Fey Knight", 4, "fey", 17, "9d8+18", "16/16/14/12/13/15", ["act_longsword", "act_longbow"], "Court champion dueling mortals for amusement and tithes."),
+  qm("boggart", "Boggart", 0.5, "fey", 13, "3d8+3", "10/16/12/10/12/13", ["act_shortsword"], "Household spirit gone sour, souring everything back.", { size: "small", alignment: "chaotic neutral" }),
+  qm("spriggan", "Spriggan", 2, "fey", 14, "5d8+10", "17/10/15/8/9/8", ["act_greataxe"], "Petty gnome-cousin swelling to giant size when cheated."),
+  qm("dryad_queen", "Dryad Queen", 5, "fey", 15, "11d8+22", "12/16/14/16/18/19", ["act_shortsword", "act_thorn_whip", "act_cone_of_cold"], "Season-crown sovereign whose grove obeys like a body."),
+  qm("doom_hound", "Doom Hound", 3, "fey", 14, "6d8+9", "16/15/14/8/13/10", ["act_bite_md"], "Omen-pup whose howl is someone's funeral notice.", { size: "large", alignment: "neutral evil" }),
+
+  // ═══ Fiends, continued ═════════════════════════════════════════════
+  qm("bone_devil", "Bone Devil", 9, "fiend", 16, "15d10+45", "19/16/18/15/16/16", ["act_halberd", "act_barbed_tail"], "Hook-handed interrogator of the third hell.", { size: "large", alignment: "lawful evil" }),
+  qm("nalfeshnee", "Nalfeshnee", 13, "fiend", 18, "20d10+80", "21/10/22/19/16/17", ["act_claw_rend", "act_bite_md", "act_flame_strike"], "Demon judge whose aura of sorrow precedes the sentence.", { size: "huge", alignment: "chaotic evil" }),
+  qm("demon_behemoth", "Demon Behemoth", 16, "fiend", 18, "24d10+120", "29/15/24/10/14/16", ["act_giant_axe", "act_crush"], "Arena-beast of the abyss, bred for gods' entertainment.", { size: "huge", alignment: "chaotic evil" }),
+  qm("ice_devil", "Ice Devil", 14, "fiend", 18, "21d10+84", "21/14/22/16/16/18", ["act_greatsword", "act_breath_cold_white"], "Arctic strategist freezing battlefields into dioramas.", { size: "large", alignment: "lawful evil" }),
+  qm("hellfire_priest", "Hellfire Priest", 7, "fiend", 16, "11d10+22", "14/14/16/14/15/17", ["act_flame_strike", "act_fireball", "act_dagger"], "Infernal liturgist baptizing converts in brimstone.", { alignment: "lawful evil" }),
+  qm("cambion", "Cambion", 5, "fiend", 15, "9d8+18", "16/15/15/14/12/17", ["act_rapier", "act_fire_bolt"], "Half-fiend heir scheming toward an infernal inheritance.", { alignment: "any evil" }),
+  qm("shadow_demon", "Shadow Demon", 12, "fiend", 16, "13d8+39", "12/15/16/20/16/19", ["act_corrupting_touch", "act_life_drain"], "Smoking silhouette of a demon that escaped its summoners.", { condition_immunities: ["grappled", "petrified", "prone", "restrained"] }),
+  qm("rakshasa", "Rakshasa", 13, "fiend", 16, "18d8+54", "16/17/18/18/19/20", ["act_claw_rend"], "Backward-handed tiger lord immune to nearly all prayers.", { alignment: "lawful evil" }),
+  qm("fiendish_tyrannosaur", "Fiendish Tyrannosaur", 10, "fiend", 15, "17d12+51", "27/10/23/2/10/8", ["act_bite_lg"], "Hell-leased apex engine; the contract is written in ash.", { size: "huge", alignment: "neutral evil" }),
+
+  // ═══ Constructs, continued ═════════════════════════════════════════
+  qm("adamantine_golem", "Adamantine Golem", 21, "construct", 23, "35d12+210", "28/9/26/3/11/1", ["act_golem_slam", "act_crush"], "Unbreakable argument ending wars by existing loudly.", { size: "huge" }),
+  qm("clockwork_hunter", "Clockwork Hunter", 5, "construct", 17, "10d10+20", "16/17/14/10/10/5", ["act_heavycrossbow", "act_dagger"], "Wind-up bloodhound tracking contracts to the letter.", { alignment: "lawful neutral", condition_immunities: undefined }),
+  qm("clockwork_soldier", "Clockwork Soldier", 3, "construct", 17, "8d10+16", "17/12/14/8/8/4", ["act_longsword", "act_slam_generic"], "Mass-produced legionnaire; warranty void vs fire.", { alignment: "lawful neutral", condition_immunities: undefined }),
+  qm("living_statue", "Living Statue", 4, "construct", 17, "9d10+18", "17/8/16/2/8/4", ["act_slam_lg"], "Marble hero posing patiently for centuries, then not.", { alignment: "neutral" }),
+  qm("stone_defender", "Stone Defender", 4, "construct", 17, "10d10+10", "16/8/15/1/8/3", ["act_slam_lg"], "Carved dwarf-statue guard dogging vault doors.", { size: "small", alignment: "unaligned" }),
+  qm("serpent_automaton", "Serpent Automaton", 2, "construct", 14, "5d10", "12/16/12/4/8/1", ["act_bite_md"], "Brass coil-guard striking keys and thieves alike.", { size: "medium", alignment: "lawful neutral" }),
+  qm("rune_guardian", "Rune Guardian", 6, "construct", 18, "12d10+36", "18/12/18/6/12/4", ["act_slam_lg", "act_eye_ray"], "Glyph-script colossus enforcing library silence forever.", { size: "large", alignment: "lawful neutral" }),
+  qm("tomb_construct", "Tomb Construct", 8, "construct", 18, "14d10+42", "20/10/19/2/9/3", ["act_golem_slam", "act_crush"], "Sarcophagus assembled into jealousy of the living.", { size: "large" }),
+
+  // ═══ Giants, continued ═════════════════════════════════════════════
+  qm("dire_troll", "Dire Troll", 10, "giant", 15, "16d10+64", "22/13/22/7/9/7", ["act_claw_rend", "act_bite_lg"], "Regenerating horror that heals faster than heroes agree.", { size: "huge" }),
+  qm("fire_giant_dreadnought", "Fire Giant Dreadnought", 12, "giant", 21, "19d12+95", "27/9/23/12/14/12", ["act_greatsword", "act_slam_lg"], "Forge-tyrant marching behind a tower of black iron.", { size: "huge", alignment: "lawful evil" }),
+  qm("storm_giant_sovereign", "Storm Giant Sovereign", 16, "giant", 18, "23d12+115", "29/14/23/20/19/22", ["act_greatsword", "act_lightning_bolt", "act_chain_lightning"], "Throne-of-clouds ruler deciding droughts and dynasties.", { size: "huge", alignment: "chaotic good" }),
+  qm("hill_giant_chief", "Hill Giant Chief", 6, "giant", 14, "12d12+30", "23/8/17/5/9/10", ["act_giant_axe", "act_rock_throw"], "Biggest belly wins the tribe; the tribe wins nothing else.", { size: "huge" }),
+  qm("cyclops_shaman", "Cyclops Shaman", 8, "giant", 15, "14d12+42", "22/10/20/9/16/8", ["act_greatclub", "act_flame_strike"], "One eye on this world, one dream on the next.", { size: "huge" }),
+  qm("ogre_warlord", "Ogre Warlord", 6, "giant", 16, "13d10+39", "21/10/17/7/9/12", ["act_giant_axe", "act_javelin"], "Promoted by surviving every superior it ate."),
+  qm("troll_king", "Troll King", 9, "giant", 17, "17d10+51", "23/13/21/8/10/9", ["act_claw_rend", "act_bite_lg"], "Crowned in scar tissue; the realm regenerates around him.", { size: "large" }),
+  qm("fomorian_tyrant", "Fomorian Tyrant", 11, "giant", 16, "18d10+72", "25/10/22/10/12/8", ["act_greatclub", "act_crush", "act_eye_ray"], "Under-earth emperor whose gaze warps what it favors.", { size: "huge", alignment: "chaotic evil" }),
+
+  // ═══ Deep waters ═══════════════════════════════════════════════════
+  qm("sahuagin", "Sahuagin", 0.5, "humanoid", 12, "3d8+3", "13/11/12/7/10/7", ["act_claw", "act_bite_sm"], "Shark-tattooed raiders surfacing only to take.", { speed_feet: 30, alignment: "lawful evil" }),
+  qm("sahuagin_priestess", "Sahuagin Priestess", 2, "humanoid", 12, "5d8+5", "12/12/12/10/14/12", ["act_spear", "act_spiritual_weapon"], "Blood-tide acolyte feeding the reef gods properly.", { speed_feet: 30, alignment: "lawful evil" }),
+  qm("merfolk", "Merfolk", 0.125, "humanoid", 11, "1d8", "10/13/10/11/11/12", ["act_spear"], "Coral-court citizens; traders, guides, occasional sirens.", { speed_feet: 5, alignment: "any" }),
+  qm("aboleth", "Aboleth", 10, "aberration", 17, "19d10+57", "23/8/21/18/15/18", ["act_pseudopod", "act_mind_blast"], "Elder memory-eater whose slaves inherit their servitude.", { size: "large", speed_feet: 10, alignment: "lawful evil" }),
+  qm("chuul", "Chuul", 4, "aberration", 16, "9d10+27", "19/10/16/5/12/5", ["act_claw_rend", "act_grasp"], "Pincer-priest performing ancient rites with new victims.", { size: "large", alignment: "chaotic evil" }),
+  qm("locathah", "Locathah", 0.25, "humanoid", 12, "2d8+2", "11/12/12/11/11/11", ["act_spear"], "Scaled league-folk defending reef trade routes.", { speed_feet: 5, alignment: "lawful neutral" }),
+  qm("water_weird", "Water Weird", 3, "elemental", 13, "8d8+8", "16/13/15/4/10/6", ["act_constrict"], "Well-dweller drowning the curious in polite silence.", { speed_feet: 30, alignment: "neutral" }),
+  qm("leviathan", "Leviathan", 20, "elemental", 19, "31d12+155", "28/12/26/10/16/18", ["act_slam_lg", "act_engulf", "act_breath_lightning"], "Primal sea-storm given a destination and a grudge.", { size: "gargantuan", speed_feet: 0, alignment: "chaotic neutral" }),
+  qm("storm_siren", "Storm Siren", 6, "monstrosity", 15, "11d10+22", "12/16/14/13/17/19", ["act_lightning_bolt", "act_vicious_mockery"], "Cliff-song luring ships with promises in minor keys.", { alignment: "chaotic evil" }),
+
+  // ═══ Cursed classics ═══════════════════════════════════════════════
+  qm("harpy", "Harpy", 1, "monstrosity", 11, "3d8+3", "12/13/12/7/10/13", ["act_claw"], "Cliff-nest songbird whose chorus ends mid-air.", { alignment: "chaotic evil" }),
+  qm("medusa", "Medusa", 6, "monstrosity", 14, "9d8+18", "10/16/16/12/13/17", ["act_poison_bite", "act_dagger"], "Veiled sculptor collecting portraits she'll never finish.", { alignment: "lawful evil" }),
+  qm("centaur", "Centaur", 2, "monstrosity", 12, "5d10+10", "18/14/14/9/13/12", ["act_longsword", "act_hooves"], "Horizon-herder galloping rumors across whole plains.", { size: "large", alignment: "neutral good" }),
+  qm("lamia", "Lamia", 4, "monstrosity", 13, "9d8+18", "16/15/16/14/14/16", ["act_claw_rend", "act_eye_ray"], "Ruins-noble dressing greed in illusions of royalty.", { size: "large", alignment: "chaotic evil" }),
+  qm("werebear", "Werebear", 5, "humanoid", 10, "9d8+27", "19/10/17/11/12/12", ["act_claw_rend", "act_bite_md"], "Reclusive warden whose curse is also a career.", { size: "large", alignment: "neutral good" }),
+  qm("weretiger", "Weretiger", 4, "humanoid", 12, "8d8+16", "17/15/15/10/12/10", ["act_claw_rend", "act_bite_md"], "Jungle duelists honoring challenges with extra claws.", { size: "large", alignment: "neutral" }),
+  qm("wereboar", "Wereboar", 4, "humanoid", 10, "8d8+16", "17/10/15/8/8/8", ["act_gore", "act_claw"], "Crossroad bully infecting taverns and travelers alike.", { size: "large", alignment: "neutral evil" }),
+  qm("werebat", "Werebat", 3, "humanoid", 12, "6d8+12", "12/16/14/10/12/10", ["act_bite_md"], "Cave-roost screecher draining rumor from the sleeping.", { size: "medium", alignment: "chaotic evil" }),
+  qm("ancient_silver_dragon", "Ancient Silver Dragon", 23, "dragon", 22, "34d12+238", "30/10/27/18/17/23", ["act_wyrm_bite", "act_breath_cold_white", "act_wyrm_tail"], "Moonlight's champion; tyranny freezes in its shadow.", { size: "gargantuan", alignment: "lawful good" }),
+  qm("nothic", "Nothic", 2, "aberration", 12, "4d8+4", "14/16/14/13/8/8", ["act_claw", "act_eye_ray"], "Wizard-curse hoarding secrets it can barely carry.", { alignment: "neutral evil" }),
 ];

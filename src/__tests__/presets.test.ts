@@ -171,9 +171,10 @@ describe("Preset actions", () => {
 });
 
 describe("Class templates", () => {
-  it("covers six core classes", () => {
+  it("covers twelve core classes", () => {
     expect(PRESET_CLASSES.map((c) => c.id)).toEqual([
       "fighter", "barbarian", "rogue", "ranger", "cleric", "wizard",
+      "paladin", "monk", "sorcerer", "warlock", "bard", "druid",
     ]);
   });
 

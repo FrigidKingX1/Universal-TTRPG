@@ -203,6 +203,19 @@ export const MONSTER_ATTACK_ACTIONS: ActionDefinition[] = [
   mk("act_breath_cold_white", "Cold Breath", "8d8", "cold", "CON", 30, undefined, { type: "cone", sizeFeet: 30 }),
   mk("act_breath_fire_black", "Acid Breath", "10d8", "acid", "CON", 30, undefined, { type: "line", sizeFeet: 60 }),
   mk("act_breath_fire_blue", "Lightning Breath", "12d10", "lightning", "CON", 30, undefined, { type: "line", sizeFeet: 30 }),
+
+  // Compact-batch staples for the expanded bestiary.
+  mk("act_bite_lg", "Bite (Large)", "2d10 + @attributes.STR.derived_modifier", "piercing", "STR"),
+  mk("act_claw_rend", "Rend", "2d6 + @attributes.STR.derived_modifier", "slashing", "STR"),
+  mk("act_slam_lg", "Slam (Large)", "2d8 + @attributes.STR.derived_modifier", "bludgeoning", "STR"),
+  mk("act_crush", "Crush", "3d6 + @attributes.STR.derived_modifier", "bludgeoning", "STR", 5, "Prone"),
+  mk("act_trample", "Trample", "2d8 + @attributes.STR.derived_modifier", "bludgeoning", "STR", 5, "Prone"),
+  mk("act_wing_slash", "Wing Slash", "1d10 + @attributes.STR.derived_modifier", "slashing", "STR"),
+  mk("act_barbed_tail", "Barbed Tail", "1d8 + @attributes.STR.derived_modifier", "piercing", "STR", 5, "Poisoned"),
+  mk("act_quills", "Quills", "1d8 + @attributes.DEX.derived_modifier", "piercing", "DEX", 30),
+  mk("act_spit_acid", "Acid Spit", "2d8", "acid", "DEX", 30),
+  mk("act_peck", "Peck", "1d4 + @attributes.DEX.derived_modifier", "piercing", "DEX"),
+  mk("act_frost_touch", "Frost Touch", "2d6", "cold", "WIS"),
 ];
 
 /** Every preset action in one registry — used by all installers. Deduped by id. */

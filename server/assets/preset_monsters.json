@@ -8600,5 +8600,5862 @@
   "description": "A crowd-pleasing killer of the blood-sands.",
   "key": "gladiator",
   "id": "preset_gladiator"
+ },
+ {
+  "name": "Gnoll Pack Lord",
+  "challenge_rating": 2,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 52,
+   "maximum": 52,
+   "formula": "8d8+16"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 12,
+   "CON": 13,
+   "INT": 8,
+   "WIS": 9,
+   "CHA": 12
+  },
+  "actions": [
+   "act_greataxe",
+   "act_longbow"
+  ],
+  "loot_table": [],
+  "description": "Scarred matriarch who leads the hunt by strength alone.",
+  "size": "medium",
+  "key": "gnoll_pack_lord",
+  "id": "preset_gnoll_pack_lord"
+ },
+ {
+  "name": "Gnoll Chieftain",
+  "challenge_rating": 3,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 71,
+   "maximum": 71,
+   "formula": "11d8+22"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 12,
+   "CON": 14,
+   "INT": 7,
+   "WIS": 10,
+   "CHA": 13
+  },
+  "actions": [
+   "act_greataxe",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Hyena-headed tyrant whose laughter means the pack feeds tonight.",
+  "key": "gnoll_chieftain",
+  "id": "preset_gnoll_chieftain"
+ },
+ {
+  "name": "Orc Eye",
+  "challenge_rating": 2,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "5d8+5"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 10,
+   "CON": 13,
+   "INT": 9,
+   "WIS": 12,
+   "CHA": 10
+  },
+  "actions": [
+   "act_greataxe",
+   "act_fire_bolt"
+  ],
+  "loot_table": [],
+  "description": "One-eyed war-priest reading omens in spilled blood.",
+  "key": "orc_eye",
+  "id": "preset_orc_eye"
+ },
+ {
+  "name": "Orog",
+  "challenge_rating": 2,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 33,
+   "maximum": 33,
+   "formula": "6d8+6"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 11,
+   "CON": 13,
+   "INT": 10,
+   "WIS": 10,
+   "CHA": 9
+  },
+  "actions": [
+   "act_greatsword",
+   "act_javelin"
+  ],
+  "loot_table": [],
+  "description": "Underdark-bred orc elite, disciplined where its kin are not.",
+  "senses": [
+   "darkvision 60 ft."
+  ],
+  "key": "orog",
+  "id": "preset_orog"
+ },
+ {
+  "name": "Hobgoblin Captain",
+  "challenge_rating": 3,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 65,
+   "maximum": 65,
+   "formula": "10d8+20"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 14,
+   "CON": 14,
+   "INT": 12,
+   "WIS": 12,
+   "CHA": 14
+  },
+  "actions": [
+   "act_longsword",
+   "act_longbow"
+  ],
+  "loot_table": [],
+  "description": "Legion officer drilling soldiers into a single killing machine.",
+  "key": "hobgoblin_captain",
+  "id": "preset_hobgoblin_captain"
+ },
+ {
+  "name": "Hobgoblin Warmage",
+  "challenge_rating": 4,
+  "type": "humanoid",
+  "alignment": "lawful evil",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 49,
+   "maximum": 49,
+   "formula": "9d8+9"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 14,
+   "CON": 12,
+   "INT": 16,
+   "WIS": 13,
+   "CHA": 12
+  },
+  "actions": [
+   "act_fireball",
+   "act_longsword"
+  ],
+  "loot_table": [],
+  "description": "Battle-caster weaving fire between shield walls.",
+  "key": "hobgoblin_warmage",
+  "id": "preset_hobgoblin_warmage"
+ },
+ {
+  "name": "Goblin Boss",
+  "challenge_rating": 1,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 14,
+   "maximum": 14,
+   "formula": "4d8-4"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 14,
+   "CON": 10,
+   "INT": 10,
+   "WIS": 8,
+   "CHA": 10
+  },
+  "actions": [
+   "act_scimitar",
+   "act_handaxe"
+  ],
+  "loot_table": [],
+  "description": "Bully with a bodyguard complex and a redirect-the-blame talent.",
+  "key": "goblin_boss",
+  "id": "preset_goblin_boss"
+ },
+ {
+  "name": "Goblin Hexer",
+  "challenge_rating": 2,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "5d8"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 14,
+   "CON": 10,
+   "INT": 14,
+   "WIS": 12,
+   "CHA": 9
+  },
+  "actions": [
+   "act_vicious_mockery",
+   "act_poison_spray"
+  ],
+  "loot_table": [],
+  "description": "Lash-wielding shaman cursing foes with spite and spite's cousins.",
+  "key": "goblin_hexer",
+  "id": "preset_goblin_hexer"
+ },
+ {
+  "name": "Kobold Sorcerer",
+  "challenge_rating": 1,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 14,
+   "maximum": 14,
+   "formula": "4d8-4"
+  },
+  "attributes": {
+   "STR": 8,
+   "DEX": 14,
+   "CON": 10,
+   "INT": 13,
+   "WIS": 9,
+   "CHA": 14
+  },
+  "actions": [
+   "act_ray_of_frost",
+   "act_acid_splash"
+  ],
+  "loot_table": [],
+  "description": "Wyrmpriest humming dragon-syllables that mostly work.",
+  "key": "kobold_sorcerer",
+  "id": "preset_kobold_sorcerer"
+ },
+ {
+  "name": "Kobold Inventor",
+  "challenge_rating": 0.5,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 10,
+   "maximum": 10,
+   "formula": "3d6"
+  },
+  "attributes": {
+   "STR": 8,
+   "DEX": 14,
+   "CON": 10,
+   "INT": 14,
+   "WIS": 9,
+   "CHA": 10
+  },
+  "actions": [
+   "act_sling",
+   "act_spit_acid"
+  ],
+  "loot_table": [],
+  "description": "Carries six badly-labeled flasks and no fear of consequences.",
+  "key": "kobold_inventor",
+  "id": "preset_kobold_inventor"
+ },
+ {
+  "name": "Lizardfolk Monarch",
+  "challenge_rating": 2,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 38,
+   "maximum": 38,
+   "formula": "7d8+7"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 11,
+   "CON": 13,
+   "INT": 9,
+   "WIS": 11,
+   "CHA": 10
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Cold-blooded king judging warmth as a character flaw.",
+  "size": "large",
+  "key": "lizardfolk_monarch",
+  "id": "preset_lizardfolk_monarch"
+ },
+ {
+  "name": "Lizardfolk Shaman",
+  "challenge_rating": 2,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "5d8+5"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 12,
+   "CON": 13,
+   "INT": 11,
+   "WIS": 15,
+   "CHA": 9
+  },
+  "actions": [
+   "act_thorn_whip",
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Marsh mystic trading swamp-secrets for fresh offerings.",
+  "key": "lizardfolk_shaman",
+  "id": "preset_lizardfolk_shaman"
+ },
+ {
+  "name": "Troglodyte",
+  "challenge_rating": 0.5,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 18,
+   "maximum": 18,
+   "formula": "4d6+4"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 10,
+   "CON": 14,
+   "INT": 6,
+   "WIS": 8,
+   "CHA": 8
+  },
+  "actions": [
+   "act_claw",
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Cave reptile whose stench arrives one round before it does.",
+  "senses": [
+   "darkvision 60 ft."
+  ],
+  "key": "troglodyte",
+  "id": "preset_troglodyte"
+ },
+ {
+  "name": "Grimlock",
+  "challenge_rating": 0.25,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 10,
+   "maximum": 10,
+   "formula": "3d6"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 10,
+   "CON": 12,
+   "INT": 5,
+   "WIS": 7,
+   "CHA": 6
+  },
+  "actions": [
+   "act_claw"
+  ],
+  "loot_table": [],
+  "description": "Blind troglodyte cousin hunting by echo in lightless halls.",
+  "senses": [
+   "blindsight 30 ft."
+  ],
+  "key": "grimlock",
+  "id": "preset_grimlock"
+ },
+ {
+  "name": "Merrow",
+  "challenge_rating": 2,
+  "type": "giant",
+  "alignment": "chaotic evil",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 52,
+   "maximum": 52,
+   "formula": "7d10+14"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 10,
+   "CON": 14,
+   "INT": 6,
+   "WIS": 10,
+   "CHA": 8
+  },
+  "actions": [
+   "act_greatclub",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Fish-bellied ogre of the reefs, all hunger and anchor-chain.",
+  "size": "large",
+  "speed_feet": 10,
+  "key": "merrow",
+  "id": "preset_merrow"
+ },
+ {
+  "name": "Cave Ape",
+  "challenge_rating": 2,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 36,
+   "maximum": 36,
+   "formula": "6d8+9"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 12,
+   "CON": 14,
+   "INT": 3,
+   "WIS": 8,
+   "CHA": 6
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "White-furred bruiser of high passes; hugs first, asks never.",
+  "size": "large",
+  "key": "cave_ape",
+  "id": "preset_cave_ape"
+ },
+ {
+  "name": "Fishfolk Zealot",
+  "challenge_rating": 0.25,
+  "type": "humanoid",
+  "alignment": "neutral evil",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 12,
+   "CON": 10,
+   "INT": 8,
+   "WIS": 10,
+   "CHA": 10
+  },
+  "actions": [
+   "act_spear"
+  ],
+  "loot_table": [],
+  "description": "Bubble-mouthed worshipper of what sleeps below the tide line.",
+  "key": "fishfolk_zealot",
+  "id": "preset_fishfolk_zealot"
+ },
+ {
+  "name": "Fishfolk Scout",
+  "challenge_rating": 0.125,
+  "type": "humanoid",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 5,
+   "maximum": 5,
+   "formula": "1d8+1"
+  },
+  "attributes": {
+   "STR": 9,
+   "DEX": 14,
+   "CON": 10,
+   "INT": 9,
+   "WIS": 10,
+   "CHA": 8
+  },
+  "actions": [
+   "act_dagger"
+  ],
+  "loot_table": [],
+  "description": "Reed-skiff outrider mapping coastlines for the deep choirs.",
+  "key": "fishfolk_scout",
+  "id": "preset_fishfolk_scout"
+ },
+ {
+  "name": "Duergar",
+  "challenge_rating": 0.5,
+  "type": "humanoid",
+  "alignment": "lawful evil",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "4d8+4"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 10,
+   "CON": 14,
+   "INT": 11,
+   "WIS": 10,
+   "CHA": 9
+  },
+  "actions": [
+   "act_warhammer"
+  ],
+  "loot_table": [],
+  "description": "Ashen dwarf smith-enforcer; grudges measured in centuries.",
+  "senses": [
+   "darkvision 120 ft."
+  ],
+  "key": "duergar",
+  "id": "preset_duergar"
+ },
+ {
+  "name": "Duergar Warlord",
+  "challenge_rating": 3,
+  "type": "humanoid",
+  "alignment": "lawful evil",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 65,
+   "maximum": 65,
+   "formula": "10d8+20"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 11,
+   "CON": 16,
+   "INT": 12,
+   "WIS": 11,
+   "CHA": 10
+  },
+  "actions": [
+   "act_warhammer",
+   "act_javelin"
+  ],
+  "loot_table": [],
+  "description": "Deep-king claiming every tunnel his shadow touches.",
+  "senses": [
+   "darkvision 120 ft."
+  ],
+  "key": "duergar_warlord",
+  "id": "preset_duergar_warlord"
+ },
+ {
+  "name": "Drow",
+  "challenge_rating": 0.25,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 14,
+   "CON": 10,
+   "INT": 12,
+   "WIS": 11,
+   "CHA": 12
+  },
+  "actions": [
+   "act_shortsword",
+   "act_handaxe"
+  ],
+  "loot_table": [],
+  "description": "Spider-sworn surface raider; poison on the blade, poisons in the words.",
+  "senses": [
+   "darkvision 120 ft."
+  ],
+  "key": "drow",
+  "id": "preset_drow"
+ },
+ {
+  "name": "Drow Priestess",
+  "challenge_rating": 8,
+  "type": "humanoid",
+  "alignment": "lawful evil",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 97,
+   "maximum": 97,
+   "formula": "13d8+39"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 16,
+   "CON": 14,
+   "INT": 13,
+   "WIS": 17,
+   "CHA": 18
+  },
+  "actions": [
+   "act_shortsword",
+   "act_lightning_bolt",
+   "act_cone_of_cold"
+  ],
+  "loot_table": [],
+  "description": "Matron's voice in the underdark, spider-god's will made silk.",
+  "senses": [
+   "darkvision 120 ft."
+  ],
+  "key": "drow_priestess",
+  "id": "preset_drow_priestess"
+ },
+ {
+  "name": "Deep Gnome",
+  "challenge_rating": 0.5,
+  "type": "humanoid",
+  "alignment": "neutral good",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 13,
+   "maximum": 13,
+   "formula": "3d6+3"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 14,
+   "CON": 12,
+   "INT": 12,
+   "WIS": 13,
+   "CHA": 9
+  },
+  "actions": [
+   "act_warhammer"
+  ],
+  "loot_table": [],
+  "description": "Stone-grey gnome prospector who heard you coming an hour ago.",
+  "senses": [
+   "darkvision 120 ft."
+  ],
+  "key": "deep_gnome",
+  "id": "preset_deep_gnome"
+ },
+ {
+  "name": "Astral Raider",
+  "challenge_rating": 5,
+  "type": "humanoid",
+  "alignment": "lawful evil",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 84,
+   "maximum": 84,
+   "formula": "13d8+26"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 15,
+   "CON": 16,
+   "INT": 13,
+   "WIS": 14,
+   "CHA": 12
+  },
+  "actions": [
+   "act_greatsword",
+   "act_longbow"
+  ],
+  "loot_table": [],
+  "description": "Silver-armored reaver riding thought-ships between worlds.",
+  "key": "astral_raider",
+  "id": "preset_astral_raider"
+ },
+ {
+  "name": "Cave Bear",
+  "challenge_rating": 2,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 42,
+   "maximum": 42,
+   "formula": "5d10+15"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 10,
+   "CON": 16,
+   "INT": 2,
+   "WIS": 13,
+   "CHA": 7
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Pleistocene bulk with a temper preserved perfectly.",
+  "size": "large",
+  "key": "cave_bear",
+  "id": "preset_cave_bear"
+ },
+ {
+  "name": "Sabertooth Tiger",
+  "challenge_rating": 2,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 35,
+   "maximum": 35,
+   "formula": "5d10+8"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 16,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 11,
+   "CHA": 6
+  },
+  "actions": [
+   "act_bite_lg",
+   "act_claw"
+  ],
+  "loot_table": [],
+  "description": "Leap, puncture, done — prehistory's neatest solution.",
+  "size": "large",
+  "key": "sabertooth",
+  "id": "preset_sabertooth"
+ },
+ {
+  "name": "Cave Lion",
+  "challenge_rating": 2,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 37,
+   "maximum": 37,
+   "formula": "5d10+10"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 14,
+   "CON": 15,
+   "INT": 2,
+   "WIS": 12,
+   "CHA": 6
+  },
+  "actions": [
+   "act_claw",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Maned giant stalking mammoth-steppe shadows.",
+  "size": "large",
+  "key": "cave_lion",
+  "id": "preset_cave_lion"
+ },
+ {
+  "name": "Woolly Rhino",
+  "challenge_rating": 3,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 68,
+   "maximum": 68,
+   "formula": "8d12+16"
+  },
+  "attributes": {
+   "STR": 21,
+   "DEX": 8,
+   "CON": 17,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 4
+  },
+  "actions": [
+   "act_gore",
+   "act_trample"
+  ],
+  "loot_table": [],
+  "description": "Two-ton snowplow with a very pointed opinion.",
+  "size": "huge",
+  "key": "woolly_rhino",
+  "id": "preset_woolly_rhino"
+ },
+ {
+  "name": "Mastodon",
+  "challenge_rating": 4,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 76,
+   "maximum": 76,
+   "formula": "8d12+24"
+  },
+  "attributes": {
+   "STR": 22,
+   "DEX": 8,
+   "CON": 17,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 4
+  },
+  "actions": [
+   "act_gore",
+   "act_trample",
+   "act_slam_generic"
+  ],
+  "loot_table": [],
+  "description": "Tusked hill that remembers every slight since the ice age.",
+  "size": "huge",
+  "key": "mastodon",
+  "id": "preset_mastodon"
+ },
+ {
+  "name": "Aurochs",
+  "challenge_rating": 2,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 45,
+   "maximum": 45,
+   "formula": "6d10+12"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 10,
+   "CON": 16,
+   "INT": 2,
+   "WIS": 9,
+   "CHA": 4
+  },
+  "actions": [
+   "act_gore",
+   "act_trample"
+  ],
+  "loot_table": [],
+  "description": "Ancestor of cattle, twice the size and ten times the grudge.",
+  "size": "large",
+  "key": "aurochs",
+  "id": "preset_aurochs"
+ },
+ {
+  "name": "Elk",
+  "challenge_rating": 0.25,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 10,
+  "hit_points": {
+   "current": 13,
+   "maximum": 13,
+   "formula": "2d10+2"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 14,
+   "CON": 11,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 4
+  },
+  "actions": [
+   "act_slam_generic"
+  ],
+  "loot_table": [],
+  "description": "Autumn bugle echoing across frost meadows.",
+  "key": "elk",
+  "id": "preset_elk"
+ },
+ {
+  "name": "Hyena",
+  "challenge_rating": 0,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 5,
+   "maximum": 5,
+   "formula": "1d8+1"
+  },
+  "attributes": {
+   "STR": 9,
+   "DEX": 12,
+   "CON": 11,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 5
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Giggling scavenger patient enough to be dangerous in numbers.",
+  "key": "hyena",
+  "id": "preset_hyena"
+ },
+ {
+  "name": "Warhorse",
+  "challenge_rating": 0.5,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 19,
+   "maximum": 19,
+   "formula": "3d10+3"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 12,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 12,
+   "CHA": 6
+  },
+  "actions": [
+   "act_hooves"
+  ],
+  "loot_table": [],
+  "description": "Armor-trained destrier; tramples on command.",
+  "size": "large",
+  "key": "warhorse",
+  "id": "preset_warhorse"
+ },
+ {
+  "name": "Draft Horse",
+  "challenge_rating": 0.25,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 10,
+  "hit_points": {
+   "current": 19,
+   "maximum": 19,
+   "formula": "3d10+3"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 10,
+   "CON": 12,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 4
+  },
+  "actions": [
+   "act_hooves"
+  ],
+  "loot_table": [],
+  "description": "Gentle colossus hauling what four men cannot.",
+  "size": "large",
+  "key": "draft_horse",
+  "id": "preset_draft_horse"
+ },
+ {
+  "name": "Camel",
+  "challenge_rating": 0.125,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 9,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 8,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 8,
+   "CHA": 4
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Desert ship storing water, spite, and dramatic sighs.",
+  "key": "camel",
+  "id": "preset_camel"
+ },
+ {
+  "name": "Mule",
+  "challenge_rating": 0.125,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 10,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 8,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 8,
+   "CHA": 5
+  },
+  "actions": [
+   "act_hooves"
+  ],
+  "loot_table": [],
+  "description": "Carries everything; moves when philosophically ready.",
+  "key": "mule",
+  "id": "preset_mule"
+ },
+ {
+  "name": "Blood Hawk",
+  "challenge_rating": 0.125,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 4,
+   "maximum": 4,
+   "formula": "1d6+1"
+  },
+  "attributes": {
+   "STR": 6,
+   "DEX": 16,
+   "CON": 10,
+   "INT": 2,
+   "WIS": 12,
+   "CHA": 6
+  },
+  "actions": [
+   "act_peck"
+  ],
+  "loot_table": [],
+  "description": "Flocks scent one drop and become a red cloud.",
+  "size": "tiny",
+  "key": "blood_hawk",
+  "id": "preset_blood_hawk"
+ },
+ {
+  "name": "Axe Beak",
+  "challenge_rating": 0.25,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 12,
+   "CON": 12,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 5
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Six-foot terror-bird shearing grasslands at a sprint.",
+  "size": "large",
+  "key": "axe_beak",
+  "id": "preset_axe_beak"
+ },
+ {
+  "name": "Boar",
+  "challenge_rating": 0.25,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 12,
+   "maximum": 12,
+   "formula": "2d8+3"
+  },
+  "attributes": {
+   "STR": 13,
+   "DEX": 11,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 9,
+   "CHA": 4
+  },
+  "actions": [
+   "act_gore"
+  ],
+  "loot_table": [],
+  "description": "Bristleback orchard-raider; charges first, thinks never.",
+  "key": "boar",
+  "id": "preset_boar"
+ },
+ {
+  "name": "Vault Weaver",
+  "challenge_rating": 1,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 26,
+   "maximum": 26,
+   "formula": "4d10+4"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 15,
+   "CON": 12,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 3
+  },
+  "actions": [
+   "act_bite_md",
+   "act_grasp"
+  ],
+  "loot_table": [],
+  "description": "Tomb-architect spider spinning alarm-threads across treasure.",
+  "size": "large",
+  "senses": [
+   "darkvision 60 ft.",
+   "tremorsense"
+  ],
+  "key": "vault_weaver",
+  "id": "preset_vault_weaver"
+ },
+ {
+  "name": "Giant Snapping Turtle",
+  "challenge_rating": 1,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 32,
+   "maximum": 32,
+   "formula": "5d10+5"
+  },
+  "attributes": {
+   "STR": 15,
+   "DEX": 8,
+   "CON": 13,
+   "INT": 1,
+   "WIS": 9,
+   "CHA": 3
+  },
+  "actions": [
+   "act_bite_lg"
+  ],
+  "loot_table": [],
+  "description": "Algae-backed boulder with trap-jaw patience.",
+  "size": "large",
+  "key": "snapping_turtle",
+  "id": "preset_snapping_turtle"
+ },
+ {
+  "name": "Reef Shark",
+  "challenge_rating": 0.5,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 13,
+   "DEX": 14,
+   "CON": 11,
+   "INT": 1,
+   "WIS": 8,
+   "CHA": 2
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Silver flash over coral, then the water goes quiet.",
+  "speed_feet": 0,
+  "key": "reef_shark",
+  "id": "preset_reef_shark"
+ },
+ {
+  "name": "Giant Pike",
+  "challenge_rating": 0.5,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 14,
+   "CON": 11,
+   "INT": 1,
+   "WIS": 8,
+   "CHA": 2
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "River torpedo ambushing from the lily shallows.",
+  "speed_feet": 0,
+  "key": "giant_pike",
+  "id": "preset_giant_pike"
+ },
+ {
+  "name": "Electric Eel",
+  "challenge_rating": 0.5,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 13,
+   "maximum": 13,
+   "formula": "2d10+2"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 14,
+   "CON": 11,
+   "INT": 1,
+   "WIS": 8,
+   "CHA": 2
+  },
+  "actions": [
+   "act_shocking_grasp",
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Marsh ribbon that answers touch with lightning.",
+  "speed_feet": 0,
+  "key": "electric_eel",
+  "id": "preset_electric_eel"
+ },
+ {
+  "name": "Snow Leopard",
+  "challenge_rating": 1,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "4d8+4"
+  },
+  "attributes": {
+   "STR": 15,
+   "DEX": 15,
+   "CON": 12,
+   "INT": 3,
+   "WIS": 12,
+   "CHA": 6
+  },
+  "actions": [
+   "act_claw",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Ghost of the white ridges, seen only as falling snow shifting.",
+  "key": "snow_leopard",
+  "id": "preset_snow_leopard"
+ },
+ {
+  "name": "Mountain Goat",
+  "challenge_rating": 0,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 4,
+   "maximum": 4,
+   "formula": "1d8"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 12,
+   "CON": 12,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 4
+  },
+  "actions": [
+   "act_slam_generic"
+  ],
+  "loot_table": [],
+  "description": "Defies gravity, ledges, and your patience with equal ease.",
+  "key": "mountain_goat",
+  "id": "preset_mountain_goat"
+ },
+ {
+  "name": "Badger",
+  "challenge_rating": 0,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 10,
+  "hit_points": {
+   "current": 4,
+   "maximum": 4,
+   "formula": "1d6+1"
+  },
+  "attributes": {
+   "STR": 8,
+   "DEX": 12,
+   "CON": 11,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 4
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Striped fury defending a hole in the ground.",
+  "key": "badger",
+  "id": "preset_badger"
+ },
+ {
+  "name": "Giant Badger",
+  "challenge_rating": 0.25,
+  "type": "beast",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 10,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 9,
+   "CHA": 4
+  },
+  "actions": [
+   "act_claw",
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Digging machine with a bad attitude and bigger claws.",
+  "key": "giant_badger",
+  "id": "preset_giant_badger"
+ },
+ {
+  "name": "Revenant",
+  "challenge_rating": 5,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 58,
+   "maximum": 58,
+   "formula": "9d8+18"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 14,
+   "CON": 16,
+   "INT": 12,
+   "WIS": 14,
+   "CHA": 16
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_constrict"
+  ],
+  "loot_table": [],
+  "description": "Murdered soul wearing its own corpse, hunting its killer across any distance.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "revenant",
+  "id": "preset_revenant"
+ },
+ {
+  "name": "Flameskull",
+  "challenge_rating": 4,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "6d6+6"
+  },
+  "attributes": {
+   "STR": 6,
+   "DEX": 18,
+   "CON": 10,
+   "INT": 16,
+   "WIS": 12,
+   "CHA": 16
+  },
+  "actions": [
+   "act_fireball",
+   "act_ray_of_frost"
+  ],
+  "loot_table": [],
+  "description": "Grinning skull wreathed in green flame; laughs in cackling bursts.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "size": "small",
+  "speed_feet": 0,
+  "key": "flameskull",
+  "id": "preset_flameskull"
+ },
+ {
+  "name": "Bone Swarm",
+  "challenge_rating": 2,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 44,
+   "maximum": 44,
+   "formula": "8d8+8"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 15,
+   "CON": 12,
+   "INT": 2,
+   "WIS": 8,
+   "CHA": 4
+  },
+  "actions": [
+   "act_claw",
+   "act_quills"
+  ],
+  "loot_table": [],
+  "description": "A cyclone of grasping skeletons pretending to be weather.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "charmed",
+   "frightened",
+   "grappled",
+   "paralyzed",
+   "petrified",
+   "poisoned",
+   "prone",
+   "restrained",
+   "stunned"
+  ],
+  "key": "bone_swarm",
+  "id": "preset_bone_swarm"
+ },
+ {
+  "name": "Plague Zombie",
+  "challenge_rating": 1,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 8,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "4d8+4"
+  },
+  "attributes": {
+   "STR": 13,
+   "DEX": 6,
+   "CON": 16,
+   "INT": 2,
+   "WIS": 7,
+   "CHA": 4
+  },
+  "actions": [
+   "act_slam_generic",
+   "act_poison_bite"
+  ],
+  "loot_table": [],
+  "description": "Its rot is contagious; its grip is final.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "plague_zombie",
+  "id": "preset_plague_zombie"
+ },
+ {
+  "name": "Skeleton Champion",
+  "challenge_rating": 5,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 71,
+   "maximum": 71,
+   "formula": "11d8+22"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 14,
+   "CON": 16,
+   "INT": 8,
+   "WIS": 10,
+   "CHA": 8
+  },
+  "actions": [
+   "act_greatsword",
+   "act_longbow"
+  ],
+  "loot_table": [],
+  "description": "Tournament knight whose oath outlasted the flesh that swore it.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "skeleton_champion",
+  "id": "preset_skeleton_champion"
+ },
+ {
+  "name": "Bone Archer",
+  "challenge_rating": 1,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 16,
+   "CON": 12,
+   "INT": 6,
+   "WIS": 8,
+   "CHA": 5
+  },
+  "actions": [
+   "act_longbow",
+   "act_dagger"
+  ],
+  "loot_table": [],
+  "description": "Ribcage full of arrows and nothing else.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "bone_archer",
+  "id": "preset_bone_archer"
+ },
+ {
+  "name": "Grave Hound",
+  "challenge_rating": 1,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 19,
+   "maximum": 19,
+   "formula": "3d8+6"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 14,
+   "CON": 14,
+   "INT": 3,
+   "WIS": 10,
+   "CHA": 5
+  },
+  "actions": [
+   "act_bite_trip"
+  ],
+  "loot_table": [],
+  "description": "Churchyard hound that kept guarding past its last heartbeat.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "gravehound",
+  "id": "preset_gravehound"
+ },
+ {
+  "name": "Drowned Dead",
+  "challenge_rating": 2,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 10,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "6d8"
+  },
+  "attributes": {
+   "STR": 15,
+   "DEX": 8,
+   "CON": 14,
+   "INT": 5,
+   "WIS": 8,
+   "CHA": 6
+  },
+  "actions": [
+   "act_claw",
+   "act_grasp"
+  ],
+  "loot_table": [],
+  "description": "Sailors tangled in weed, still pulling others under.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "speed_feet": 20,
+  "key": "drowned_dead",
+  "id": "preset_drowned_dead"
+ },
+ {
+  "name": "Spirit Naga",
+  "challenge_rating": 8,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 105,
+   "maximum": 105,
+   "formula": "14d10+28"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 17,
+   "CON": 15,
+   "INT": 16,
+   "WIS": 15,
+   "CHA": 16
+  },
+  "actions": [
+   "act_bite_md",
+   "act_fireball",
+   "act_cone_of_cold"
+  ],
+  "loot_table": [],
+  "description": "Serpent sage refusing death through forbidden syllables.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "size": "large",
+  "key": "spirit_naga",
+  "id": "preset_spirit_naga"
+ },
+ {
+  "name": "Death Knight",
+  "challenge_rating": 17,
+  "type": "undead",
+  "alignment": "lawful evil",
+  "armor_class": 20,
+  "hit_points": {
+   "current": 246,
+   "maximum": 246,
+   "formula": "29d10+87"
+  },
+  "attributes": {
+   "STR": 24,
+   "DEX": 14,
+   "CON": 23,
+   "INT": 18,
+   "WIS": 16,
+   "CHA": 22
+  },
+  "actions": [
+   "act_greatsword",
+   "act_fireball",
+   "act_chain_lightning"
+  ],
+  "loot_table": [],
+  "description": "Fallen paladin-king commanding legions from a helm of horns.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "size": "large",
+  "key": "death_knight",
+  "id": "preset_death_knight"
+ },
+ {
+  "name": "Lich",
+  "challenge_rating": 21,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 187,
+   "maximum": 187,
+   "formula": "22d8+88"
+  },
+  "attributes": {
+   "STR": 11,
+   "DEX": 16,
+   "CON": 16,
+   "INT": 20,
+   "WIS": 14,
+   "CHA": 16
+  },
+  "actions": [
+   "act_draining_touch",
+   "act_meteor_swarm",
+   "act_chain_lightning"
+  ],
+  "loot_table": [],
+  "description": "Archmage who traded mortality for eternity and paid in souls.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "lich",
+  "id": "preset_lich"
+ },
+ {
+  "name": "Ghast Queen",
+  "challenge_rating": 5,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 78,
+   "maximum": 78,
+   "formula": "12d8+24"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 17,
+   "CON": 14,
+   "INT": 11,
+   "WIS": 11,
+   "CHA": 12
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Corpse-court monarch attended by whispering ghouls.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "ghast_queen",
+  "id": "preset_ghast_queen"
+ },
+ {
+  "name": "Zombie Lord",
+  "challenge_rating": 6,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 84,
+   "maximum": 84,
+   "formula": "13d8+26"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 9,
+   "CON": 17,
+   "INT": 8,
+   "WIS": 10,
+   "CHA": 10
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_life_drain"
+  ],
+  "loot_table": [],
+  "description": "Necromancer's mistake that learned command instead of obedience.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "zombie_lord",
+  "id": "preset_zombie_lord"
+ },
+ {
+  "name": "Grave Beetle Swarm",
+  "challenge_rating": 1,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 21,
+   "maximum": 21,
+   "formula": "6d6"
+  },
+  "attributes": {
+   "STR": 6,
+   "DEX": 14,
+   "CON": 11,
+   "INT": 1,
+   "WIS": 6,
+   "CHA": 2
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Chitin tide stripping grave-goods and gravekeepers alike.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "charmed",
+   "frightened",
+   "grappled",
+   "paralyzed",
+   "petrified",
+   "poisoned",
+   "prone",
+   "restrained",
+   "stunned"
+  ],
+  "key": "grave_beetle_swarm",
+  "id": "preset_grave_beetle_swarm"
+ },
+ {
+  "name": "Phantom Warrior",
+  "challenge_rating": 3,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 36,
+   "maximum": 36,
+   "formula": "8d8"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 16,
+   "CON": 10,
+   "INT": 10,
+   "WIS": 12,
+   "CHA": 14
+  },
+  "actions": [
+   "act_longsword"
+  ],
+  "loot_table": [],
+  "description": "Spectral soldier replaying a battle no one won.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "phantom_warrior",
+  "id": "preset_phantom_warrior"
+ },
+ {
+  "name": "Grave Warden",
+  "challenge_rating": 4,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 58,
+   "maximum": 58,
+   "formula": "9d8+18"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 10,
+   "CON": 16,
+   "INT": 6,
+   "WIS": 12,
+   "CHA": 8
+  },
+  "actions": [
+   "act_halberd",
+   "act_life_drain"
+  ],
+  "loot_table": [],
+  "description": "Tomb sentinel pruning visitors with methodical hate.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "key": "grave_warden",
+  "id": "preset_grave_warden"
+ },
+ {
+  "name": "Rotting Titan",
+  "challenge_rating": 12,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 187,
+   "maximum": 187,
+   "formula": "22d10+66"
+  },
+  "attributes": {
+   "STR": 27,
+   "DEX": 10,
+   "CON": 21,
+   "INT": 5,
+   "WIS": 9,
+   "CHA": 6
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_crush"
+  ],
+  "loot_table": [],
+  "description": "Colossal corpse stitched from giants and older mistakes.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "size": "huge",
+  "key": "rotting_titan",
+  "id": "preset_rotting_titan"
+ },
+ {
+  "name": "Bone Colossus",
+  "challenge_rating": 14,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 204,
+   "maximum": 204,
+   "formula": "24d10+72"
+  },
+  "attributes": {
+   "STR": 25,
+   "DEX": 10,
+   "CON": 21,
+   "INT": 5,
+   "WIS": 9,
+   "CHA": 6
+  },
+  "actions": [
+   "act_giant_axe",
+   "act_crush"
+  ],
+  "loot_table": [],
+  "description": "Cathedral skeleton walking; bells toll inside its ribs.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "size": "huge",
+  "key": "bone_colossus",
+  "id": "preset_bone_colossus"
+ },
+ {
+  "name": "Skeletal Wyvern",
+  "challenge_rating": 6,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 97,
+   "maximum": 97,
+   "formula": "13d10+26"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 12,
+   "CON": 16,
+   "INT": 3,
+   "WIS": 8,
+   "CHA": 5
+  },
+  "actions": [
+   "act_bite_md",
+   "act_barbed_tail"
+  ],
+  "loot_table": [],
+  "description": "Flyless wyrm-bones bound to a rider long dead.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "size": "large",
+  "key": "skeletal_wyvern",
+  "id": "preset_skeletal_wyvern"
+ },
+ {
+  "name": "Vampire Familiar",
+  "challenge_rating": 1,
+  "type": "undead",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 8,
+   "DEX": 17,
+   "CON": 12,
+   "INT": 8,
+   "WIS": 10,
+   "CHA": 12
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Counts a master's enemies by the taste of their blood.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "poisoned",
+   "exhaustion"
+  ],
+  "size": "tiny",
+  "key": "vampire_familiar",
+  "id": "preset_vampire_familiar"
+ },
+ {
+  "name": "Dragon Turtle",
+  "challenge_rating": 17,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 21,
+  "hit_points": {
+   "current": 379,
+   "maximum": 379,
+   "formula": "33d12+165"
+  },
+  "attributes": {
+   "STR": 27,
+   "DEX": 10,
+   "CON": 25,
+   "INT": 12,
+   "WIS": 16,
+   "CHA": 14
+  },
+  "actions": [
+   "act_bite_lg",
+   "act_breath_fire_blue"
+  ],
+  "loot_table": [],
+  "description": "Island-sized leviathan taxing shipping lanes in gold or hulls.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "gargantuan",
+  "speed_feet": 20,
+  "key": "dragon_turtle",
+  "id": "preset_dragon_turtle"
+ },
+ {
+  "name": "Fire Drake",
+  "challenge_rating": 4,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 67,
+   "maximum": 67,
+   "formula": "9d10+18"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 12,
+   "CON": 15,
+   "INT": 8,
+   "WIS": 11,
+   "CHA": 9
+  },
+  "actions": [
+   "act_bite_md",
+   "act_fire_breath_sm"
+  ],
+  "loot_table": [],
+  "description": "Wingless lava-lizard dripping molten slag.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "fire_drake",
+  "id": "preset_fire_drake"
+ },
+ {
+  "name": "Frost Drake",
+  "challenge_rating": 4,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 67,
+   "maximum": 67,
+   "formula": "9d10+18"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 12,
+   "CON": 15,
+   "INT": 8,
+   "WIS": 11,
+   "CHA": 9
+  },
+  "actions": [
+   "act_bite_md",
+   "act_breath_cold_white"
+  ],
+  "loot_table": [],
+  "description": "Glacier-wyrm frosting valleys with each exhale.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "frost_drake",
+  "id": "preset_frost_drake"
+ },
+ {
+  "name": "Storm Drake",
+  "challenge_rating": 5,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 75,
+   "maximum": 75,
+   "formula": "10d10+20"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 14,
+   "CON": 15,
+   "INT": 8,
+   "WIS": 11,
+   "CHA": 9
+  },
+  "actions": [
+   "act_bite_md",
+   "act_breath_lightning"
+  ],
+  "loot_table": [],
+  "description": "Rides thunderheads; strikes before the warning clap.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "storm_drake",
+  "id": "preset_storm_drake"
+ },
+ {
+  "name": "Venom Drake",
+  "challenge_rating": 4,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 67,
+   "maximum": 67,
+   "formula": "9d10+18"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 14,
+   "CON": 15,
+   "INT": 8,
+   "WIS": 11,
+   "CHA": 9
+  },
+  "actions": [
+   "act_bite_md",
+   "act_poison_breath"
+  ],
+  "loot_table": [],
+  "description": "Jungle wyrm whose shadow sickens the leaves beneath it.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "venom_drake",
+  "id": "preset_venom_drake"
+ },
+ {
+  "name": "Rock Drake",
+  "challenge_rating": 4,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 75,
+   "maximum": 75,
+   "formula": "10d10+20"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 10,
+   "CON": 16,
+   "INT": 6,
+   "WIS": 11,
+   "CHA": 7
+  },
+  "actions": [
+   "act_bite_md",
+   "act_tail_sweep"
+  ],
+  "loot_table": [],
+  "description": "Cliff-camo grazer that turns territorial at dusk.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "rock_drake",
+  "id": "preset_rock_drake"
+ },
+ {
+  "name": "Faerie Dragon",
+  "challenge_rating": 2,
+  "type": "dragon",
+  "alignment": "chaotic good",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 35,
+   "maximum": 35,
+   "formula": "10d4+10"
+  },
+  "attributes": {
+   "STR": 4,
+   "DEX": 20,
+   "CON": 12,
+   "INT": 16,
+   "WIS": 14,
+   "CHA": 17
+  },
+  "actions": [
+   "act_eldritch_blast"
+  ],
+  "loot_table": [],
+  "description": "Butterfly-wing prankster exhaling euphoric mischief.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "tiny",
+  "key": "faerie_dragon",
+  "id": "preset_faerie_dragon"
+ },
+ {
+  "name": "Pseudodragon",
+  "challenge_rating": 0.25,
+  "type": "dragon",
+  "alignment": "neutral good",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 7,
+   "maximum": 7,
+   "formula": "2d4+2"
+  },
+  "attributes": {
+   "STR": 6,
+   "DEX": 15,
+   "CON": 13,
+   "INT": 10,
+   "WIS": 12,
+   "CHA": 10
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Cat-sized familiar bargaining in purrs and stings.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "tiny",
+  "key": "pseudodragon",
+  "id": "preset_pseudodragon"
+ },
+ {
+  "name": "Guard Drake",
+  "challenge_rating": 2,
+  "type": "dragon",
+  "alignment": "unaligned",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 39,
+   "maximum": 39,
+   "formula": "6d8+12"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 10,
+   "CON": 15,
+   "INT": 2,
+   "WIS": 8,
+   "CHA": 5
+  },
+  "actions": [
+   "act_bite_md",
+   "act_tail_sweep"
+  ],
+  "loot_table": [],
+  "description": "Kennel-raised dragonkin; loyal as gravity.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "guard_drake",
+  "id": "preset_guard_drake"
+ },
+ {
+  "name": "Gold Dragon Wyrmling",
+  "challenge_rating": 3,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 33,
+   "maximum": 33,
+   "formula": "6d8+6"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 10,
+   "CON": 13,
+   "INT": 12,
+   "WIS": 13,
+   "CHA": 15
+  },
+  "actions": [
+   "act_bite_md",
+   "act_fire_breath_sm"
+  ],
+  "loot_table": [],
+  "description": "Noble hatchling already practicing its benevolent roar.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "gold_wyrmling",
+  "id": "preset_gold_wyrmling"
+ },
+ {
+  "name": "Silver Dragon Wyrmling",
+  "challenge_rating": 2,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "5d8+5"
+  },
+  "attributes": {
+   "STR": 15,
+   "DEX": 10,
+   "CON": 13,
+   "INT": 10,
+   "WIS": 11,
+   "CHA": 14
+  },
+  "actions": [
+   "act_bite_md",
+   "act_breath_cold_white"
+  ],
+  "loot_table": [],
+  "description": "Moonlit hatchling adopting lost travelers as projects.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "silver_wyrmling",
+  "id": "preset_silver_wyrmling"
+ },
+ {
+  "name": "Bronze Dragon Wyrmling",
+  "challenge_rating": 2,
+  "type": "dragon",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "5d8+5"
+  },
+  "attributes": {
+   "STR": 15,
+   "DEX": 10,
+   "CON": 13,
+   "INT": 12,
+   "WIS": 11,
+   "CHA": 13
+  },
+  "actions": [
+   "act_bite_md",
+   "act_breath_poison_bronze"
+  ],
+  "loot_table": [],
+  "description": "Surf-hatchling rescuing swimmers whether they like it or not.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "bronze_wyrmling",
+  "id": "preset_bronze_wyrmling"
+ },
+ {
+  "name": "Adult Bronze Dragon",
+  "challenge_rating": 14,
+  "type": "dragon",
+  "alignment": "lawful good",
+  "armor_class": 19,
+  "hit_points": {
+   "current": 241,
+   "maximum": 241,
+   "formula": "21d12+105"
+  },
+  "attributes": {
+   "STR": 25,
+   "DEX": 10,
+   "CON": 21,
+   "INT": 16,
+   "WIS": 15,
+   "CHA": 19
+  },
+  "actions": [
+   "act_dragon_bite",
+   "act_breath_poison_bronze",
+   "act_tail_sweep"
+  ],
+  "loot_table": [],
+  "description": "Coastal sentinel sinking slavers and praising swimmers.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "adult_bronze_dragon",
+  "id": "preset_adult_bronze_dragon"
+ },
+ {
+  "name": "Adult Copper Dragon",
+  "challenge_rating": 12,
+  "type": "dragon",
+  "alignment": "chaotic good",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 207,
+   "maximum": 207,
+   "formula": "18d12+90"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 12,
+   "CON": 19,
+   "INT": 18,
+   "WIS": 15,
+   "CHA": 17
+  },
+  "actions": [
+   "act_dragon_bite",
+   "act_acid_breath_line"
+  ],
+  "loot_table": [],
+  "description": "Hilltop trickster collecting jokes, riddles, and grudges.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "adult_copper_dragon",
+  "id": "preset_adult_copper_dragon"
+ },
+ {
+  "name": "Ancient Gold Dragon",
+  "challenge_rating": 24,
+  "type": "dragon",
+  "alignment": "lawful good",
+  "armor_class": 22,
+  "hit_points": {
+   "current": 459,
+   "maximum": 459,
+   "formula": "34d12+238"
+  },
+  "attributes": {
+   "STR": 30,
+   "DEX": 10,
+   "CON": 27,
+   "INT": 18,
+   "WIS": 17,
+   "CHA": 23
+  },
+  "actions": [
+   "act_wyrm_bite",
+   "act_fire_breath_lg",
+   "act_wyrm_tail"
+  ],
+  "loot_table": [],
+  "description": "The sun given scales; evil kneels or burns.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "gargantuan",
+  "key": "ancient_gold_dragon",
+  "id": "preset_ancient_gold_dragon"
+ },
+ {
+  "name": "Water Elemental",
+  "challenge_rating": 5,
+  "type": "elemental",
+  "alignment": "neutral",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 93,
+   "maximum": 93,
+   "formula": "11d10+33"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 14,
+   "CON": 18,
+   "INT": 5,
+   "WIS": 10,
+   "CHA": 8
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_engulf"
+  ],
+  "loot_table": [],
+  "description": "Living flood that drowns rooms and drags rivers uphill.",
+  "size": "large",
+  "speed_feet": 30,
+  "key": "water_elemental",
+  "id": "preset_water_elemental"
+ },
+ {
+  "name": "Earth Elemental",
+  "challenge_rating": 5,
+  "type": "elemental",
+  "alignment": "neutral",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 104,
+   "maximum": 104,
+   "formula": "11d12+33"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 8,
+   "CON": 18,
+   "INT": 5,
+   "WIS": 10,
+   "CHA": 5
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_crush"
+  ],
+  "loot_table": [],
+  "description": "Quarry given legs; patience of strata, fists of landslides.",
+  "size": "large",
+  "speed_feet": 30,
+  "key": "earth_elemental",
+  "id": "preset_earth_elemental"
+ },
+ {
+  "name": "Invisible Stalker",
+  "challenge_rating": 6,
+  "type": "elemental",
+  "alignment": "neutral",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 102,
+   "maximum": 102,
+   "formula": "12d10+36"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 19,
+   "CON": 16,
+   "INT": 11,
+   "WIS": 13,
+   "CHA": 11
+  },
+  "actions": [
+   "act_wind_slam",
+   "act_claw"
+  ],
+  "loot_table": [],
+  "description": "Air genie-tasked to hunt; unseen until it is a conclusion.",
+  "key": "invisible_stalker",
+  "id": "preset_invisible_stalker"
+ },
+ {
+  "name": "Azer",
+  "challenge_rating": 2,
+  "type": "elemental",
+  "alignment": "lawful neutral",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 36,
+   "maximum": 36,
+   "formula": "6d8+9"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 12,
+   "CON": 15,
+   "INT": 12,
+   "WIS": 13,
+   "CHA": 10
+  },
+  "actions": [
+   "act_warhammer"
+  ],
+  "loot_table": [],
+  "description": "Bronze-skinned forge-dwarf hammering order into chaos.",
+  "size": "medium",
+  "speed_feet": 30,
+  "key": "azer",
+  "id": "preset_azer"
+ },
+ {
+  "name": "Galeb Duhr",
+  "challenge_rating": 6,
+  "type": "elemental",
+  "alignment": "neutral",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 114,
+   "maximum": 114,
+   "formula": "12d12+36"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 12,
+   "CON": 20,
+   "INT": 11,
+   "WIS": 12,
+   "CHA": 11
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_rock_throw"
+  ],
+  "loot_table": [],
+  "description": "Boulder-elder herding stones like sheepdogs.",
+  "size": "large",
+  "speed_feet": 30,
+  "key": "galeb_duhr",
+  "id": "preset_galeb_duhr"
+ },
+ {
+  "name": "Fire Snake",
+  "challenge_rating": 1,
+  "type": "elemental",
+  "alignment": "neutral",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 15,
+   "CON": 12,
+   "INT": 4,
+   "WIS": 10,
+   "CHA": 6
+  },
+  "actions": [
+   "act_fire_touch",
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Ember-serpent slithering through coals and kindling alike.",
+  "key": "fire_snake",
+  "id": "preset_fire_snake"
+ },
+ {
+  "name": "Xorn",
+  "challenge_rating": 5,
+  "type": "elemental",
+  "alignment": "neutral",
+  "armor_class": 19,
+  "hit_points": {
+   "current": 76,
+   "maximum": 76,
+   "formula": "9d10+27"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 10,
+   "CON": 20,
+   "INT": 11,
+   "WIS": 10,
+   "CHA": 11
+  },
+  "actions": [
+   "act_claw_rend"
+  ],
+  "loot_table": [],
+  "description": "Three-eyed gem-eater browsing veins of ore like fruit.",
+  "key": "xorn",
+  "id": "preset_xorn"
+ },
+ {
+  "name": "Magmin",
+  "challenge_rating": 1,
+  "type": "elemental",
+  "alignment": "chaotic neutral",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 15,
+   "CON": 12,
+   "INT": 8,
+   "WIS": 11,
+   "CHA": 10
+  },
+  "actions": [
+   "act_fire_touch"
+  ],
+  "loot_table": [],
+  "description": "Molten imp igniting whatever it hugs, including hugs.",
+  "size": "small",
+  "key": "magmin",
+  "id": "preset_magmin"
+ },
+ {
+  "name": "Ice Mephit",
+  "challenge_rating": 0.5,
+  "type": "elemental",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 21,
+   "maximum": 21,
+   "formula": "6d6"
+  },
+  "attributes": {
+   "STR": 8,
+   "DEX": 14,
+   "CON": 10,
+   "INT": 9,
+   "WIS": 11,
+   "CHA": 12
+  },
+  "actions": [
+   "act_frost_touch",
+   "act_ray_of_frost"
+  ],
+  "loot_table": [],
+  "description": "Frost sprite giggling blizzards and freezing opinions.",
+  "size": "small",
+  "key": "ice_mephit",
+  "id": "preset_ice_mephit"
+ },
+ {
+  "name": "Magma Mephit",
+  "challenge_rating": 0.5,
+  "type": "elemental",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 21,
+   "maximum": 21,
+   "formula": "6d6"
+  },
+  "attributes": {
+   "STR": 8,
+   "DEX": 14,
+   "CON": 12,
+   "INT": 8,
+   "WIS": 11,
+   "CHA": 12
+  },
+  "actions": [
+   "act_fire_touch",
+   "act_spit_acid"
+  ],
+  "loot_table": [],
+  "description": "Slag-sprite spitting burning globs and worse puns.",
+  "size": "small",
+  "key": "magma_mephit",
+  "id": "preset_magma_mephit"
+ },
+ {
+  "name": "Efreeti",
+  "challenge_rating": 11,
+  "type": "elemental",
+  "alignment": "lawful evil",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 144,
+   "maximum": 144,
+   "formula": "17d10+51"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 12,
+   "CON": 20,
+   "INT": 16,
+   "WIS": 15,
+   "CHA": 16
+  },
+  "actions": [
+   "act_flame_strike",
+   "act_fireball"
+  ],
+  "loot_table": [],
+  "description": "Brass-brined wish-tyrant ruling a furnace court.",
+  "size": "large",
+  "key": "efreeti",
+  "id": "preset_efreeti"
+ },
+ {
+  "name": "Djinni",
+  "challenge_rating": 11,
+  "type": "elemental",
+  "alignment": "chaotic good",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 161,
+   "maximum": 161,
+   "formula": "17d10+68"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 15,
+   "CON": 21,
+   "INT": 15,
+   "WIS": 16,
+   "CHA": 20
+  },
+  "actions": [
+   "act_wind_slam",
+   "act_lightning_bolt"
+  ],
+  "loot_table": [],
+  "description": "Sky-palace noble granting boons with bureaucratic delight.",
+  "size": "large",
+  "key": "djinni",
+  "id": "preset_djinni"
+ },
+ {
+  "name": "Salamander",
+  "challenge_rating": 5,
+  "type": "elemental",
+  "alignment": "neutral evil",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 75,
+   "maximum": 75,
+   "formula": "10d10+20"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 12,
+   "CON": 16,
+   "INT": 11,
+   "WIS": 10,
+   "CHA": 12
+  },
+  "actions": [
+   "act_spear",
+   "act_fire_touch",
+   "act_constrict"
+  ],
+  "loot_table": [],
+  "description": "Serpent-smith forging weapons in its own coils of flame.",
+  "size": "large",
+  "key": "salamander",
+  "id": "preset_salamander"
+ },
+ {
+  "name": "Thunderbird",
+  "challenge_rating": 9,
+  "type": "elemental",
+  "alignment": "chaotic good",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 136,
+   "maximum": 136,
+   "formula": "16d10+48"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 18,
+   "CON": 18,
+   "INT": 8,
+   "WIS": 14,
+   "CHA": 12
+  },
+  "actions": [
+   "act_talons",
+   "act_lightning_bolt"
+  ],
+  "loot_table": [],
+  "description": "Storm-front eagle whose wingbeats are the front.",
+  "size": "huge",
+  "key": "thunderbird",
+  "id": "preset_thunderbird"
+ },
+ {
+  "name": "Cockatrice",
+  "challenge_rating": 0.5,
+  "type": "monstrosity",
+  "alignment": "any",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 7,
+   "DEX": 12,
+   "CON": 11,
+   "INT": 2,
+   "WIS": 12,
+   "CHA": 5
+  },
+  "actions": [
+   "act_peck"
+  ],
+  "loot_table": [],
+  "description": "Chicken-basilisk petrifying farmers one peck at a time.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "small",
+  "key": "cockatrice",
+  "id": "preset_cockatrice"
+ },
+ {
+  "name": "Gorgon",
+  "challenge_rating": 5,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 19,
+  "hit_points": {
+   "current": 95,
+   "maximum": 95,
+   "formula": "10d10+40"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 10,
+   "CON": 21,
+   "INT": 2,
+   "WIS": 12,
+   "CHA": 6
+  },
+  "actions": [
+   "act_gore",
+   "act_poison_breath"
+  ],
+  "loot_table": [],
+  "description": "Iron-plated bull whose breath turns flesh to statue.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "gorgon",
+  "id": "preset_gorgon"
+ },
+ {
+  "name": "Bulette",
+  "challenge_rating": 5,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 93,
+   "maximum": 93,
+   "formula": "11d10+33"
+  },
+  "attributes": {
+   "STR": 22,
+   "DEX": 13,
+   "CON": 17,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 5
+  },
+  "actions": [
+   "act_bite_lg"
+  ],
+  "loot_table": [],
+  "description": "Land-shark breaching through roads and regret.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "huge",
+  "key": "bulette",
+  "id": "preset_bulette"
+ },
+ {
+  "name": "Ankheg",
+  "challenge_rating": 2,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 45,
+   "maximum": 45,
+   "formula": "6d10+12"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 8,
+   "CON": 14,
+   "INT": 1,
+   "WIS": 10,
+   "CHA": 4
+  },
+  "actions": [
+   "act_bite_lg",
+   "act_spit_acid"
+  ],
+  "loot_table": [],
+  "description": "Orchard-burrowing larva horror with acid reflux.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "ankheg",
+  "id": "preset_ankheg"
+ },
+ {
+  "name": "Grick",
+  "challenge_rating": 2,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "5d10"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 15,
+   "CON": 11,
+   "INT": 1,
+   "WIS": 9,
+   "CHA": 6
+  },
+  "actions": [
+   "act_claw",
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Rock-mimic worm dragging carrion to its stony lair.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "grick",
+  "id": "preset_grick"
+ },
+ {
+  "name": "Darkmantle",
+  "challenge_rating": 0.5,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 11,
+   "DEX": 15,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 5
+  },
+  "actions": [
+   "act_constrict"
+  ],
+  "loot_table": [],
+  "description": "Cave-ceiling squid dropping onto torchlit heads.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "small",
+  "key": "darkmantle",
+  "id": "preset_darkmantle"
+ },
+ {
+  "name": "Piercer",
+  "challenge_rating": 0.125,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 14,
+   "maximum": 14,
+   "formula": "4d6"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 16,
+   "CON": 13,
+   "INT": 1,
+   "WIS": 7,
+   "CHA": 3
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Stalactite that is not a stalactite, briefly.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "small",
+  "key": "piercer",
+  "id": "preset_piercer"
+ },
+ {
+  "name": "Rust Monster",
+  "challenge_rating": 0.5,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "5d8"
+  },
+  "attributes": {
+   "STR": 13,
+   "DEX": 12,
+   "CON": 13,
+   "INT": 2,
+   "WIS": 13,
+   "CHA": 6
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Antenna'd scavenger turning heirloom swords into breakfast.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "rust_monster",
+  "id": "preset_rust_monster"
+ },
+ {
+  "name": "Phase Panther",
+  "challenge_rating": 3,
+  "type": "monstrosity",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 39,
+   "maximum": 39,
+   "formula": "6d10+6"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 15,
+   "CON": 12,
+   "INT": 12,
+   "WIS": 13,
+   "CHA": 10
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Midnight cat stepping through stone like smoke.",
+  "senses": [
+   "darkvision 120 ft."
+  ],
+  "size": "large",
+  "key": "phase_panther",
+  "id": "preset_phase_panther"
+ },
+ {
+  "name": "Swarm of Piranhas",
+  "challenge_rating": 1,
+  "type": "swarm",
+  "alignment": "any",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "6d6+6"
+  },
+  "attributes": {
+   "STR": 13,
+   "DEX": 14,
+   "CON": 13,
+   "INT": 1,
+   "WIS": 7,
+   "CHA": 2
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Silver hunger stripping a swimmer to a story.",
+  "speed_feet": 0,
+  "condition_immunities": [
+   "charmed",
+   "frightened",
+   "grappled",
+   "paralyzed",
+   "petrified",
+   "prone",
+   "restrained",
+   "stunned"
+  ],
+  "key": "swarm_piranhas",
+  "id": "preset_swarm_piranhas"
+ },
+ {
+  "name": "Winter Wolf",
+  "challenge_rating": 3,
+  "type": "monstrosity",
+  "alignment": "neutral evil",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 42,
+   "maximum": 42,
+   "formula": "6d10+9"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 13,
+   "CON": 14,
+   "INT": 7,
+   "WIS": 11,
+   "CHA": 8
+  },
+  "actions": [
+   "act_bite_md",
+   "act_breath_cold_white"
+  ],
+  "loot_table": [],
+  "description": "Snowpack alpha howling blizzards down the pass.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "winter_wolf",
+  "id": "preset_winter_wolf"
+ },
+ {
+  "name": "Chimera",
+  "challenge_rating": 6,
+  "type": "monstrosity",
+  "alignment": "chaotic evil",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 93,
+   "maximum": 93,
+   "formula": "11d10+33"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 11,
+   "CON": 19,
+   "INT": 3,
+   "WIS": 14,
+   "CHA": 10
+  },
+  "actions": [
+   "act_bite_lg",
+   "act_gore",
+   "act_fire_breath_sm"
+  ],
+  "loot_table": [],
+  "description": "Lion-dragon-goat committee with three bad ideas per turn.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "chimera",
+  "id": "preset_chimera"
+ },
+ {
+  "name": "Hydra",
+  "challenge_rating": 8,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 136,
+   "maximum": 136,
+   "formula": "13d12+52"
+  },
+  "attributes": {
+   "STR": 22,
+   "DEX": 12,
+   "CON": 20,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 7
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Swamp tyrant growing two grudges for every one settled.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "huge",
+  "key": "hydra",
+  "id": "preset_hydra"
+ },
+ {
+  "name": "Kraken",
+  "challenge_rating": 23,
+  "type": "monstrosity",
+  "alignment": "chaotic evil",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 432,
+   "maximum": 432,
+   "formula": "32d12+224"
+  },
+  "attributes": {
+   "STR": 30,
+   "DEX": 10,
+   "CON": 26,
+   "INT": 22,
+   "WIS": 18,
+   "CHA": 20
+  },
+  "actions": [
+   "act_constrict",
+   "act_bite_lg",
+   "act_lightning_bolt"
+  ],
+  "loot_table": [],
+  "description": "Ocean-floor god crushing fleets for the crime of sailing.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "gargantuan",
+  "speed_feet": 20,
+  "key": "kraken",
+  "id": "preset_kraken"
+ },
+ {
+  "name": "Roc",
+  "challenge_rating": 11,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 190,
+   "maximum": 190,
+   "formula": "20d12+60"
+  },
+  "attributes": {
+   "STR": 28,
+   "DEX": 10,
+   "CON": 20,
+   "INT": 3,
+   "WIS": 10,
+   "CHA": 9
+  },
+  "actions": [
+   "act_talons",
+   "act_bite_lg"
+  ],
+  "loot_table": [],
+  "description": "Mountain-eagle carrying elephants home to its chicks.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "gargantuan",
+  "key": "roc",
+  "id": "preset_roc"
+ },
+ {
+  "name": "Sphinx",
+  "challenge_rating": 11,
+  "type": "monstrosity",
+  "alignment": "lawful neutral",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 180,
+   "maximum": 180,
+   "formula": "19d10+76"
+  },
+  "attributes": {
+   "STR": 22,
+   "DEX": 14,
+   "CON": 18,
+   "INT": 18,
+   "WIS": 18,
+   "CHA": 17
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_eye_ray"
+  ],
+  "loot_table": [],
+  "description": "Riddle-keeper gating tombs behind correct grammar.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "sphinx",
+  "id": "preset_sphinx"
+ },
+ {
+  "name": "Couatl",
+  "challenge_rating": 4,
+  "type": "celestial",
+  "alignment": "lawful good",
+  "armor_class": 19,
+  "hit_points": {
+   "current": 58,
+   "maximum": 58,
+   "formula": "9d8+18"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 16,
+   "CON": 17,
+   "INT": 18,
+   "WIS": 20,
+   "CHA": 18
+  },
+  "actions": [
+   "act_bite_md",
+   "act_sacred_flame"
+  ],
+  "loot_table": [],
+  "description": "Rainbow-feathered serpent guarding oaths and prophecies.",
+  "size": "large",
+  "key": "couatl",
+  "id": "preset_couatl"
+ },
+ {
+  "name": "Nightmare",
+  "challenge_rating": 3,
+  "type": "fiend",
+  "alignment": "neutral evil",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 45,
+   "maximum": 45,
+   "formula": "6d10+12"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 15,
+   "CON": 16,
+   "INT": 10,
+   "WIS": 13,
+   "CHA": 15
+  },
+  "actions": [
+   "act_hooves",
+   "act_fire_touch"
+  ],
+  "loot_table": [],
+  "description": "Equine nightmare bridled only by the wicked.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "nightmare",
+  "id": "preset_nightmare"
+ },
+ {
+  "name": "Yuan-ti Pureblood",
+  "challenge_rating": 1,
+  "type": "humanoid",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 13,
+   "maximum": 13,
+   "formula": "3d8"
+  },
+  "attributes": {
+   "STR": 11,
+   "DEX": 14,
+   "CON": 11,
+   "INT": 13,
+   "WIS": 12,
+   "CHA": 14
+  },
+  "actions": [
+   "act_scimitar",
+   "act_poison_spray"
+  ],
+  "loot_table": [],
+  "description": "Snake-blooded courtier smiling with too many teeth.",
+  "key": "yuan_ti_pureblood",
+  "id": "preset_yuan_ti_pureblood"
+ },
+ {
+  "name": "Yuan-ti Malison",
+  "challenge_rating": 3,
+  "type": "humanoid",
+  "alignment": "neutral evil",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 38,
+   "maximum": 38,
+   "formula": "7d8+7"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 14,
+   "CON": 13,
+   "INT": 13,
+   "WIS": 13,
+   "CHA": 12
+  },
+  "actions": [
+   "act_bite_md",
+   "act_scimitar",
+   "act_constrict"
+  ],
+  "loot_table": [],
+  "description": "Coils under the robe; cold calculation above it.",
+  "key": "yuan_ti_malison",
+  "id": "preset_yuan_ti_malison"
+ },
+ {
+  "name": "Death Dog",
+  "challenge_rating": 2,
+  "type": "monstrosity",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 42,
+   "maximum": 42,
+   "formula": "6d10+9"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 13,
+   "CON": 14,
+   "INT": 3,
+   "WIS": 12,
+   "CHA": 6
+  },
+  "actions": [
+   "act_bite_md",
+   "act_bite_trip"
+  ],
+  "loot_table": [],
+  "description": "Two heads arguing over which bites first; both are rabid.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "death_dog",
+  "id": "preset_death_dog"
+ },
+ {
+  "name": "Frost Worm",
+  "challenge_rating": 8,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 127,
+   "maximum": 127,
+   "formula": "15d10+45"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 8,
+   "CON": 19,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 6
+  },
+  "actions": [
+   "act_bite_lg",
+   "act_breath_cold_white"
+  ],
+  "loot_table": [],
+  "description": "Glacier-serpent singing prey onto the ice.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "huge",
+  "key": "frost_worm",
+  "id": "preset_frost_worm"
+ },
+ {
+  "name": "Jaculi",
+  "challenge_rating": 1,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "4d8+4"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 16,
+   "CON": 12,
+   "INT": 2,
+   "WIS": 8,
+   "CHA": 4
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Spring-coiled tree serpent launching like a spear.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "jaculi",
+  "id": "preset_jaculi"
+ },
+ {
+  "name": "Cave Fisher",
+  "challenge_rating": 3,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 52,
+   "maximum": 52,
+   "formula": "7d10+14"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 14,
+   "CON": 16,
+   "INT": 4,
+   "WIS": 10,
+   "CHA": 6
+  },
+  "actions": [
+   "act_claw",
+   "act_grasp"
+  ],
+  "loot_table": [],
+  "description": "Cliff fisherman baiting ledges with glue and patience.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "cave_fisher",
+  "id": "preset_cave_fisher"
+ },
+ {
+  "name": "Sea Serpent",
+  "challenge_rating": 10,
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 144,
+   "maximum": 144,
+   "formula": "17d10+51"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 14,
+   "CON": 19,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 6
+  },
+  "actions": [
+   "act_bite_lg",
+   "act_constrict",
+   "act_tail_sweep"
+  ],
+  "loot_table": [],
+  "description": "Ship-coiling legend that sailors refuse to name aloud.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "huge",
+  "speed_feet": 0,
+  "key": "sea_serpent",
+  "id": "preset_sea_serpent"
+ },
+ {
+  "name": "Treant",
+  "challenge_rating": 9,
+  "type": "plant",
+  "alignment": "chaotic good",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 147,
+   "maximum": 147,
+   "formula": "14d12+56"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 8,
+   "CON": 21,
+   "INT": 12,
+   "WIS": 16,
+   "CHA": 12
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_crush"
+  ],
+  "loot_table": [],
+  "description": "Ancient forest walking to war against the axe.",
+  "size": "huge",
+  "key": "treant",
+  "id": "preset_treant"
+ },
+ {
+  "name": "Awakened Tree",
+  "challenge_rating": 2,
+  "type": "plant",
+  "alignment": "neutral",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 52,
+   "maximum": 52,
+   "formula": "7d10+14"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 6,
+   "CON": 15,
+   "INT": 7,
+   "WIS": 12,
+   "CHA": 7
+  },
+  "actions": [
+   "act_slam_generic"
+  ],
+  "loot_table": [],
+  "description": "Druid's ally grown ambitious about doorways.",
+  "size": "huge",
+  "key": "awakened_tree",
+  "id": "preset_awakened_tree"
+ },
+ {
+  "name": "Awakened Shrub",
+  "challenge_rating": 0,
+  "type": "plant",
+  "alignment": "neutral",
+  "armor_class": 9,
+  "hit_points": {
+   "current": 3,
+   "maximum": 3,
+   "formula": "1d6"
+  },
+  "attributes": {
+   "STR": 6,
+   "DEX": 8,
+   "CON": 11,
+   "INT": 10,
+   "WIS": 10,
+   "CHA": 6
+  },
+  "actions": [
+   "act_thorn_whip"
+  ],
+  "loot_table": [],
+  "description": "Opinionated topiary with newfound mobility.",
+  "size": "small",
+  "key": "awakened_shrub",
+  "id": "preset_awakened_shrub"
+ },
+ {
+  "name": "Needle Blight",
+  "challenge_rating": 0.25,
+  "type": "plant",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 6,
+   "maximum": 6,
+   "formula": "1d8+2"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 10,
+   "CON": 12,
+   "INT": 4,
+   "WIS": 8,
+   "CHA": 3
+  },
+  "actions": [
+   "act_quills"
+  ],
+  "loot_table": [],
+  "description": "Thicket-thug flinging barbed darts from hedgerows.",
+  "key": "needle_blight",
+  "id": "preset_needle_blight"
+ },
+ {
+  "name": "Twig Blight",
+  "challenge_rating": 0.125,
+  "type": "plant",
+  "alignment": "neutral evil",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 10,
+   "maximum": 10,
+   "formula": "4d4"
+  },
+  "attributes": {
+   "STR": 6,
+   "DEX": 16,
+   "CON": 10,
+   "INT": 4,
+   "WIS": 8,
+   "CHA": 3
+  },
+  "actions": [
+   "act_claw"
+  ],
+  "loot_table": [],
+  "description": "Kindling-sized ambush that comes in bundles.",
+  "size": "small",
+  "key": "twig_blight",
+  "id": "preset_twig_blight"
+ },
+ {
+  "name": "Vine Blight",
+  "challenge_rating": 0.5,
+  "type": "plant",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 19,
+   "maximum": 19,
+   "formula": "3d8+6"
+  },
+  "attributes": {
+   "STR": 15,
+   "DEX": 8,
+   "CON": 14,
+   "INT": 10,
+   "WIS": 8,
+   "CHA": 6
+  },
+  "actions": [
+   "act_grasp"
+  ],
+  "loot_table": [],
+  "description": "Wall of ivy reaching for ankles and throats equally.",
+  "size": "medium",
+  "key": "vine_blight",
+  "id": "preset_vine_blight"
+ },
+ {
+  "name": "Gas Spore",
+  "challenge_rating": 0.5,
+  "type": "plant",
+  "alignment": "unaligned",
+  "armor_class": 8,
+  "hit_points": {
+   "current": 5,
+   "maximum": 5,
+   "formula": "1d8+1"
+  },
+  "attributes": {
+   "STR": 5,
+   "DEX": 1,
+   "CON": 10,
+   "INT": 1,
+   "WIS": 3,
+   "CHA": 1
+  },
+  "actions": [
+   "act_poison_spray"
+  ],
+  "loot_table": [],
+  "description": "Floating mimic of an eye tyrant; pops catastrophically.",
+  "size": "large",
+  "speed_feet": 5,
+  "key": "gas_spore",
+  "id": "preset_gas_spore"
+ },
+ {
+  "name": "Bark Warden",
+  "challenge_rating": 5,
+  "type": "plant",
+  "alignment": "neutral",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 93,
+   "maximum": 93,
+   "formula": "11d10+33"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 10,
+   "CON": 17,
+   "INT": 8,
+   "WIS": 14,
+   "CHA": 8
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_grasp"
+  ],
+  "loot_table": [],
+  "description": "Grove guardian grown armor rings and a grudge.",
+  "size": "large",
+  "key": "bark_warden",
+  "id": "preset_bark_warden"
+ },
+ {
+  "name": "Swarm of Spiders",
+  "challenge_rating": 0.5,
+  "type": "swarm",
+  "alignment": "any",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "5d6+5"
+  },
+  "attributes": {
+   "STR": 3,
+   "DEX": 13,
+   "CON": 10,
+   "INT": 1,
+   "WIS": 7,
+   "CHA": 1
+  },
+  "actions": [
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Eight thousand eyes and one appetite.",
+  "size": "medium",
+  "condition_immunities": [
+   "charmed",
+   "frightened",
+   "grappled",
+   "paralyzed",
+   "petrified",
+   "prone",
+   "restrained",
+   "stunned"
+  ],
+  "key": "swarm_spiders",
+  "id": "preset_swarm_spiders"
+ },
+ {
+  "name": "Swarm of Centipedes",
+  "challenge_rating": 0.25,
+  "type": "swarm",
+  "alignment": "any",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 14,
+   "maximum": 14,
+   "formula": "4d6"
+  },
+  "attributes": {
+   "STR": 3,
+   "DEX": 13,
+   "CON": 10,
+   "INT": 1,
+   "WIS": 7,
+   "CHA": 1
+  },
+  "actions": [
+   "act_poison_bite"
+  ],
+  "loot_table": [],
+  "description": "Floor becomes legs becomes regret.",
+  "size": "medium",
+  "condition_immunities": [
+   "charmed",
+   "frightened",
+   "grappled",
+   "paralyzed",
+   "petrified",
+   "prone",
+   "restrained",
+   "stunned"
+  ],
+  "key": "swarm_centipedes",
+  "id": "preset_swarm_centipedes"
+ },
+ {
+  "name": "Swarm of Wasps",
+  "challenge_rating": 0.5,
+  "type": "swarm",
+  "alignment": "any",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "5d6+5"
+  },
+  "attributes": {
+   "STR": 3,
+   "DEX": 13,
+   "CON": 10,
+   "INT": 1,
+   "WIS": 7,
+   "CHA": 1
+  },
+  "actions": [
+   "act_wyvern_sting"
+  ],
+  "loot_table": [],
+  "description": "Angry weather with stripes.",
+  "size": "medium",
+  "condition_immunities": [
+   "charmed",
+   "frightened",
+   "grappled",
+   "paralyzed",
+   "petrified",
+   "prone",
+   "restrained",
+   "stunned"
+  ],
+  "key": "swarm_wasps",
+  "id": "preset_swarm_wasps"
+ },
+ {
+  "name": "Pegasus",
+  "challenge_rating": 2,
+  "type": "celestial",
+  "alignment": "good",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 30,
+   "maximum": 30,
+   "formula": "4d10+8"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 15,
+   "CON": 16,
+   "INT": 10,
+   "WIS": 15,
+   "CHA": 13
+  },
+  "actions": [
+   "act_hooves"
+  ],
+  "loot_table": [],
+  "description": "Winged steed choosing riders by the weight of their honor.",
+  "size": "large",
+  "key": "pegasus",
+  "id": "preset_pegasus"
+ },
+ {
+  "name": "Unicorn",
+  "challenge_rating": 5,
+  "type": "celestial",
+  "alignment": "lawful good",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 76,
+   "maximum": 76,
+   "formula": "9d10+27"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 14,
+   "CON": 15,
+   "INT": 11,
+   "WIS": 17,
+   "CHA": 16
+  },
+  "actions": [
+   "act_horn",
+   "act_hooves"
+  ],
+  "loot_table": [],
+  "description": "Forest saint healing the worthy and goring the rest.",
+  "size": "large",
+  "key": "unicorn",
+  "id": "preset_unicorn"
+ },
+ {
+  "name": "Angelic Sentinel",
+  "challenge_rating": 9,
+  "type": "celestial",
+  "alignment": "lawful good",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 127,
+   "maximum": 127,
+   "formula": "15d10+45"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 14,
+   "CON": 18,
+   "INT": 15,
+   "WIS": 16,
+   "CHA": 18
+  },
+  "actions": [
+   "act_greatsword",
+   "act_flame_strike"
+  ],
+  "loot_table": [],
+  "description": "Wardens of gateways between mortal planes and brighter ones.",
+  "size": "large",
+  "key": "angelic_sentinel",
+  "id": "preset_angelic_sentinel"
+ },
+ {
+  "name": "Planetar",
+  "challenge_rating": 16,
+  "type": "celestial",
+  "alignment": "lawful good",
+  "armor_class": 19,
+  "hit_points": {
+   "current": 228,
+   "maximum": 228,
+   "formula": "24d10+96"
+  },
+  "attributes": {
+   "STR": 24,
+   "DEX": 20,
+   "CON": 23,
+   "INT": 19,
+   "WIS": 22,
+   "CHA": 25
+  },
+  "actions": [
+   "act_greatsword",
+   "act_flame_strike",
+   "act_meteor_swarm"
+  ],
+  "loot_table": [],
+  "description": "Battle-angel whose sword is a verdict.",
+  "size": "large",
+  "key": "planetar",
+  "id": "preset_planetar"
+ },
+ {
+  "name": "Solar",
+  "challenge_rating": 21,
+  "type": "celestial",
+  "alignment": "lawful good",
+  "armor_class": 21,
+  "hit_points": {
+   "current": 276,
+   "maximum": 276,
+   "formula": "24d12+120"
+  },
+  "attributes": {
+   "STR": 26,
+   "DEX": 22,
+   "CON": 26,
+   "INT": 25,
+   "WIS": 25,
+   "CHA": 30
+  },
+  "actions": [
+   "act_greatsword",
+   "act_flame_strike",
+   "act_meteor_swarm"
+  ],
+  "loot_table": [],
+  "description": "Last authority most tyrants ever hear.",
+  "size": "large",
+  "key": "solar",
+  "id": "preset_solar"
+ },
+ {
+  "name": "Empyrean",
+  "challenge_rating": 23,
+  "type": "celestial",
+  "alignment": "any",
+  "armor_class": 22,
+  "hit_points": {
+   "current": 412,
+   "maximum": 412,
+   "formula": "33d12+198"
+  },
+  "attributes": {
+   "STR": 30,
+   "DEX": 21,
+   "CON": 29,
+   "INT": 26,
+   "WIS": 24,
+   "CHA": 33
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_crush",
+   "act_flame_strike"
+  ],
+  "loot_table": [],
+  "description": "Divine titan whose mood decides kingdoms' weather.",
+  "size": "huge",
+  "key": "empyrean",
+  "id": "preset_empyrean"
+ },
+ {
+  "name": "Fey Knight",
+  "challenge_rating": 4,
+  "type": "fey",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 58,
+   "maximum": 58,
+   "formula": "9d8+18"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 16,
+   "CON": 14,
+   "INT": 12,
+   "WIS": 13,
+   "CHA": 15
+  },
+  "actions": [
+   "act_longsword",
+   "act_longbow"
+  ],
+  "loot_table": [],
+  "description": "Court champion dueling mortals for amusement and tithes.",
+  "key": "fey_knight",
+  "id": "preset_fey_knight"
+ },
+ {
+  "name": "Boggart",
+  "challenge_rating": 0.5,
+  "type": "fey",
+  "alignment": "chaotic neutral",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 16,
+   "CON": 12,
+   "INT": 10,
+   "WIS": 12,
+   "CHA": 13
+  },
+  "actions": [
+   "act_shortsword"
+  ],
+  "loot_table": [],
+  "description": "Household spirit gone sour, souring everything back.",
+  "size": "small",
+  "key": "boggart",
+  "id": "preset_boggart"
+ },
+ {
+  "name": "Spriggan",
+  "challenge_rating": 2,
+  "type": "fey",
+  "alignment": "any",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 32,
+   "maximum": 32,
+   "formula": "5d8+10"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 10,
+   "CON": 15,
+   "INT": 8,
+   "WIS": 9,
+   "CHA": 8
+  },
+  "actions": [
+   "act_greataxe"
+  ],
+  "loot_table": [],
+  "description": "Petty gnome-cousin swelling to giant size when cheated.",
+  "key": "spriggan",
+  "id": "preset_spriggan"
+ },
+ {
+  "name": "Dryad Queen",
+  "challenge_rating": 5,
+  "type": "fey",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 71,
+   "maximum": 71,
+   "formula": "11d8+22"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 16,
+   "CON": 14,
+   "INT": 16,
+   "WIS": 18,
+   "CHA": 19
+  },
+  "actions": [
+   "act_shortsword",
+   "act_thorn_whip",
+   "act_cone_of_cold"
+  ],
+  "loot_table": [],
+  "description": "Season-crown sovereign whose grove obeys like a body.",
+  "key": "dryad_queen",
+  "id": "preset_dryad_queen"
+ },
+ {
+  "name": "Doom Hound",
+  "challenge_rating": 3,
+  "type": "fey",
+  "alignment": "neutral evil",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 36,
+   "maximum": 36,
+   "formula": "6d8+9"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 15,
+   "CON": 14,
+   "INT": 8,
+   "WIS": 13,
+   "CHA": 10
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Omen-pup whose howl is someone's funeral notice.",
+  "size": "large",
+  "key": "doom_hound",
+  "id": "preset_doom_hound"
+ },
+ {
+  "name": "Bone Devil",
+  "challenge_rating": 9,
+  "type": "fiend",
+  "alignment": "lawful evil",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 127,
+   "maximum": 127,
+   "formula": "15d10+45"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 16,
+   "CON": 18,
+   "INT": 15,
+   "WIS": 16,
+   "CHA": 16
+  },
+  "actions": [
+   "act_halberd",
+   "act_barbed_tail"
+  ],
+  "loot_table": [],
+  "description": "Hook-handed interrogator of the third hell.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "bone_devil",
+  "id": "preset_bone_devil"
+ },
+ {
+  "name": "Nalfeshnee",
+  "challenge_rating": 13,
+  "type": "fiend",
+  "alignment": "chaotic evil",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 190,
+   "maximum": 190,
+   "formula": "20d10+80"
+  },
+  "attributes": {
+   "STR": 21,
+   "DEX": 10,
+   "CON": 22,
+   "INT": 19,
+   "WIS": 16,
+   "CHA": 17
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md",
+   "act_flame_strike"
+  ],
+  "loot_table": [],
+  "description": "Demon judge whose aura of sorrow precedes the sentence.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "huge",
+  "key": "nalfeshnee",
+  "id": "preset_nalfeshnee"
+ },
+ {
+  "name": "Demon Behemoth",
+  "challenge_rating": 16,
+  "type": "fiend",
+  "alignment": "chaotic evil",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 252,
+   "maximum": 252,
+   "formula": "24d10+120"
+  },
+  "attributes": {
+   "STR": 29,
+   "DEX": 15,
+   "CON": 24,
+   "INT": 10,
+   "WIS": 14,
+   "CHA": 16
+  },
+  "actions": [
+   "act_giant_axe",
+   "act_crush"
+  ],
+  "loot_table": [],
+  "description": "Arena-beast of the abyss, bred for gods' entertainment.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "huge",
+  "key": "demon_behemoth",
+  "id": "preset_demon_behemoth"
+ },
+ {
+  "name": "Ice Devil",
+  "challenge_rating": 14,
+  "type": "fiend",
+  "alignment": "lawful evil",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 199,
+   "maximum": 199,
+   "formula": "21d10+84"
+  },
+  "attributes": {
+   "STR": 21,
+   "DEX": 14,
+   "CON": 22,
+   "INT": 16,
+   "WIS": 16,
+   "CHA": 18
+  },
+  "actions": [
+   "act_greatsword",
+   "act_breath_cold_white"
+  ],
+  "loot_table": [],
+  "description": "Arctic strategist freezing battlefields into dioramas.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "ice_devil",
+  "id": "preset_ice_devil"
+ },
+ {
+  "name": "Hellfire Priest",
+  "challenge_rating": 7,
+  "type": "fiend",
+  "alignment": "lawful evil",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 82,
+   "maximum": 82,
+   "formula": "11d10+22"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 14,
+   "CON": 16,
+   "INT": 14,
+   "WIS": 15,
+   "CHA": 17
+  },
+  "actions": [
+   "act_flame_strike",
+   "act_fireball",
+   "act_dagger"
+  ],
+  "loot_table": [],
+  "description": "Infernal liturgist baptizing converts in brimstone.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "hellfire_priest",
+  "id": "preset_hellfire_priest"
+ },
+ {
+  "name": "Cambion",
+  "challenge_rating": 5,
+  "type": "fiend",
+  "alignment": "any evil",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 58,
+   "maximum": 58,
+   "formula": "9d8+18"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 15,
+   "CON": 15,
+   "INT": 14,
+   "WIS": 12,
+   "CHA": 17
+  },
+  "actions": [
+   "act_rapier",
+   "act_fire_bolt"
+  ],
+  "loot_table": [],
+  "description": "Half-fiend heir scheming toward an infernal inheritance.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "cambion",
+  "id": "preset_cambion"
+ },
+ {
+  "name": "Shadow Demon",
+  "challenge_rating": 12,
+  "type": "fiend",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 97,
+   "maximum": 97,
+   "formula": "13d8+39"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 15,
+   "CON": 16,
+   "INT": 20,
+   "WIS": 16,
+   "CHA": 19
+  },
+  "actions": [
+   "act_corrupting_touch",
+   "act_life_drain"
+  ],
+  "loot_table": [],
+  "description": "Smoking silhouette of a demon that escaped its summoners.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "condition_immunities": [
+   "grappled",
+   "petrified",
+   "prone",
+   "restrained"
+  ],
+  "key": "shadow_demon",
+  "id": "preset_shadow_demon"
+ },
+ {
+  "name": "Rakshasa",
+  "challenge_rating": 13,
+  "type": "fiend",
+  "alignment": "lawful evil",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 135,
+   "maximum": 135,
+   "formula": "18d8+54"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 17,
+   "CON": 18,
+   "INT": 18,
+   "WIS": 19,
+   "CHA": 20
+  },
+  "actions": [
+   "act_claw_rend"
+  ],
+  "loot_table": [],
+  "description": "Backward-handed tiger lord immune to nearly all prayers.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "rakshasa",
+  "id": "preset_rakshasa"
+ },
+ {
+  "name": "Fiendish Tyrannosaur",
+  "challenge_rating": 10,
+  "type": "fiend",
+  "alignment": "neutral evil",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 161,
+   "maximum": 161,
+   "formula": "17d12+51"
+  },
+  "attributes": {
+   "STR": 27,
+   "DEX": 10,
+   "CON": 23,
+   "INT": 2,
+   "WIS": 10,
+   "CHA": 8
+  },
+  "actions": [
+   "act_bite_lg"
+  ],
+  "loot_table": [],
+  "description": "Hell-leased apex engine; the contract is written in ash.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "huge",
+  "key": "fiendish_tyrannosaur",
+  "id": "preset_fiendish_tyrannosaur"
+ },
+ {
+  "name": "Adamantine Golem",
+  "challenge_rating": 21,
+  "type": "construct",
+  "alignment": "any",
+  "armor_class": 23,
+  "hit_points": {
+   "current": 437,
+   "maximum": 437,
+   "formula": "35d12+210"
+  },
+  "attributes": {
+   "STR": 28,
+   "DEX": 9,
+   "CON": 26,
+   "INT": 3,
+   "WIS": 11,
+   "CHA": 1
+  },
+  "actions": [
+   "act_golem_slam",
+   "act_crush"
+  ],
+  "loot_table": [],
+  "description": "Unbreakable argument ending wars by existing loudly.",
+  "condition_immunities": [
+   "poisoned",
+   "charmed",
+   "frightened",
+   "exhaustion"
+  ],
+  "size": "huge",
+  "key": "adamantine_golem",
+  "id": "preset_adamantine_golem"
+ },
+ {
+  "name": "Clockwork Hunter",
+  "challenge_rating": 5,
+  "type": "construct",
+  "alignment": "lawful neutral",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 75,
+   "maximum": 75,
+   "formula": "10d10+20"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 17,
+   "CON": 14,
+   "INT": 10,
+   "WIS": 10,
+   "CHA": 5
+  },
+  "actions": [
+   "act_heavycrossbow",
+   "act_dagger"
+  ],
+  "loot_table": [],
+  "description": "Wind-up bloodhound tracking contracts to the letter.",
+  "key": "clockwork_hunter",
+  "id": "preset_clockwork_hunter"
+ },
+ {
+  "name": "Clockwork Soldier",
+  "challenge_rating": 3,
+  "type": "construct",
+  "alignment": "lawful neutral",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 60,
+   "maximum": 60,
+   "formula": "8d10+16"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 12,
+   "CON": 14,
+   "INT": 8,
+   "WIS": 8,
+   "CHA": 4
+  },
+  "actions": [
+   "act_longsword",
+   "act_slam_generic"
+  ],
+  "loot_table": [],
+  "description": "Mass-produced legionnaire; warranty void vs fire.",
+  "key": "clockwork_soldier",
+  "id": "preset_clockwork_soldier"
+ },
+ {
+  "name": "Living Statue",
+  "challenge_rating": 4,
+  "type": "construct",
+  "alignment": "neutral",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 67,
+   "maximum": 67,
+   "formula": "9d10+18"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 8,
+   "CON": 16,
+   "INT": 2,
+   "WIS": 8,
+   "CHA": 4
+  },
+  "actions": [
+   "act_slam_lg"
+  ],
+  "loot_table": [],
+  "description": "Marble hero posing patiently for centuries, then not.",
+  "condition_immunities": [
+   "poisoned",
+   "charmed",
+   "frightened",
+   "exhaustion"
+  ],
+  "key": "living_statue",
+  "id": "preset_living_statue"
+ },
+ {
+  "name": "Stone Defender",
+  "challenge_rating": 4,
+  "type": "construct",
+  "alignment": "unaligned",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 65,
+   "maximum": 65,
+   "formula": "10d10+10"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 8,
+   "CON": 15,
+   "INT": 1,
+   "WIS": 8,
+   "CHA": 3
+  },
+  "actions": [
+   "act_slam_lg"
+  ],
+  "loot_table": [],
+  "description": "Carved dwarf-statue guard dogging vault doors.",
+  "condition_immunities": [
+   "poisoned",
+   "charmed",
+   "frightened",
+   "exhaustion"
+  ],
+  "size": "small",
+  "key": "stone_defender",
+  "id": "preset_stone_defender"
+ },
+ {
+  "name": "Serpent Automaton",
+  "challenge_rating": 2,
+  "type": "construct",
+  "alignment": "lawful neutral",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "5d10"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 16,
+   "CON": 12,
+   "INT": 4,
+   "WIS": 8,
+   "CHA": 1
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Brass coil-guard striking keys and thieves alike.",
+  "condition_immunities": [
+   "poisoned",
+   "charmed",
+   "frightened",
+   "exhaustion"
+  ],
+  "size": "medium",
+  "key": "serpent_automaton",
+  "id": "preset_serpent_automaton"
+ },
+ {
+  "name": "Rune Guardian",
+  "challenge_rating": 6,
+  "type": "construct",
+  "alignment": "lawful neutral",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 102,
+   "maximum": 102,
+   "formula": "12d10+36"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 12,
+   "CON": 18,
+   "INT": 6,
+   "WIS": 12,
+   "CHA": 4
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_eye_ray"
+  ],
+  "loot_table": [],
+  "description": "Glyph-script colossus enforcing library silence forever.",
+  "condition_immunities": [
+   "poisoned",
+   "charmed",
+   "frightened",
+   "exhaustion"
+  ],
+  "size": "large",
+  "key": "rune_guardian",
+  "id": "preset_rune_guardian"
+ },
+ {
+  "name": "Tomb Construct",
+  "challenge_rating": 8,
+  "type": "construct",
+  "alignment": "any",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 119,
+   "maximum": 119,
+   "formula": "14d10+42"
+  },
+  "attributes": {
+   "STR": 20,
+   "DEX": 10,
+   "CON": 19,
+   "INT": 2,
+   "WIS": 9,
+   "CHA": 3
+  },
+  "actions": [
+   "act_golem_slam",
+   "act_crush"
+  ],
+  "loot_table": [],
+  "description": "Sarcophagus assembled into jealousy of the living.",
+  "condition_immunities": [
+   "poisoned",
+   "charmed",
+   "frightened",
+   "exhaustion"
+  ],
+  "size": "large",
+  "key": "tomb_construct",
+  "id": "preset_tomb_construct"
+ },
+ {
+  "name": "Dire Troll",
+  "challenge_rating": 10,
+  "type": "giant",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 152,
+   "maximum": 152,
+   "formula": "16d10+64"
+  },
+  "attributes": {
+   "STR": 22,
+   "DEX": 13,
+   "CON": 22,
+   "INT": 7,
+   "WIS": 9,
+   "CHA": 7
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_lg"
+  ],
+  "loot_table": [],
+  "description": "Regenerating horror that heals faster than heroes agree.",
+  "size": "huge",
+  "key": "dire_troll",
+  "id": "preset_dire_troll"
+ },
+ {
+  "name": "Fire Giant Dreadnought",
+  "challenge_rating": 12,
+  "type": "giant",
+  "alignment": "lawful evil",
+  "armor_class": 21,
+  "hit_points": {
+   "current": 218,
+   "maximum": 218,
+   "formula": "19d12+95"
+  },
+  "attributes": {
+   "STR": 27,
+   "DEX": 9,
+   "CON": 23,
+   "INT": 12,
+   "WIS": 14,
+   "CHA": 12
+  },
+  "actions": [
+   "act_greatsword",
+   "act_slam_lg"
+  ],
+  "loot_table": [],
+  "description": "Forge-tyrant marching behind a tower of black iron.",
+  "size": "huge",
+  "key": "fire_giant_dreadnought",
+  "id": "preset_fire_giant_dreadnought"
+ },
+ {
+  "name": "Storm Giant Sovereign",
+  "challenge_rating": 16,
+  "type": "giant",
+  "alignment": "chaotic good",
+  "armor_class": 18,
+  "hit_points": {
+   "current": 264,
+   "maximum": 264,
+   "formula": "23d12+115"
+  },
+  "attributes": {
+   "STR": 29,
+   "DEX": 14,
+   "CON": 23,
+   "INT": 20,
+   "WIS": 19,
+   "CHA": 22
+  },
+  "actions": [
+   "act_greatsword",
+   "act_lightning_bolt",
+   "act_chain_lightning"
+  ],
+  "loot_table": [],
+  "description": "Throne-of-clouds ruler deciding droughts and dynasties.",
+  "size": "huge",
+  "key": "storm_giant_sovereign",
+  "id": "preset_storm_giant_sovereign"
+ },
+ {
+  "name": "Hill Giant Chief",
+  "challenge_rating": 6,
+  "type": "giant",
+  "alignment": "any",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 108,
+   "maximum": 108,
+   "formula": "12d12+30"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 8,
+   "CON": 17,
+   "INT": 5,
+   "WIS": 9,
+   "CHA": 10
+  },
+  "actions": [
+   "act_giant_axe",
+   "act_rock_throw"
+  ],
+  "loot_table": [],
+  "description": "Biggest belly wins the tribe; the tribe wins nothing else.",
+  "size": "huge",
+  "key": "hill_giant_chief",
+  "id": "preset_hill_giant_chief"
+ },
+ {
+  "name": "Cyclops Shaman",
+  "challenge_rating": 8,
+  "type": "giant",
+  "alignment": "any",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 133,
+   "maximum": 133,
+   "formula": "14d12+42"
+  },
+  "attributes": {
+   "STR": 22,
+   "DEX": 10,
+   "CON": 20,
+   "INT": 9,
+   "WIS": 16,
+   "CHA": 8
+  },
+  "actions": [
+   "act_greatclub",
+   "act_flame_strike"
+  ],
+  "loot_table": [],
+  "description": "One eye on this world, one dream on the next.",
+  "size": "huge",
+  "key": "cyclops_shaman",
+  "id": "preset_cyclops_shaman"
+ },
+ {
+  "name": "Ogre Warlord",
+  "challenge_rating": 6,
+  "type": "giant",
+  "alignment": "any",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 110,
+   "maximum": 110,
+   "formula": "13d10+39"
+  },
+  "attributes": {
+   "STR": 21,
+   "DEX": 10,
+   "CON": 17,
+   "INT": 7,
+   "WIS": 9,
+   "CHA": 12
+  },
+  "actions": [
+   "act_giant_axe",
+   "act_javelin"
+  ],
+  "loot_table": [],
+  "description": "Promoted by surviving every superior it ate.",
+  "key": "ogre_warlord",
+  "id": "preset_ogre_warlord"
+ },
+ {
+  "name": "Troll King",
+  "challenge_rating": 9,
+  "type": "giant",
+  "alignment": "any",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 144,
+   "maximum": 144,
+   "formula": "17d10+51"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 13,
+   "CON": 21,
+   "INT": 8,
+   "WIS": 10,
+   "CHA": 9
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_lg"
+  ],
+  "loot_table": [],
+  "description": "Crowned in scar tissue; the realm regenerates around him.",
+  "size": "large",
+  "key": "troll_king",
+  "id": "preset_troll_king"
+ },
+ {
+  "name": "Fomorian Tyrant",
+  "challenge_rating": 11,
+  "type": "giant",
+  "alignment": "chaotic evil",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 171,
+   "maximum": 171,
+   "formula": "18d10+72"
+  },
+  "attributes": {
+   "STR": 25,
+   "DEX": 10,
+   "CON": 22,
+   "INT": 10,
+   "WIS": 12,
+   "CHA": 8
+  },
+  "actions": [
+   "act_greatclub",
+   "act_crush",
+   "act_eye_ray"
+  ],
+  "loot_table": [],
+  "description": "Under-earth emperor whose gaze warps what it favors.",
+  "size": "huge",
+  "key": "fomorian_tyrant",
+  "id": "preset_fomorian_tyrant"
+ },
+ {
+  "name": "Sahuagin",
+  "challenge_rating": 0.5,
+  "type": "humanoid",
+  "alignment": "lawful evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 13,
+   "DEX": 11,
+   "CON": 12,
+   "INT": 7,
+   "WIS": 10,
+   "CHA": 7
+  },
+  "actions": [
+   "act_claw",
+   "act_bite_sm"
+  ],
+  "loot_table": [],
+  "description": "Shark-tattooed raiders surfacing only to take.",
+  "speed_feet": 30,
+  "key": "sahuagin",
+  "id": "preset_sahuagin"
+ },
+ {
+  "name": "Sahuagin Priestess",
+  "challenge_rating": 2,
+  "type": "humanoid",
+  "alignment": "lawful evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 27,
+   "maximum": 27,
+   "formula": "5d8+5"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 12,
+   "CON": 12,
+   "INT": 10,
+   "WIS": 14,
+   "CHA": 12
+  },
+  "actions": [
+   "act_spear",
+   "act_spiritual_weapon"
+  ],
+  "loot_table": [],
+  "description": "Blood-tide acolyte feeding the reef gods properly.",
+  "speed_feet": 30,
+  "key": "sahuagin_priestess",
+  "id": "preset_sahuagin_priestess"
+ },
+ {
+  "name": "Merfolk",
+  "challenge_rating": 0.125,
+  "type": "humanoid",
+  "alignment": "any",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 4,
+   "maximum": 4,
+   "formula": "1d8"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 13,
+   "CON": 10,
+   "INT": 11,
+   "WIS": 11,
+   "CHA": 12
+  },
+  "actions": [
+   "act_spear"
+  ],
+  "loot_table": [],
+  "description": "Coral-court citizens; traders, guides, occasional sirens.",
+  "speed_feet": 5,
+  "key": "merfolk",
+  "id": "preset_merfolk"
+ },
+ {
+  "name": "Aboleth",
+  "challenge_rating": 10,
+  "type": "aberration",
+  "alignment": "lawful evil",
+  "armor_class": 17,
+  "hit_points": {
+   "current": 161,
+   "maximum": 161,
+   "formula": "19d10+57"
+  },
+  "attributes": {
+   "STR": 23,
+   "DEX": 8,
+   "CON": 21,
+   "INT": 18,
+   "WIS": 15,
+   "CHA": 18
+  },
+  "actions": [
+   "act_pseudopod",
+   "act_mind_blast"
+  ],
+  "loot_table": [],
+  "description": "Elder memory-eater whose slaves inherit their servitude.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "speed_feet": 10,
+  "key": "aboleth",
+  "id": "preset_aboleth"
+ },
+ {
+  "name": "Chuul",
+  "challenge_rating": 4,
+  "type": "aberration",
+  "alignment": "chaotic evil",
+  "armor_class": 16,
+  "hit_points": {
+   "current": 76,
+   "maximum": 76,
+   "formula": "9d10+27"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 10,
+   "CON": 16,
+   "INT": 5,
+   "WIS": 12,
+   "CHA": 5
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_grasp"
+  ],
+  "loot_table": [],
+  "description": "Pincer-priest performing ancient rites with new victims.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "chuul",
+  "id": "preset_chuul"
+ },
+ {
+  "name": "Locathah",
+  "challenge_rating": 0.25,
+  "type": "humanoid",
+  "alignment": "lawful neutral",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 11,
+   "maximum": 11,
+   "formula": "2d8+2"
+  },
+  "attributes": {
+   "STR": 11,
+   "DEX": 12,
+   "CON": 12,
+   "INT": 11,
+   "WIS": 11,
+   "CHA": 11
+  },
+  "actions": [
+   "act_spear"
+  ],
+  "loot_table": [],
+  "description": "Scaled league-folk defending reef trade routes.",
+  "speed_feet": 5,
+  "key": "locathah",
+  "id": "preset_locathah"
+ },
+ {
+  "name": "Water Weird",
+  "challenge_rating": 3,
+  "type": "elemental",
+  "alignment": "neutral",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 44,
+   "maximum": 44,
+   "formula": "8d8+8"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 13,
+   "CON": 15,
+   "INT": 4,
+   "WIS": 10,
+   "CHA": 6
+  },
+  "actions": [
+   "act_constrict"
+  ],
+  "loot_table": [],
+  "description": "Well-dweller drowning the curious in polite silence.",
+  "speed_feet": 30,
+  "key": "water_weird",
+  "id": "preset_water_weird"
+ },
+ {
+  "name": "Leviathan",
+  "challenge_rating": 20,
+  "type": "elemental",
+  "alignment": "chaotic neutral",
+  "armor_class": 19,
+  "hit_points": {
+   "current": 356,
+   "maximum": 356,
+   "formula": "31d12+155"
+  },
+  "attributes": {
+   "STR": 28,
+   "DEX": 12,
+   "CON": 26,
+   "INT": 10,
+   "WIS": 16,
+   "CHA": 18
+  },
+  "actions": [
+   "act_slam_lg",
+   "act_engulf",
+   "act_breath_lightning"
+  ],
+  "loot_table": [],
+  "description": "Primal sea-storm given a destination and a grudge.",
+  "size": "gargantuan",
+  "speed_feet": 0,
+  "key": "leviathan",
+  "id": "preset_leviathan"
+ },
+ {
+  "name": "Storm Siren",
+  "challenge_rating": 6,
+  "type": "monstrosity",
+  "alignment": "chaotic evil",
+  "armor_class": 15,
+  "hit_points": {
+   "current": 82,
+   "maximum": 82,
+   "formula": "11d10+22"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 16,
+   "CON": 14,
+   "INT": 13,
+   "WIS": 17,
+   "CHA": 19
+  },
+  "actions": [
+   "act_lightning_bolt",
+   "act_vicious_mockery"
+  ],
+  "loot_table": [],
+  "description": "Cliff-song luring ships with promises in minor keys.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "storm_siren",
+  "id": "preset_storm_siren"
+ },
+ {
+  "name": "Harpy",
+  "challenge_rating": 1,
+  "type": "monstrosity",
+  "alignment": "chaotic evil",
+  "armor_class": 11,
+  "hit_points": {
+   "current": 16,
+   "maximum": 16,
+   "formula": "3d8+3"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 13,
+   "CON": 12,
+   "INT": 7,
+   "WIS": 10,
+   "CHA": 13
+  },
+  "actions": [
+   "act_claw"
+  ],
+  "loot_table": [],
+  "description": "Cliff-nest songbird whose chorus ends mid-air.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "harpy",
+  "id": "preset_harpy"
+ },
+ {
+  "name": "Medusa",
+  "challenge_rating": 6,
+  "type": "monstrosity",
+  "alignment": "lawful evil",
+  "armor_class": 14,
+  "hit_points": {
+   "current": 58,
+   "maximum": 58,
+   "formula": "9d8+18"
+  },
+  "attributes": {
+   "STR": 10,
+   "DEX": 16,
+   "CON": 16,
+   "INT": 12,
+   "WIS": 13,
+   "CHA": 17
+  },
+  "actions": [
+   "act_poison_bite",
+   "act_dagger"
+  ],
+  "loot_table": [],
+  "description": "Veiled sculptor collecting portraits she'll never finish.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "medusa",
+  "id": "preset_medusa"
+ },
+ {
+  "name": "Centaur",
+  "challenge_rating": 2,
+  "type": "monstrosity",
+  "alignment": "neutral good",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 37,
+   "maximum": 37,
+   "formula": "5d10+10"
+  },
+  "attributes": {
+   "STR": 18,
+   "DEX": 14,
+   "CON": 14,
+   "INT": 9,
+   "WIS": 13,
+   "CHA": 12
+  },
+  "actions": [
+   "act_longsword",
+   "act_hooves"
+  ],
+  "loot_table": [],
+  "description": "Horizon-herder galloping rumors across whole plains.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "centaur",
+  "id": "preset_centaur"
+ },
+ {
+  "name": "Lamia",
+  "challenge_rating": 4,
+  "type": "monstrosity",
+  "alignment": "chaotic evil",
+  "armor_class": 13,
+  "hit_points": {
+   "current": 58,
+   "maximum": 58,
+   "formula": "9d8+18"
+  },
+  "attributes": {
+   "STR": 16,
+   "DEX": 15,
+   "CON": 16,
+   "INT": 14,
+   "WIS": 14,
+   "CHA": 16
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_eye_ray"
+  ],
+  "loot_table": [],
+  "description": "Ruins-noble dressing greed in illusions of royalty.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "large",
+  "key": "lamia",
+  "id": "preset_lamia"
+ },
+ {
+  "name": "Werebear",
+  "challenge_rating": 5,
+  "type": "humanoid",
+  "alignment": "neutral good",
+  "armor_class": 10,
+  "hit_points": {
+   "current": 67,
+   "maximum": 67,
+   "formula": "9d8+27"
+  },
+  "attributes": {
+   "STR": 19,
+   "DEX": 10,
+   "CON": 17,
+   "INT": 11,
+   "WIS": 12,
+   "CHA": 12
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Reclusive warden whose curse is also a career.",
+  "size": "large",
+  "key": "werebear",
+  "id": "preset_werebear"
+ },
+ {
+  "name": "Weretiger",
+  "challenge_rating": 4,
+  "type": "humanoid",
+  "alignment": "neutral",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 52,
+   "maximum": 52,
+   "formula": "8d8+16"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 15,
+   "CON": 15,
+   "INT": 10,
+   "WIS": 12,
+   "CHA": 10
+  },
+  "actions": [
+   "act_claw_rend",
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Jungle duelists honoring challenges with extra claws.",
+  "size": "large",
+  "key": "weretiger",
+  "id": "preset_weretiger"
+ },
+ {
+  "name": "Wereboar",
+  "challenge_rating": 4,
+  "type": "humanoid",
+  "alignment": "neutral evil",
+  "armor_class": 10,
+  "hit_points": {
+   "current": 52,
+   "maximum": 52,
+   "formula": "8d8+16"
+  },
+  "attributes": {
+   "STR": 17,
+   "DEX": 10,
+   "CON": 15,
+   "INT": 8,
+   "WIS": 8,
+   "CHA": 8
+  },
+  "actions": [
+   "act_gore",
+   "act_claw"
+  ],
+  "loot_table": [],
+  "description": "Crossroad bully infecting taverns and travelers alike.",
+  "size": "large",
+  "key": "wereboar",
+  "id": "preset_wereboar"
+ },
+ {
+  "name": "Werebat",
+  "challenge_rating": 3,
+  "type": "humanoid",
+  "alignment": "chaotic evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 39,
+   "maximum": 39,
+   "formula": "6d8+12"
+  },
+  "attributes": {
+   "STR": 12,
+   "DEX": 16,
+   "CON": 14,
+   "INT": 10,
+   "WIS": 12,
+   "CHA": 10
+  },
+  "actions": [
+   "act_bite_md"
+  ],
+  "loot_table": [],
+  "description": "Cave-roost screecher draining rumor from the sleeping.",
+  "size": "medium",
+  "key": "werebat",
+  "id": "preset_werebat"
+ },
+ {
+  "name": "Ancient Silver Dragon",
+  "challenge_rating": 23,
+  "type": "dragon",
+  "alignment": "lawful good",
+  "armor_class": 22,
+  "hit_points": {
+   "current": 459,
+   "maximum": 459,
+   "formula": "34d12+238"
+  },
+  "attributes": {
+   "STR": 30,
+   "DEX": 10,
+   "CON": 27,
+   "INT": 18,
+   "WIS": 17,
+   "CHA": 23
+  },
+  "actions": [
+   "act_wyrm_bite",
+   "act_breath_cold_white",
+   "act_wyrm_tail"
+  ],
+  "loot_table": [],
+  "description": "Moonlight's champion; tyranny freezes in its shadow.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "size": "gargantuan",
+  "key": "ancient_silver_dragon",
+  "id": "preset_ancient_silver_dragon"
+ },
+ {
+  "name": "Nothic",
+  "challenge_rating": 2,
+  "type": "aberration",
+  "alignment": "neutral evil",
+  "armor_class": 12,
+  "hit_points": {
+   "current": 22,
+   "maximum": 22,
+   "formula": "4d8+4"
+  },
+  "attributes": {
+   "STR": 14,
+   "DEX": 16,
+   "CON": 14,
+   "INT": 13,
+   "WIS": 8,
+   "CHA": 8
+  },
+  "actions": [
+   "act_claw",
+   "act_eye_ray"
+  ],
+  "loot_table": [],
+  "description": "Wizard-curse hoarding secrets it can barely carry.",
+  "senses": [
+   "darkvision 60 ft.",
+   "passive Perception 10"
+  ],
+  "key": "nothic",
+  "id": "preset_nothic"
  }
 ]
