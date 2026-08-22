@@ -13,3 +13,4 @@ sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
+uuid = { version = "1", features = ["v4"] }

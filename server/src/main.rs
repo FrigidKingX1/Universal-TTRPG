@@ -1,103 +1,50 @@
-//! C1 — Broadcast transport: WebSocket fan-out with order guarantee.
-//!
-//! Design invariants (per spec):
-//! 1. Broadcast order matches mutation order — events are sent to the
-//!    broadcast channel while still holding the session lock, not after.
-//! 2. `RecvError::Lagged` triggers a full resync, not silent continuation.
-
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        Query, State as AxumState, WebSocketUpgrade,
+        Path, Query, State as AxumState, WebSocketUpgrade,
     },
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
-use auto_dm_core::llm::{DmPipeline, StubLlmBackend};
-use auto_dm_engine::{
-    apply_session_effects, open_pool, run_migrations, GameEvent, GameState, LogEntry, Repository,
-    SqliteRepository,
-};
-use serde::{Deserialize, Serialize};
+use auto_dm_engine::{apply_session_effects, LogEntry, Repository};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::broadcast;
 
-// ── Wire protocol ────────────────────────────────────────────────────
+mod session;
+use session::{SessionRegistry, WsMessage};
 
-/// Envelope sent over WebSocket.  Distinguishes live events from
-/// full-state resyncs so the client always knows what it's looking at.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-enum WsMessage {
-    Event {
-        event: GameEvent,
-    },
-    Resync {
-        scene_summary: String,
-        logs: Vec<LogEntry>,
-    },
+struct AppState {
+    registry: Arc<SessionRegistry>,
 }
-
-// ── Session state (server-level, wraps engine GameState) ─────────────
-
-struct SessionState {
-    game: GameState,
-    /// Fan-out: one sender, many receivers (one per WebSocket client).
-    event_tx: broadcast::Sender<WsMessage>,
-    /// Serializes resolve → broadcast so event order matches mutation order.
-    /// Two concurrent player actions acquire this lock; the second waits
-    /// until the first has broadcast its events before proceeding.
-    session_lock: tokio::sync::Mutex<()>,
-}
-
-const BROADCAST_CAPACITY: usize = 256;
-
-// ── Main ─────────────────────────────────────────────────────────────
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-
-    // --- Database ---
-    let db_path = std::env::args()
+    let data_dir = std::env::args()
         .nth(1)
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("server.db"));
-    tracing::info!("Opening database at {}", db_path.display());
+        .unwrap_or_else(|| PathBuf::from("sessions"));
+    tracing::info!("Session data dir: {}", data_dir.display());
 
-    let pool = open_pool(&db_path).await.expect("Failed to open database");
-    run_migrations(&pool).await.expect("Failed to run migrations");
-    let repo = SqliteRepository::new(pool);
+    let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
+        Box::new(auto_dm_core::llm::StubLlmBackend);
+    let pipeline = Arc::new(auto_dm_core::llm::DmPipeline::new(backend));
 
-    // --- DM pipeline ---
-    let backend: Box<dyn auto_dm_core::llm::LlmBackend> = Box::new(StubLlmBackend);
-    let pipeline = DmPipeline::new(backend);
-
-    // --- Shared state ---
-    let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
-    let state = Arc::new(SessionState {
-        game: GameState {
-            repo,
-            dm: tokio::sync::Mutex::new(Some(Arc::new(pipeline))),
-            memory: std::sync::Mutex::new(auto_dm_core::memory::CampaignMemory::new()),
-            ollama_child: std::sync::Mutex::new(None),
-            current_model: std::sync::Mutex::new("stub".into()),
-            current_num_predict: std::sync::Mutex::new(512),
-        },
-        event_tx,
-        session_lock: tokio::sync::Mutex::new(()),
+    let state = Arc::new(AppState {
+        registry: Arc::new(SessionRegistry::new(data_dir, pipeline)),
     });
 
-    // --- Routes ---
     let app = Router::new()
         .route("/health", get(health))
-        .route("/resolve", post(resolve))
-        .route("/logs/{scene_id}", get(list_logs))
-        .route("/ws", get(ws_handler))
+        .route("/sessions", post(create_session).get(list_sessions))
+        .route("/sessions/{join_code}/join", post(join_session))
+        .route("/sessions/{session_id}/resolve", post(resolve))
+        .route("/sessions/{session_id}/ws", get(ws_handler))
+        .route("/sessions/{session_id}/logs", get(list_logs))
         .with_state(state);
 
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());
@@ -106,76 +53,148 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-// ── Health ───────────────────────────────────────────────────────────
-
 async fn health() -> Json<Value> {
     Json(json!({ "status": "ok" }))
 }
 
-// ── Resolve (POST) — broadcast while holding lock ────────────────────
+// ── Bearer token extraction ──────────────────────────────────────────
+
+fn extract_token(
+    headers: &axum::http::header::HeaderMap,
+) -> Result<String, (StatusCode, String)> {
+    let auth = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Missing Authorization header".into()))?;
+    auth.strip_prefix("Bearer ")
+        .map(|s| s.to_string())
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Invalid Authorization format".into()))
+}
+
+// ── Session management ───────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct CreateSessionRequest {
+    title: String,
+}
+
+async fn create_session(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Json(req): Json<CreateSessionRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let (session_id, join_code, host_token) =
+        state.registry.create_session(&req.title).await.map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, e)
+        })?;
+    Ok(Json(json!({
+        "session_id": session_id,
+        "join_code": join_code,
+        "host_token": host_token,
+    })))
+}
+
+#[derive(Deserialize)]
+struct JoinSessionRequest {
+    player_name: String,
+}
+
+async fn join_session(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(join_code): Path<String>,
+    Json(req): Json<JoinSessionRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let (session_id, token, player_id) = state
+        .registry
+        .join_session(&join_code, &req.player_name)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    Ok(Json(json!({
+        "session_id": session_id,
+        "player_token": token,
+        "player_id": player_id,
+    })))
+}
+
+async fn list_sessions(AxumState(state): AxumState<Arc<AppState>>) -> Json<Value> {
+    let sessions = state.registry.list_sessions().await;
+    Json(json!(sessions))
+}
+
+// ── Resolve ──────────────────────────────────────────────────────────
 
 async fn resolve(
-    AxumState(state): AxumState<Arc<SessionState>>,
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
     Json(mut request): Json<auto_dm_core::llm::DmRequest>,
 ) -> Result<Json<auto_dm_core::llm::DmResponse>, (StatusCode, String)> {
-    // CRITICAL: acquire the session lock BEFORE any engine work.
-    // This serializes resolve + broadcast so event order matches mutation order.
-    let _lock = state.session_lock.lock().await;
+    let token = extract_token(&headers)?;
+    let (session, _player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| {
+            (StatusCode::UNAUTHORIZED, e)
+        })?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
 
-    // Inject memory context.
+    // Per-session lock — only blocks within this session.
+    let _lock = session.session_lock.lock().await;
+
     {
-        let mem = state
-            .game
-            .memory
-            .lock()
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let mem = session.game.memory.lock().map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
         if !mem.is_empty() {
             request.memory_context = Some(mem.to_context(20));
         }
     }
 
-    // Clone the pipeline Arc (lock-clone-release pattern).
     let pipeline = {
-        let dm = state.game.dm.lock().await;
-        dm.as_ref()
-            .cloned()
-            .ok_or_else(|| {
-                (StatusCode::SERVICE_UNAVAILABLE, "DM backend not initialized".into())
-            })?
+        let dm = session.game.dm.lock().await;
+        dm.as_ref().cloned().ok_or_else(|| {
+            (StatusCode::SERVICE_UNAVAILABLE, "DM backend not initialized".into())
+        })?
     };
 
-    // Run through the engine.
     let mut response = pipeline
         .resolve_action(&request)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let events = apply_session_effects(&state.game, &request, &mut response).await;
+    let events = apply_session_effects(&session.game, &request, &mut response).await;
 
-    // Broadcast WHILE the session lock is held — this is the order guarantee.
-    // Any concurrent WebSocket receiver sees events in exactly this sequence.
+    // Broadcast WHILE session lock held — order guarantee.
     for event in &events {
-        let _ = state.event_tx.send(WsMessage::Event { event: event.clone() });
+        let _ = session.event_tx.send(WsMessage::Event { event: event.clone() });
     }
 
-    tracing::info!(
-        intent = ?response.intent,
-        events = events.len(),
-        source = %response.source,
-        "Request resolved"
-    );
-
-    // _lock dropped here — next queued request can proceed.
+    tracing::info!(session = %session_id, events = events.len(), "Resolved");
     Ok(Json(response))
 }
 
-// ── Logs (GET) ───────────────────────────────────────────────────────
+// ── Logs ─────────────────────────────────────────────────────────────
 
 async fn list_logs(
-    AxumState(state): AxumState<Arc<SessionState>>,
-    axum::extract::Path(scene_id): axum::extract::Path<String>,
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
 ) -> Result<Json<Vec<LogEntry>>, (StatusCode, String)> {
-    let logs = state
+    let token = extract_token(&headers)?;
+    let (session, _) = state.registry.authenticate(&token).await.map_err(|e| {
+        (StatusCode::UNAUTHORIZED, e)
+    })?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let scene_id = session
+        .game
+        .repo
+        .active_scene()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map(|s| s.id)
+        .unwrap_or_default();
+    let logs = session
         .game
         .repo
         .list_logs(&scene_id, 100)
@@ -184,68 +203,89 @@ async fn list_logs(
     Ok(Json(logs))
 }
 
-// ── WebSocket (/ws?scene_id=X) ──────────────────────────────────────
+// ── WebSocket ────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct WsQuery {
-    scene_id: String,
+    token: String,
 }
 
 async fn ws_handler(
-    AxumState(state): AxumState<Arc<SessionState>>,
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
     Query(query): Query<WsQuery>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(state, socket, query.scene_id))
+    let result = state.registry.authenticate(&query.token).await;
+    match result {
+        Ok((session, player_id)) if session.id == session_id => {
+            {
+                let mut players = session.players.write().await;
+                if let Some(p) = players.iter_mut().find(|p| p.id == player_id) {
+                    p.connected = true;
+                }
+            }
+            ws.on_upgrade(move |socket| handle_socket(state, session, player_id, socket))
+        }
+        _ => (StatusCode::UNAUTHORIZED, "Invalid token or session mismatch").into_response(),
+    }
 }
 
-async fn handle_socket(state: Arc<SessionState>, mut socket: WebSocket, scene_id: String) {
-    let mut rx = state.event_tx.subscribe();
+async fn handle_socket(
+    state: Arc<AppState>,
+    session: Arc<session::Session>,
+    player_id: String,
+    mut socket: WebSocket,
+) {
+    let mut rx = session.event_tx.subscribe();
 
-    // ── Initial resync: send current state so client starts consistent ──
-    let resync = build_resync(&state, &scene_id).await;
+    // Initial resync.
+    let resync = build_resync(&session).await;
     if socket.send(Message::Text(resync.into())).await.is_err() {
-        return; // client disconnected during initial sync
+        mark_disconnected(&state, &session, &player_id).await;
+        return;
     }
 
-    // ── Event loop: forward broadcast events, handle Lagged ─────────────
     loop {
         match rx.recv().await {
             Ok(WsMessage::Event { event }) => {
-                let msg = WsMessage::Event { event };
-                let json = match serde_json::to_string(&msg) {
+                let json = match serde_json::to_string(&WsMessage::Event { event }) {
                     Ok(j) => j,
                     Err(_) => continue,
                 };
                 if socket.send(Message::Text(json.into())).await.is_err() {
-                    break; // client disconnected
+                    break;
                 }
             }
-            Ok(WsMessage::Resync { .. }) => {
-                // Resync messages are only sent by the server, never
-                // received from the broadcast channel.  Ignore.
-            }
-            Err(broadcast::error::RecvError::Lagged(n)) => {
-                tracing::warn!(client = %scene_id, missed = n, "Client lagged — forcing resync");
-                let resync = build_resync(&state, &scene_id).await;
+            Ok(WsMessage::Resync { .. }) => {}
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged — resync");
+                let resync = build_resync(&session).await;
                 if socket.send(Message::Text(resync.into())).await.is_err() {
                     break;
                 }
             }
-            Err(broadcast::error::RecvError::Closed) => {
-                tracing::info!("Broadcast channel closed");
-                break;
-            }
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
         }
     }
 
-    tracing::info!(scene_id, "WebSocket client disconnected");
+    mark_disconnected(&state, &session, &player_id).await;
 }
 
-/// Build a full-state resync message: current scene summary + recent logs.
-/// Called on initial connection and on Lagged.
-async fn build_resync(state: &SessionState, scene_id: &str) -> String {
-    let summary = state
+async fn mark_disconnected(state: &AppState, session: &session::Session, player_id: &str) {
+    let sessions = state.registry.sessions.read().await;
+    if let Some(s) = sessions.get(&session.id) {
+        let mut players = s.players.write().await;
+        if let Some(p) = players.iter_mut().find(|p| p.id == player_id) {
+            p.connected = false;
+        }
+    }
+}
+
+async fn build_resync(session: &session::Session) -> String {
+    let scene = session.game.repo.active_scene().await.ok().flatten();
+    let scene_id = scene.as_ref().map(|s| s.id.as_str()).unwrap_or("");
+    let summary = session
         .game
         .repo
         .get_scene_summary(scene_id)
@@ -253,19 +293,12 @@ async fn build_resync(state: &SessionState, scene_id: &str) -> String {
         .ok()
         .flatten()
         .unwrap_or_default();
-    let logs = state
+    let logs = session
         .game
         .repo
         .list_logs(scene_id, 100)
         .await
         .unwrap_or_default();
-
-    let msg = WsMessage::Resync { scene_summary: summary, logs };
-    serde_json::to_string(&msg).unwrap_or_else(|_| {
-        serde_json::to_string(&WsMessage::Resync {
-            scene_summary: String::new(),
-            logs: vec![],
-        })
-        .unwrap()
-    })
+    serde_json::to_string(&WsMessage::Resync { scene_summary: summary, logs })
+        .unwrap_or_default()
 }
