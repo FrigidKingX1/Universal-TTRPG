@@ -300,12 +300,27 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     if (!client) return;
     const data = await client.httpPost<{ mode: GameMode; current_turn: string }>("/combat/start");
     set({ gameMode: data.mode, currentTurn: data.current_turn });
+
+    // Immediately push the full combatant list to the server so all
+    // clients see the same combatants from the start.
+    try {
+      const mainState = _mainStoreGet?.();
+      if (mainState) {
+        const combatants = [
+          ...mainState.characters,
+          ...mainState.statBlocks,
+        ];
+        await client.combatSync(combatants, mainState.combatantConditions);
+      }
+    } catch { /* best-effort */ }
   },
 
   endCombat: async () => {
     if (!client) return;
     await client.httpPost("/combat/end");
     set({ gameMode: "exploration", currentTurn: null, turnQueue: [] });
+    // Clear server combatant state.
+    try { await client.combatSync([], {}); } catch { /* best-effort */ }
   },
 
   joinCombatQueue: async () => {

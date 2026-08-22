@@ -1767,7 +1767,58 @@ function persistCombat() {
       deathSaves: s.deathSaves,
     };
     void backend.saveCombatState(sceneId, JSON.stringify(data));
+
+    // In multiplayer, push the full combatant list to the server so all
+    // clients see the same HP / status / conditions.  This is debounced
+    // together with local persistence to avoid flooding the server.
+    if (isInMultiplayerSession()) {
+      syncCombatantsToServer(s);
+    }
   }, 300);
+}
+
+let syncCombatantsTimer: ReturnType<typeof setTimeout> | null = null;
+function syncCombatantsToServer(s: ReturnType<typeof useStore.getState>) {
+  if (syncCombatantsTimer) clearTimeout(syncCombatantsTimer);
+  syncCombatantsTimer = setTimeout(async () => {
+    syncCombatantsTimer = null;
+    try {
+      const client = (await import("./multiplayer")).getMultiplayerClient();
+      if (!client) return;
+
+      const states = s.combatantStates;
+      const conditions = s.combatantConditions;
+
+      // Build the full combatant JSON list from characters + stat blocks,
+      // overlaying live HP from combatantStates so the server gets the
+      // authoritative current values.
+      const combatants: unknown[] = [
+        ...s.characters.map((c) => {
+          const live = states[c.id];
+          if (!live) return c;
+          return {
+            ...c,
+            resource_pools: {
+              ...c.resource_pools,
+              hp: { ...c.resource_pools.hp, current: live.hit_points },
+            },
+          };
+        }),
+        ...s.statBlocks.map((b) => {
+          const live = states[b.id];
+          if (!live) return b;
+          return {
+            ...b,
+            hit_points: { ...b.hit_points, current: live.hit_points },
+          };
+        }),
+      ];
+
+      await client.combatSync(combatants, conditions);
+    } catch {
+      // best-effort — don't block the UI
+    }
+  }, 100);
 }
 
 let unlisteners: UnlistenFn[] = [];
