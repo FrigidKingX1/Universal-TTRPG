@@ -3,7 +3,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { backend } from "./backend";
 import { isInMultiplayerSession, useMultiplayerStore } from "./multiplayer";
-import { PRESET_CLASSES, applyClassTemplate } from "./presets/classes";
+import { PRESET_CLASSES, applyClassTemplate, mergeSecondaryClass } from "./presets/classes";
 import { findPresetAction } from "./presets/actions";
 import { CONCENTRATION_ACTIONS } from "./presets/actions";
 import { playDiceSound, playCombatSfx, sfxForOutcome } from "./sound";
@@ -94,7 +94,7 @@ export interface AutoDmState {
   bootstrap: () => Promise<void>;
   setError: (msg: string | null) => void;
 
-  createCharacter: (name: string, classId?: string) => Promise<void>;
+  createCharacter: (name: string, classId?: string, dualClassId?: string) => Promise<void>;
   saveCharacter: (profile: CharacterProfile) => Promise<void>;
   deleteCharacter: (id: string) => Promise<void>;
   dropItemToScene: (characterId: string, item: import("./types").InventoryItem) => Promise<void>;
@@ -568,21 +568,29 @@ export const useStore = create<AutoDmState>()(
     s.showToast(`Dropped ${item.quantity}× ${item.name} on the ground`);
   },
 
-  createCharacter: async (name, classId) => {
+  createCharacter: async (name, classId, dualClassId) => {
     let profile = newCharacter(name || "Unnamed Adventurer");
     if (classId) {
       const template = PRESET_CLASSES.find((c) => c.id === classId);
+      const dualTemplate = dualClassId && dualClassId !== classId
+        ? PRESET_CLASSES.find((c) => c.id === dualClassId)
+        : undefined;
       if (template) {
         // Install any class-granted actions missing from the vault so
         // attacks resolve locally and via campaign export.
+        const abilityIds = new Set([
+          ...template.starting_abilities,
+          ...(dualTemplate?.starting_abilities ?? []),
+        ]);
         const existingIds = new Set(get().actions.map((a) => a.id));
-        for (const abilityId of template.starting_abilities) {
+        for (const abilityId of abilityIds) {
           if (existingIds.has(abilityId)) continue;
           const def = findPresetAction(abilityId);
           if (def) await backend.saveAction(def);
         }
         set({ actions: await backend.listActions() });
         profile = applyClassTemplate(profile, template);
+        if (dualTemplate) profile = mergeSecondaryClass(profile, dualTemplate);
       }
     }
     await backend.saveCharacter(profile);

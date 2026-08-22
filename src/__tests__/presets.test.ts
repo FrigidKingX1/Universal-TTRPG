@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PRESET_MONSTERS, PRESET_ACTIONS } from "../presets/bestiary";
-import { PRESET_CLASSES, CLASS_ACTIONS } from "../presets/classes";
+import { PRESET_CLASSES, CLASS_ACTIONS, applyClassTemplate, mergeSecondaryClass } from "../presets/classes";
 import {
   ALL_PRESET_ACTIONS,
   findPresetAction,
@@ -171,10 +171,15 @@ describe("Preset actions", () => {
 });
 
 describe("Class templates", () => {
-  it("covers twelve core classes", () => {
+  it("covers thirty-six classes", () => {
     expect(PRESET_CLASSES.map((c) => c.id)).toEqual([
       "fighter", "barbarian", "rogue", "ranger", "cleric", "wizard",
       "paladin", "monk", "sorcerer", "warlock", "bard", "druid",
+      "warlord", "swashbuckler", "runecarver", "necromancer", "shaman",
+      "psion", "alchemist", "tinkerer", "reaver", "brawler", "wildspeaker",
+      "shadowblade", "stormcaller", "witch", "summoner", "gunslinger",
+      "dragoon", "blackguard", "banisher", "jester", "spellblade",
+      "chirurgeon", "elementalist", "cavalier",
     ]);
   });
 
@@ -199,6 +204,47 @@ describe("Class templates", () => {
     for (const def of CLASS_ACTIONS) {
       expect(findPresetAction(def.id)).toBeDefined();
     }
+  });
+
+  it("dual-classing unions abilities, halves the second hit die, and stacks shared pools", () => {
+    const fighter = PRESET_CLASSES.find((c) => c.id === "fighter")!;
+    const wizard = PRESET_CLASSES.find((c) => c.id === "wizard")!;
+    const fresh: import("../types").CharacterProfile = {
+      id: crypto.randomUUID(),
+      system_id: "universal",
+      identity: { name: "Test", level_or_rank: 1 },
+      attributes: {},
+      resource_pools: { hp: { current: 12, maximum: 12, temporary: 0, reset_condition: "long_rest" } },
+      inventory: [],
+      abilities: [],
+    };
+    const dual = mergeSecondaryClass(applyClassTemplate(fresh, fighter), wizard);
+    // Abilities unioned.
+    expect(dual.abilities).toContain("act_longsword");
+    expect(dual.abilities).toContain("act_fire_bolt");
+    // Half of d6 = +3 HP over the fighter's 12.
+    expect(dual.resource_pools.hp?.maximum).toBe(15);
+    // Wizard-only pool arrives at half max (2 -> 1); no duplicates.
+    expect(dual.resource_pools.spell_slots_l1?.maximum).toBe(1);
+    expect(dual.identity.archetype_secondary).toBe("Wizard");
+  });
+
+  it("dual-classing stacks shared pools from both classes", () => {
+    const cleric = PRESET_CLASSES.find((c) => c.id === "cleric")!;
+    const bard = PRESET_CLASSES.find((c) => c.id === "bard")!;
+    const fresh: import("../types").CharacterProfile = {
+      id: crypto.randomUUID(),
+      system_id: "universal",
+      identity: { name: "Test", level_or_rank: 1 },
+      attributes: {},
+      resource_pools: { hp: { current: 10, maximum: 10, temporary: 0, reset_condition: "long_rest" } },
+      inventory: [],
+      abilities: [],
+    };
+    // Cleric primary grants spell_slots_l1 x2; bard adds ceil(2/2)=1 more.
+    const dual = mergeSecondaryClass(applyClassTemplate(fresh, cleric), bard);
+    expect(dual.resource_pools.spell_slots_l1?.maximum).toBe(3);
+    expect(dual.resource_pools.spell_slots_l1?.current).toBe(3);
   });
 });
 

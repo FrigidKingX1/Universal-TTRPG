@@ -12,6 +12,8 @@ export interface Identity {
   name: string;
   ancestry?: string;
   archetype?: string;
+  /** Secondary class name when dual-classing. */
+  archetype_secondary?: string;
   background?: string;
   level_or_rank: number;
 }

@@ -126,7 +126,7 @@ for (const [key, type] of typeOf) {
 mkdirSync("public/assets/icons", { recursive: true });
 const classesSrc = readFileSync("src/presets/classes.ts", "utf8");
 const classIds = [...classesSrc.matchAll(/id: "([a-z]+)"/g)].map((m) => m[1]);
-const CLASS_HUES = { fighter: 210, barbarian: 15, rogue: 280, ranger: 120, cleric: 50, wizard: 260, paladin: 45, monk: 170, sorcerer: 340, warlock: 305, bard: 25, druid: 95 };
+const CLASS_HUES = { fighter: 210, barbarian: 15, rogue: 280, ranger: 120, cleric: 50, wizard: 260, paladin: 45, monk: 170, sorcerer: 340, warlock: 305, bard: 25, druid: 95, warlord: 200, swashbuckler: 330, runecarver: 30, necromancer: 100, shaman: 160, psion: 190, alchemist: 75, tinkerer: 50, reaver: 0, brawler: 35, wildspeaker: 110, shadowblade: 250, stormcaller: 220, witch: 290, summoner: 240, gunslinger: 20, dragoon: 350, blackguard: 285, banisher: 55, jester: 42, spellblade: 265, chirurgeon: 185, elementalist: 130, cavalier: 230 };
 for (const id of classIds) {
   const hue = CLASS_HUES[id] ?? hash(id) % 360;
   writeFileSync(`public/assets/icons/class_${id}.png`, drawTile(id, hue, (hue + 180) % 360, "diamond"));

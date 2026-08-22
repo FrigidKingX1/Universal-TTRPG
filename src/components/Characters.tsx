@@ -11,12 +11,13 @@ function NewCharacterForm() {
   const createCharacter = useStore((s) => s.createCharacter);
   const [name, setName] = useState("");
   const [classId, setClassId] = useState("");
+  const [dualClassId, setDualClassId] = useState("");
   return (
     <form
       className="row"
       onSubmit={(e) => {
         e.preventDefault();
-        void createCharacter(name.trim(), classId || undefined);
+        void createCharacter(name.trim(), classId || undefined, dualClassId || undefined);
         setName("");
       }}
     >
@@ -31,6 +32,19 @@ function NewCharacterForm() {
         {PRESET_CLASSES.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name} (d{c.hit_die})
+          </option>
+        ))}
+      </select>
+      <select
+        value={dualClassId}
+        onChange={(e) => setDualClassId(e.currentTarget.value)}
+        aria-label="Dual class (optional)"
+        title="Dual-class: gains half hit die, secondary pools at half, and both ability lists"
+      >
+        <option value="">No dual class</option>
+        {PRESET_CLASSES.filter((c) => c.id !== classId).map((c) => (
+          <option key={c.id} value={c.id}>
+            + {c.name}
           </option>
         ))}
       </select>

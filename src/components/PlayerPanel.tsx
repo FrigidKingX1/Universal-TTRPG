@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Shield, Sword, Package, Heart, Crosshair } from "lucide-react";
 import { useStore, newCharacter } from "../store";
-import { PRESET_CLASSES, applyClassTemplate } from "../presets/classes";
+import { PRESET_CLASSES, applyClassTemplate, mergeSecondaryClass } from "../presets/classes";
 import { getMultiplayerClient, useMultiplayerStore } from "../multiplayer/store";
 import type { CharacterProfile, EncounterStatBlock, InventoryItem, ResourcePool, AttributeState } from "../types";
 import "../App.css";
@@ -20,6 +20,7 @@ export function PlayerPanel() {
   const [targetKey, setTargetKey] = useState("");
   const [newCharName, setNewCharName] = useState("");
   const [newClassId, setNewClassId] = useState(PRESET_CLASSES[0].id);
+  const [newDualClassId, setNewDualClassId] = useState("");
 
   const client = getMultiplayerClient();
 
@@ -83,10 +84,15 @@ export function PlayerPanel() {
     if (!client) return;
     const template =
       PRESET_CLASSES.find((c) => c.id === newClassId) ?? PRESET_CLASSES[0];
+    const dualTemplate =
+      newDualClassId && newDualClassId !== template.id
+        ? PRESET_CLASSES.find((c) => c.id === newDualClassId)
+        : undefined;
     // Apply the full class template (HP, pools, gear, abilities) so hosted
     // players get real characters — class actions already live server-side
     // thanks to the embedded preset seed.
-    const profile = applyClassTemplate(newCharacter(newCharName.trim() || "New Character"), template);
+    let profile = applyClassTemplate(newCharacter(newCharName.trim() || "New Character"), template);
+    if (dualTemplate) profile = mergeSecondaryClass(profile, dualTemplate);
     const result = await withLoading(() => client.createCharacter(profile));
     if (result?.character) {
       setActiveCharacter(result.character);
@@ -163,6 +169,9 @@ export function PlayerPanel() {
               <div className="vitals-name">{character.identity.name}</div>
               <div className="vitals-meta">
                 <span>{character.identity.archetype ?? character.identity.ancestry ?? "Adventurer"}</span>
+                {character.identity.archetype_secondary && (
+                  <span>/ {character.identity.archetype_secondary}</span>
+                )}
                 <span>Lvl {character.identity.level_or_rank}</span>
               </div>
             </div>
@@ -332,12 +341,23 @@ export function PlayerPanel() {
             value={newClassId}
             onChange={(e) => setNewClassId(e.currentTarget.value)}
             aria-label="Class"
-            style={{ width: "100%", marginBottom: "0.5rem" }}
+            style={{ width: "100%", marginBottom: "0.4rem" }}
           >
             {PRESET_CLASSES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} (d{c.hit_die})
               </option>
+            ))}
+          </select>
+          <select
+            value={newDualClassId}
+            onChange={(e) => setNewDualClassId(e.currentTarget.value)}
+            aria-label="Dual class (optional)"
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+          >
+            <option value="">No dual class</option>
+            {PRESET_CLASSES.filter((c) => c.id !== newClassId).map((c) => (
+              <option key={c.id} value={c.id}>+ {c.name}</option>
             ))}
           </select>
           <button
