@@ -1,13 +1,14 @@
-//! C2 — Session model: per-session isolation, player-identity tokens.
+//! C2+C3+C4 — Session model: per-session isolation, player-identity
+//! tokens, materialized resync, and turn concurrency policy.
 //!
-//! Each session gets its own GameState, broadcast channel, and lock.
-//! The token minted on join carries player identity (session_id +
-//! player_id) so C3 (reconnect) can authenticate "this is Alice
-//! coming back" without retrofitting.
+//! The turn gate switches between free-form (exploration) and queued
+//! (combat) modes.  In combat, only the current turn-holder can act;
+//! others wait in a FIFO queue.  The gate is checked inside the
+//! session lock so the check + act + advance sequence is atomic.
 
 use auto_dm_engine::GameState;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
@@ -42,6 +43,138 @@ impl From<&PlayerSlot> for PlayerSlotView {
     }
 }
 
+// ── Turn concurrency (C4) ────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum GameMode {
+    Exploration,
+    Combat,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum TurnCheck {
+    Allowed,
+    Waiting { position: usize },
+    NotInQueue,
+}
+
+struct TurnState {
+    mode: GameMode,
+    /// Player whose turn it is right now.
+    current_turn: Option<String>,
+    /// FIFO queue of player IDs waiting to act.
+    queue: VecDeque<String>,
+}
+
+/// Gates player actions based on game mode.  In exploration anyone can
+/// act; in combat only the current turn-holder can.
+pub struct TurnGate {
+    inner: tokio::sync::Mutex<TurnState>,
+}
+
+impl TurnGate {
+    pub fn new() -> Self {
+        Self {
+            inner: tokio::sync::Mutex::new(TurnState {
+                mode: GameMode::Exploration,
+                current_turn: None,
+                queue: VecDeque::new(),
+            }),
+        }
+    }
+
+    /// Check if a player is allowed to act right now.
+    pub async fn can_act(&self, player_id: &str) -> TurnCheck {
+        let state = self.inner.lock().await;
+        match state.mode {
+            GameMode::Exploration => TurnCheck::Allowed,
+            GameMode::Combat => {
+                if state.current_turn.as_deref() == Some(player_id) {
+                    TurnCheck::Allowed
+                } else if let Some(pos) =
+                    state.queue.iter().position(|id| id == player_id)
+                {
+                    TurnCheck::Waiting { position: pos + 1 }
+                } else {
+                    TurnCheck::NotInQueue
+                }
+            }
+        }
+    }
+
+    /// After a player acts, advance to the next in the queue.
+    /// Returns the new mode + current turn holder.
+    pub async fn advance_turn(&self) -> (GameMode, Option<String>) {
+        let mut state = self.inner.lock().await;
+        if let Some(next) = state.queue.pop_front() {
+            state.current_turn = Some(next.clone());
+            (state.mode, Some(next))
+        } else {
+            // Queue empty → combat ends automatically.
+            state.mode = GameMode::Exploration;
+            state.current_turn = None;
+            (GameMode::Exploration, None)
+        }
+    }
+
+    /// Enter combat mode.  `first_player` acts first; others join
+    /// via `join_queue` (or are added manually by the host).
+    pub async fn start_combat(&self, first_player: String) {
+        let mut state = self.inner.lock().await;
+        state.mode = GameMode::Combat;
+        state.current_turn = Some(first_player.clone());
+        // Remove first player from queue — they're acting now, not waiting.
+        state.queue.retain(|id| id != &first_player);
+    }
+
+    /// Exit combat mode, returning to free-form exploration.
+    pub async fn end_combat(&self) {
+        let mut state = self.inner.lock().await;
+        state.mode = GameMode::Exploration;
+        state.current_turn = None;
+        state.queue.clear();
+    }
+
+    /// Add a player to the back of the combat queue.
+    pub async fn join_queue(&self, player_id: &str) {
+        let mut state = self.inner.lock().await;
+        if !state.queue.contains(&player_id.to_string()) {
+            state.queue.push_back(player_id.to_string());
+        }
+    }
+
+    /// Remove a player from the queue (on disconnect or explicit leave).
+    /// If the removed player was the current turn holder, advance.
+    pub async fn remove_player(&self, player_id: &str) -> (GameMode, Option<String>) {
+        let mut state = self.inner.lock().await;
+        state.queue.retain(|id| id != player_id);
+        if state.current_turn.as_deref() == Some(player_id) {
+            if let Some(next) = state.queue.pop_front() {
+                state.current_turn = Some(next.clone());
+                (state.mode, Some(next))
+            } else {
+                state.mode = GameMode::Exploration;
+                state.current_turn = None;
+                (GameMode::Exploration, None)
+            }
+        } else {
+            (state.mode, state.current_turn.clone())
+        }
+    }
+
+    /// Current game mode and turn holder.
+    pub async fn status(&self) -> (GameMode, Option<String>, Vec<String>) {
+        let state = self.inner.lock().await;
+        (
+            state.mode,
+            state.current_turn.clone(),
+            state.queue.iter().cloned().collect(),
+        )
+    }
+}
+
 /// A live game session — one database, one broadcast channel, one lock.
 pub struct Session {
     pub id: String,
@@ -50,6 +183,7 @@ pub struct Session {
     pub event_tx: broadcast::Sender<WsMessage>,
     pub session_lock: tokio::sync::Mutex<()>,
     pub players: RwLock<Vec<PlayerSlot>>,
+    pub turn_gate: TurnGate,
 }
 
 // ── WsMessage ─────────────────────────────────────────────────────────
@@ -156,6 +290,7 @@ impl SessionRegistry {
                 token: host_token.clone(),
                 connected: false,
             }]),
+            turn_gate: TurnGate::new(),
         });
 
         // Register session + token.

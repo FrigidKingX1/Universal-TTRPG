@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 mod session;
-use session::{SessionRegistry, WsMessage};
+use session::{GameMode, SessionRegistry, TurnCheck, WsMessage};
 
 struct AppState {
     registry: Arc<SessionRegistry>,
@@ -46,6 +46,11 @@ async fn main() {
         .route("/sessions/{session_id}/resolve", post(resolve))
         .route("/sessions/{session_id}/ws", get(ws_handler))
         .route("/sessions/{session_id}/logs", get(list_logs))
+        .route("/sessions/{session_id}/combat/start", post(start_combat))
+        .route("/sessions/{session_id}/combat/end", post(end_combat))
+        .route("/sessions/{session_id}/combat/join", post(join_combat_queue))
+        .route("/sessions/{session_id}/combat/skip", post(skip_turn))
+        .route("/sessions/{session_id}/combat/status", get(combat_status))
         .with_state(state);
 
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());
@@ -130,7 +135,7 @@ async fn resolve(
     Json(mut request): Json<auto_dm_core::llm::DmRequest>,
 ) -> Result<Json<auto_dm_core::llm::DmResponse>, (StatusCode, String)> {
     let token = extract_token(&headers)?;
-    let (session, _player_id) =
+    let (session, player_id) =
         state.registry.authenticate(&token).await.map_err(|e| {
             (StatusCode::UNAUTHORIZED, e)
         })?;
@@ -138,8 +143,25 @@ async fn resolve(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
 
-    // Per-session lock — only blocks within this session.
+    // Per-session lock — check turn gate INSIDE the lock for atomicity.
+    // In exploration: anyone can act.  In combat: only the current turn-holder.
     let _lock = session.session_lock.lock().await;
+
+    match session.turn_gate.can_act(&player_id).await {
+        TurnCheck::Allowed => {}
+        TurnCheck::Waiting { position } => {
+            return Err((
+                StatusCode::CONFLICT,
+                format!("Not your turn — you are #{position} in the queue"),
+            ));
+        }
+        TurnCheck::NotInQueue => {
+            return Err((
+                StatusCode::CONFLICT,
+                "Combat is active but you are not in the turn queue".into(),
+            ));
+        }
+    }
 
     {
         let mem = session.game.memory.lock().map_err(|e| {
@@ -167,6 +189,16 @@ async fn resolve(
     // Broadcast WHILE session lock held — order guarantee.
     for event in &events {
         let _ = session.event_tx.send(WsMessage::Event { event: event.clone() });
+    }
+
+    // Advance turn if in combat mode.
+    let (mode, next_turn) = session.turn_gate.advance_turn().await;
+    if mode == GameMode::Combat {
+        tracing::info!(
+            session = %session_id,
+            next_turn = ?next_turn,
+            "Turn advanced"
+        );
     }
 
     tracing::info!(session = %session_id, events = events.len(), "Resolved");
@@ -202,6 +234,96 @@ async fn list_logs(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(logs))
+}
+
+// ── Combat management (C4) ───────────────────────────────────────────
+
+async fn start_combat(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    session.turn_gate.start_combat(player_id.clone()).await;
+    tracing::info!(session = %session_id, starter = %player_id, "Combat started");
+    Ok(Json(json!({ "mode": "combat", "current_turn": player_id })))
+}
+
+async fn end_combat(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    session.turn_gate.end_combat().await;
+    tracing::info!(session = %session_id, "Combat ended");
+    Ok(Json(json!({ "mode": "exploration" })))
+}
+
+async fn join_combat_queue(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    session.turn_gate.join_queue(&player_id).await;
+    let (mode, current, queue) = session.turn_gate.status().await;
+    Ok(Json(json!({
+        "mode": mode,
+        "current_turn": current,
+        "queue": queue,
+    })))
+}
+
+async fn skip_turn(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let _lock = session.session_lock.lock().await;
+    match session.turn_gate.can_act(&player_id).await {
+        TurnCheck::Allowed => {
+            let (mode, next) = session.turn_gate.advance_turn().await;
+            Ok(Json(json!({ "mode": mode, "skipped": player_id, "current_turn": next })))
+        }
+        other => Err((StatusCode::CONFLICT, format!("Cannot skip: {other:?}"))),
+    }
+}
+
+async fn combat_status(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let (mode, current, queue) = session.turn_gate.status().await;
+    Ok(Json(json!({ "mode": mode, "current_turn": current, "queue": queue })))
 }
 
 // ── WebSocket ────────────────────────────────────────────────────────
@@ -322,6 +444,18 @@ async fn handle_socket(
 }
 
 async fn mark_disconnected(state: &AppState, session: &session::Session, player_id: &str) {
+    // Remove from combat queue if present; advance turn if needed.
+    let (mode, next_turn) = session.turn_gate.remove_player(player_id).await;
+    if mode == GameMode::Combat {
+        tracing::info!(
+            session = %session.id,
+            disconnected = %player_id,
+            next_turn = ?next_turn,
+            "Player disconnected during combat — turn advanced"
+        );
+    }
+
+    // Mark disconnected in player list.
     let sessions = state.registry.sessions.read().await;
     if let Some(s) = sessions.get(&session.id) {
         let mut players = s.players.write().await;
