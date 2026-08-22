@@ -2,6 +2,7 @@
 // Field names match the Rust serde output (snake_case).
 
 import type {
+  CharacterProfile,
   DoomClock,
   EpisodicSummary,
   LogEntry,
@@ -73,6 +74,8 @@ export interface ResyncPayload {
   }>;
   summaries: EpisodicSummary[];
   combat_state: string | null;
+  characters: CharacterProfile[];
+  player_characters: Record<string, string>;
   recent_logs: LogEntry[];
 }
 

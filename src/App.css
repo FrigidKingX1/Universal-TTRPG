@@ -1799,6 +1799,105 @@ input[type="range"] {
   text-align: center;
   color: var(--muted);
 }
+
+/* ── Player panel (multiplayer) ──────────────────────────────────── */
+.player-panel { max-width: 280px; }
+.character-view {
+  padding: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.vitals-header { margin-bottom: 0.75rem; }
+.vitals-meta {
+  display: flex;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.temp-hp { color: var(--accent); font-weight: 600; }
+.loading-spinner {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 2px solid var(--muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-left: 0.5rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.panel-error {
+  background: rgba(220, 50, 50, 0.15);
+  border: 1px solid rgba(220, 50, 50, 0.3);
+  color: #e55;
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  margin: 0 0.75rem 0.5rem;
+}
+.inventory-section,
+.abilities-section {
+  margin-top: 0.75rem;
+}
+.inventory-section h4,
+.abilities-section h4 {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.inventory-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(22, 24, 28, 0.4);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+}
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.item-name {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-qty {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.item-equipped {
+  color: var(--accent);
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.item-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.btn-tiny {
+  padding: 0.15rem 0.35rem;
+  font-size: 0.65rem;
+  border-radius: 3px;
+}
+.resource-cell {
+  margin-bottom: 0.4rem;
+}
 .scene-context {
   border-top: 1px solid var(--border);
   padding: 0.75rem;

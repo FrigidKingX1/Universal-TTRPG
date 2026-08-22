@@ -2,7 +2,7 @@
 // Handles connection, resync, event dispatch, ping/pong heartbeat,
 // and HTTP resolve (DM actions routed through the server).
 
-import type { DmRequest, DmResponse } from "../types";
+import type { CharacterProfile, DmRequest, DmResponse } from "../types";
 import type { GameEvent, ResyncPayload, WsMessage } from "./types";
 
 export type WsEventHandler = (event: GameEvent) => void;
@@ -108,6 +108,48 @@ export class MultiplayerClient {
   /** POST a DM action through the server's /resolve endpoint. */
   async resolve(request: DmRequest): Promise<DmResponse> {
     return this.httpPost<DmResponse>("/resolve", request);
+  }
+
+  // ── Character actions ─────────────────────────────────────────────
+
+  /** Get the authenticated player's linked character. */
+  async getMyCharacter(): Promise<{ character: CharacterProfile | null }> {
+    return this.httpGet("/characters/me");
+  }
+
+  /** Create a new character and link it to the calling player. */
+  async createCharacter(profile: CharacterProfile): Promise<{ character: CharacterProfile }> {
+    return this.httpPost("/characters/me", { profile });
+  }
+
+  /** Equip or stow an item. */
+  async equipItem(itemId: string, equipped: boolean): Promise<{ character: CharacterProfile }> {
+    return this.httpPost("/characters/me/equip", { item_id: itemId, equipped });
+  }
+
+  /** Use/consume an item (decrements quantity, removes if zero). */
+  async useItem(itemId: string): Promise<{ character: CharacterProfile }> {
+    return this.httpPost("/characters/me/use-item", { item_id: itemId });
+  }
+
+  /** Add an item to the player's inventory. */
+  async addItem(name: string, quantity = 1, tags: string[] = []): Promise<{ character: CharacterProfile }> {
+    return this.httpPost("/characters/me/add-item", { name, quantity, tags });
+  }
+
+  /** Take a short or long rest. */
+  async rest(long = false): Promise<{ character: CharacterProfile }> {
+    return this.httpPost("/characters/me/rest", { long });
+  }
+
+  /** Link a player to a character (host only). */
+  async linkCharacter(playerId: string, characterId: string): Promise<{ ok: boolean }> {
+    return this.httpPost("/characters/link", { player_id: playerId, character_id: characterId });
+  }
+
+  /** List all characters in the session. */
+  async listCharacters(): Promise<{ characters: CharacterProfile[] }> {
+    return this.httpGet("/characters");
   }
 
   /** Generic authenticated POST to the session's REST API. */

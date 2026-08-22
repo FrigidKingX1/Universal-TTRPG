@@ -28,6 +28,7 @@ pub struct PlayerSlot {
     pub name: String,
     pub token: String,
     pub connected: bool,
+    pub character_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -36,11 +37,12 @@ pub struct PlayerSlotView {
     pub id: String,
     pub name: String,
     pub connected: bool,
+    pub character_id: Option<String>,
 }
 
 impl From<&PlayerSlot> for PlayerSlotView {
     fn from(p: &PlayerSlot) -> Self {
-        Self { id: p.id.clone(), name: p.name.clone(), connected: p.connected }
+        Self { id: p.id.clone(), name: p.name.clone(), connected: p.connected, character_id: p.character_id.clone() }
     }
 }
 
@@ -228,6 +230,9 @@ pub struct ResyncPayload {
     pub threads: Vec<auto_dm_engine::ThreadRow>,
     pub summaries: Vec<auto_dm_engine::EpisodicSummary>,
     pub combat_state: Option<String>,
+    pub characters: Vec<auto_dm_core::models::CharacterProfile>,
+    /// Player-to-character mapping: player_id → character_id
+    pub player_characters: std::collections::HashMap<String, String>,
     /// Last 200 log entries for narrative scrollback display only —
     /// NOT for state reconstruction.
     pub recent_logs: Vec<auto_dm_engine::LogEntry>,
@@ -316,7 +321,8 @@ impl SessionRegistry {
                 id TEXT PRIMARY KEY,
                 session_id TEXT NOT NULL REFERENCES registry_sessions(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
-                token TEXT NOT NULL UNIQUE
+                token TEXT NOT NULL UNIQUE,
+                character_id TEXT
             );",
             "CREATE TABLE IF NOT EXISTS registry_turn_state (
                 session_id TEXT PRIMARY KEY REFERENCES registry_sessions(id) ON DELETE CASCADE,
@@ -332,6 +338,9 @@ impl SessionRegistry {
                 .await
                 .map_err(|e| e.to_string())?;
         }
+        // Migration: add character_id to existing registry_players tables.
+        let _ = sqlx::query("ALTER TABLE registry_players ADD COLUMN character_id TEXT")
+            .execute(&mut *tx).await;
         tx.commit().await.map_err(|e| e.to_string())?;
         Ok(pool)
     }
@@ -376,8 +385,8 @@ impl SessionRegistry {
             };
 
             // Load players for this session.
-            let player_rows: Vec<(String, String, String)> = sqlx::query_as(
-                "SELECT id, name, token FROM registry_players WHERE session_id = ?",
+            let player_rows: Vec<(String, String, String, Option<String>)> = sqlx::query_as(
+                "SELECT id, name, token, character_id FROM registry_players WHERE session_id = ?",
             )
             .bind(&session_id)
             .fetch_all(&self.registry_pool)
@@ -386,11 +395,12 @@ impl SessionRegistry {
 
             let players: Vec<PlayerSlot> = player_rows
                 .into_iter()
-                .map(|(id, name, token)| PlayerSlot {
+                .map(|(id, name, token, character_id)| PlayerSlot {
                     id,
                     name,
                     token,
                     connected: false,
+                    character_id,
                 })
                 .collect();
 
@@ -507,6 +517,161 @@ impl SessionRegistry {
         (url, model, reachable)
     }
 
+    // ── Character management ─────────────────────────────────────────
+
+    /// Link a player to a character by ID. Host-only operation.
+    pub async fn link_character(
+        &self,
+        session: &Arc<Session>,
+        player_id: &str,
+        character_id: &str,
+    ) -> Result<(), String> {
+        // Verify the character exists.
+        let _char = session.game.repo.load_character(character_id).await
+            .map_err(|_| "Character not found".to_string())?;
+
+        {
+            let mut players = session.players.write().await;
+            let player = players.iter_mut().find(|p| p.id == player_id)
+                .ok_or("Player not found in session")?;
+            player.character_id = Some(character_id.to_string());
+        }
+
+        // Persist to registry database.
+        sqlx::query("UPDATE registry_players SET character_id = ? WHERE id = ?")
+            .bind(character_id)
+            .bind(player_id)
+            .execute(&self.registry_pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    /// Create a new character and link it to the calling player.
+    pub async fn create_character_for_player(
+        &self,
+        session: &Arc<Session>,
+        player_id: &str,
+        profile: auto_dm_core::models::CharacterProfile,
+    ) -> Result<auto_dm_core::models::CharacterProfile, String> {
+        session.game.repo.save_character(&profile).await
+            .map_err(|e| format!("Failed to save character: {e}"))?;
+
+        // Link player to the new character.
+        self.link_character(session, player_id, &profile.id).await?;
+        Ok(profile)
+    }
+
+    /// Equip or stow an item in a character's inventory.
+    pub async fn equip_item(
+        &self,
+        session: &Arc<Session>,
+        player_id: &str,
+        item_id: &str,
+        equipped: bool,
+    ) -> Result<auto_dm_core::models::CharacterProfile, String> {
+        let character_id = self.get_character_id(session, player_id).await?;
+        let mut profile = session.game.repo.load_character(&character_id).await
+            .map_err(|e| format!("Character load failed: {e}"))?;
+
+        let item = profile.inventory.iter_mut().find(|i| i.id == item_id)
+            .ok_or("Item not found in inventory")?;
+        item.state = if equipped {
+            auto_dm_core::models::ItemState::Equipped
+        } else {
+            auto_dm_core::models::ItemState::Stowed
+        };
+
+        session.game.repo.save_character(&profile).await
+            .map_err(|e| format!("Save failed: {e}"))?;
+        Ok(profile)
+    }
+
+    /// Use/consume an item (decrement quantity, remove if zero).
+    pub async fn use_item(
+        &self,
+        session: &Arc<Session>,
+        player_id: &str,
+        item_id: &str,
+    ) -> Result<auto_dm_core::models::CharacterProfile, String> {
+        let character_id = self.get_character_id(session, player_id).await?;
+        let mut profile = session.game.repo.load_character(&character_id).await
+            .map_err(|e| format!("Character load failed: {e}"))?;
+
+        let idx = profile.inventory.iter().position(|i| i.id == item_id)
+            .ok_or("Item not found in inventory")?;
+
+        profile.inventory[idx].quantity -= 1;
+        if profile.inventory[idx].quantity <= 0 {
+            profile.inventory.remove(idx);
+        }
+
+        session.game.repo.save_character(&profile).await
+            .map_err(|e| format!("Save failed: {e}"))?;
+        Ok(profile)
+    }
+
+    /// Add an item to a character's inventory.
+    pub async fn add_item(
+        &self,
+        session: &Arc<Session>,
+        player_id: &str,
+        item: auto_dm_core::models::InventoryItem,
+    ) -> Result<auto_dm_core::models::CharacterProfile, String> {
+        let character_id = self.get_character_id(session, player_id).await?;
+        let mut profile = session.game.repo.load_character(&character_id).await
+            .map_err(|e| format!("Character load failed: {e}"))?;
+
+        // Stack with existing item of same name if found.
+        if let Some(existing) = profile.inventory.iter_mut().find(|i| i.name == item.name) {
+            existing.quantity += item.quantity;
+        } else {
+            profile.inventory.push(item);
+        }
+
+        session.game.repo.save_character(&profile).await
+            .map_err(|e| format!("Save failed: {e}"))?;
+        Ok(profile)
+    }
+
+    /// Perform a short or long rest for a character.
+    pub async fn rest(
+        &self,
+        session: &Arc<Session>,
+        player_id: &str,
+        long: bool,
+    ) -> Result<auto_dm_core::models::CharacterProfile, String> {
+        let character_id = self.get_character_id(session, player_id).await?;
+        let mut profile = session.game.repo.load_character(&character_id).await
+            .map_err(|e| format!("Character load failed: {e}"))?;
+
+        let condition = if long {
+            auto_dm_core::models::ResetCondition::LongRest
+        } else {
+            auto_dm_core::models::ResetCondition::ShortRest
+        };
+
+        for pool in profile.resource_pools.values_mut() {
+            if pool.reset_condition == condition {
+                pool.current = pool.maximum;
+                pool.temporary = 0;
+            }
+        }
+
+        session.game.repo.save_character(&profile).await
+            .map_err(|e| format!("Save failed: {e}"))?;
+        Ok(profile)
+    }
+
+    /// Helper: resolve player_id → character_id.
+    async fn get_character_id(&self, session: &Arc<Session>, player_id: &str) -> Result<String, String> {
+        let players = session.players.read().await;
+        let player = players.iter().find(|p| p.id == player_id)
+            .ok_or("Player not found")?;
+        player.character_id.clone().ok_or("No character linked — create or link a character first".into())
+    }
+
     /// Create a new session and mint the host's player token.
     pub async fn create_session(
         &self,
@@ -551,6 +716,7 @@ impl SessionRegistry {
                 name: title.to_string(),
                 token: host_token.clone(),
                 connected: false,
+                character_id: None,
             }]),
             turn_gate: TurnGate::new(),
         });
@@ -614,6 +780,7 @@ impl SessionRegistry {
                 name: player_name.to_string(),
                 token: token.clone(),
                 connected: false,
+                character_id: None,
             });
         }
         {
@@ -745,7 +912,7 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
     let scene = repo.active_scene().await.ok().flatten();
     let scene_id = scene.as_ref().map(|s| s.id.as_str()).unwrap_or("");
 
-    let (summary, clocks, npcs, loot, threads, summaries, combat, logs) = tokio::join!(
+    let (summary, clocks, npcs, loot, threads, summaries, combat, logs, characters) = tokio::join!(
         repo.get_scene_summary(scene_id),
         repo.list_doom_clocks(),
         repo.list_npc_characters(),
@@ -754,7 +921,16 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         repo.list_episodic_summaries(scene_id),
         repo.load_combat_state(scene_id),
         repo.list_logs(scene_id, 200),
+        repo.list_characters(),
     );
+
+    // Build player_id → character_id mapping from player slots.
+    let players = session.players.read().await;
+    let player_characters: std::collections::HashMap<String, String> = players
+        .iter()
+        .filter_map(|p| p.character_id.as_ref().map(|cid| (p.id.clone(), cid.clone())))
+        .collect();
+    drop(players);
 
     Box::new(ResyncPayload {
         scene,
@@ -765,6 +941,8 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         threads: threads.unwrap_or_default(),
         summaries: summaries.unwrap_or_default(),
         combat_state: combat.ok().flatten(),
+        characters: characters.unwrap_or_default(),
+        player_characters,
         recent_logs: logs.unwrap_or_default(),
     })
 }

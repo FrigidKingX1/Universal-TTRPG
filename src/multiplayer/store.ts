@@ -443,6 +443,10 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
       })),
     }));
   }
+
+  if (payload.characters) {
+    setState(() => ({ characters: payload.characters }));
+  }
 }
 
 function _dispatchEventToMainStore(event: GameEvent) {

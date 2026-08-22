@@ -8,6 +8,7 @@ import { TurnIndicator } from "./components/TurnIndicator";
 import { CombatQueue } from "./components/CombatQueue";
 import { CampaignWizard } from "./components/CampaignWizard";
 import { PlayerCommandDeck } from "./components/PlayerCommandDeck";
+import { PlayerPanel } from "./components/PlayerPanel";
 import { NarrativeStream } from "./components/NarrativeStream";
 import { TacticalMatrix } from "./components/TacticalMatrix";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -306,7 +307,7 @@ function App() {
           </div>
         ) : (
           <div className="tabletop-layout" style={{ gridTemplateColumns: `${sizes.left}px 1fr ${sizes.right}px` }}>
-            <PlayerCommandDeck character={activeCharacter} />
+            {mpSessionId && !mpIsHost ? <PlayerPanel /> : <PlayerCommandDeck character={activeCharacter} />}
             <div
               className="panel-gutter"
               onPointerDown={(e) => beginDrag("left", e)}

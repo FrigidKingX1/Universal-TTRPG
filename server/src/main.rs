@@ -60,6 +60,13 @@ async fn main() {
         .route("/sessions/{session_id}/combat/skip", post(skip_turn))
         .route("/sessions/{session_id}/combat/status", get(combat_status))
         .route("/sessions/{session_id}/campaign", post(import_campaign))
+        .route("/sessions/{session_id}/characters", get(list_characters).post(create_character))
+        .route("/sessions/{session_id}/characters/me", get(get_my_character))
+        .route("/sessions/{session_id}/characters/me/equip", post(equip_item))
+        .route("/sessions/{session_id}/characters/me/use-item", post(use_item))
+        .route("/sessions/{session_id}/characters/me/add-item", post(add_item))
+        .route("/sessions/{session_id}/characters/me/rest", post(rest_character))
+        .route("/sessions/{session_id}/characters/link", post(link_character))
         .route("/ollama/configure", post(configure_ollama).get(get_ollama_config))
         .route("/ollama/models", get(list_ollama_models))
         .with_state(state);
@@ -438,6 +445,234 @@ async fn combat_status(
     }
     let (mode, current, queue) = session.turn_gate.status().await;
     Ok(Json(json!({ "mode": mode, "current_turn": current, "queue": queue })))
+}
+
+// ── Character management (player actions) ───────────────────────────
+
+async fn list_characters(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let characters = session.game.repo.list_characters().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(json!({ "characters": characters })))
+}
+
+async fn get_my_character(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let players = session.players.read().await;
+    let player = players.iter().find(|p| p.id == player_id)
+        .ok_or((StatusCode::NOT_FOUND, "Player not found".to_string()))?;
+    let character_id = player.character_id.clone();
+    drop(players);
+
+    match character_id {
+        Some(cid) => {
+            let profile = session.game.repo.load_character(&cid).await
+                .map_err(|e| (StatusCode::NOT_FOUND, format!("Character not found: {e}")))?;
+            Ok(Json(json!({ "character": profile })))
+        }
+        None => Ok(Json(json!({ "character": null }))),
+    }
+}
+
+#[derive(Deserialize)]
+struct CreateCharacterRequest {
+    profile: auto_dm_core::models::CharacterProfile,
+}
+
+async fn create_character(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CreateCharacterRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let profile = state.registry.create_character_for_player(&session, &player_id, req.profile).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    // Broadcast resync so all clients see the new character.
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "character": profile })))
+}
+
+#[derive(Deserialize)]
+struct LinkCharacterRequest {
+    player_id: String,
+    character_id: String,
+}
+
+async fn link_character(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<LinkCharacterRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, caller_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    // Only host can link characters to other players.
+    let players = session.players.read().await;
+    let is_host = players.first().map_or(false, |p| p.id == caller_id);
+    drop(players);
+    if !is_host {
+        return Err((StatusCode::FORBIDDEN, "Only the host can link characters".into()));
+    }
+
+    state.registry.link_character(&session, &req.player_id, &req.character_id).await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    // Broadcast resync so all clients see the updated mapping.
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+struct EquipItemRequest {
+    item_id: String,
+    equipped: bool,
+}
+
+async fn equip_item(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<EquipItemRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let profile = state.registry.equip_item(&session, &player_id, &req.item_id, req.equipped).await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "character": profile })))
+}
+
+#[derive(Deserialize)]
+struct UseItemRequest {
+    item_id: String,
+}
+
+async fn use_item(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<UseItemRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let profile = state.registry.use_item(&session, &player_id, &req.item_id).await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "character": profile })))
+}
+
+#[derive(Deserialize)]
+struct AddItemRequest {
+    name: String,
+    #[serde(default = "default_one")]
+    quantity: i32,
+    #[serde(default)]
+    tags: Vec<String>,
+}
+
+fn default_one() -> i32 { 1 }
+
+async fn add_item(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<AddItemRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let item = auto_dm_core::models::InventoryItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: req.name,
+        quantity: req.quantity,
+        state: auto_dm_core::models::ItemState::Stowed,
+        weight: 0.0,
+        tags: req.tags,
+    };
+    let profile = state.registry.add_item(&session, &player_id, item).await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "character": profile })))
+}
+
+#[derive(Deserialize)]
+struct RestRequest {
+    #[serde(default)]
+    long: bool,
+}
+
+async fn rest_character(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<RestRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let profile = state.registry.rest(&session, &player_id, req.long).await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "character": profile })))
 }
 
 // ── WebSocket ────────────────────────────────────────────────────────
