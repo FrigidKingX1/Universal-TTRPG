@@ -5,7 +5,7 @@ use axum::{
     },
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use auto_dm_engine::{apply_session_effects, CampaignExport, LogEntry, Repository};
@@ -67,6 +67,15 @@ async fn main() {
         .route("/sessions/{session_id}/characters/me/add-item", post(add_item))
         .route("/sessions/{session_id}/characters/me/rest", post(rest_character))
         .route("/sessions/{session_id}/characters/link", post(link_character))
+        .route("/sessions/{session_id}/scenes", post(create_scene).get(list_scenes))
+        .route("/sessions/{session_id}/scenes/{scene_id}", put(update_scene).delete(delete_scene))
+        .route("/sessions/{session_id}/scenes/activate", post(activate_scene))
+        .route("/sessions/{session_id}/npcs", post(create_npc).get(list_npcs))
+        .route("/sessions/{session_id}/npcs/{npc_id}", put(update_npc).delete(delete_npc))
+        .route("/sessions/{session_id}/clocks", post(create_clock).get(list_clocks))
+        .route("/sessions/{session_id}/clocks/{clock_id}/advance", post(advance_clock))
+        .route("/sessions/{session_id}/clocks/{clock_id}/reset", post(reset_clock))
+        .route("/sessions/{session_id}/clocks/{clock_id}", delete(delete_clock))
         .route("/ollama/configure", post(configure_ollama).get(get_ollama_config))
         .route("/ollama/models", get(list_ollama_models))
         .with_state(state);
@@ -673,6 +682,409 @@ async fn rest_character(
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
 
     Ok(Json(json!({ "character": profile })))
+}
+
+// ── Scene management (DM world-building) ────────────────────────────
+
+#[derive(Deserialize)]
+struct CreateSceneRequest {
+    title: String,
+    #[serde(default = "default_chaos")]
+    chaos_factor: i32,
+}
+fn default_chaos() -> i32 { 5 }
+
+async fn create_scene(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CreateSceneRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    let scene = session.game.repo.create_scene(&req.title, req.chaos_factor).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "scene": scene })))
+}
+
+async fn list_scenes(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let scenes = session.game.repo.list_scenes().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(json!({ "scenes": scenes })))
+}
+
+#[derive(Deserialize)]
+struct UpdateSceneRequest {
+    chaos_factor: Option<i32>,
+    summary_text: Option<String>,
+}
+
+async fn update_scene(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path((session_id, scene_id)): Path<(String, String)>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<UpdateSceneRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    if let Some(summary) = req.summary_text {
+        session.game.repo.update_scene_summary(&scene_id, Some(&summary)).await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+    if let Some(cf) = req.chaos_factor {
+        session.game.repo.update_scene_chaos_factor(&scene_id, cf).await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+    // Note: title update not directly supported by repo — summary + chaos are the main DM controls.
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+struct ActivateSceneRequest {
+    scene_id: String,
+}
+
+async fn activate_scene(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<ActivateSceneRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    session.game.repo.set_active_scene(&req.scene_id).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn delete_scene(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path((session_id, scene_id)): Path<(String, String)>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    session.game.repo.delete_scene(&scene_id).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+// ── NPC management ──────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct CreateNpcRequest {
+    name: String,
+    #[serde(default = "default_neutral")]
+    disposition: String,
+    #[serde(default)]
+    alive: bool,
+    location: Option<String>,
+    #[serde(default)]
+    knows_json: String,
+    notes: Option<String>,
+    last_seen_scene_id: Option<String>,
+    drive: Option<String>,
+    leverage: Option<String>,
+    flaw: Option<String>,
+}
+fn default_neutral() -> String { "neutral".into() }
+
+async fn create_npc(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CreateNpcRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    let knows = if req.knows_json.is_empty() { "[]" } else { &req.knows_json };
+    let npc = session.game.repo.save_npc_character(
+        &req.name, &req.disposition, req.alive, req.location.as_deref(),
+        knows, req.notes.as_deref(), req.last_seen_scene_id.as_deref(),
+        req.drive.as_deref(), req.leverage.as_deref(), req.flaw.as_deref(), false,
+    ).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "npc": npc })))
+}
+
+async fn list_npcs(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let npcs = session.game.repo.list_npc_characters().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(json!({ "npcs": npcs })))
+}
+
+#[derive(Deserialize)]
+struct UpdateNpcRequest {
+    disposition: Option<String>,
+    alive: Option<bool>,
+    location: Option<String>,
+    knows_json: Option<String>,
+    notes: Option<String>,
+    last_seen_scene_id: Option<String>,
+    drive: Option<String>,
+    leverage: Option<String>,
+    flaw: Option<String>,
+}
+
+async fn update_npc(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path((session_id, npc_id)): Path<(String, String)>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<UpdateNpcRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    session.game.repo.update_npc_character(
+        &npc_id, req.disposition.as_deref(), req.alive, req.location.as_deref(),
+        req.knows_json.as_deref(), req.notes.as_deref(), req.last_seen_scene_id.as_deref(),
+    ).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if req.drive.is_some() || req.leverage.is_some() || req.flaw.is_some() {
+        session.game.repo.update_npc_pillars(
+            &npc_id, req.drive.as_deref(), req.leverage.as_deref(), req.flaw.as_deref(),
+        ).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn delete_npc(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path((session_id, npc_id)): Path<(String, String)>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    session.game.repo.delete_npc_character(&npc_id).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+// ── Doom clock management ───────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct CreateClockRequest {
+    label: String,
+    #[serde(default = "default_clock_max")]
+    max: u32,
+    consequence: String,
+    scene_id: Option<String>,
+}
+fn default_clock_max() -> u32 { 6 }
+
+async fn create_clock(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CreateClockRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    let id = uuid::Uuid::new_v4().to_string();
+    session.game.repo.save_doom_clock(
+        &id, &req.label, req.max.max(1), &req.consequence, req.scene_id.as_deref(),
+    ).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "clock_id": id })))
+}
+
+async fn list_clocks(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    let clocks = session.game.repo.list_doom_clocks().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(json!({ "clocks": clocks })))
+}
+
+#[derive(Deserialize)]
+struct AdvanceClockRequest {
+    #[serde(default = "default_one_u32")]
+    ticks: u32,
+}
+fn default_one_u32() -> u32 { 1 }
+
+async fn advance_clock(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path((session_id, clock_id)): Path<(String, String)>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<AdvanceClockRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    let result = session.game.repo.advance_doom_clock(&clock_id, req.ticks).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    match result {
+        Some((current, max)) => Ok(Json(json!({ "current": current, "max": max }))),
+        None => Err((StatusCode::NOT_FOUND, "Clock not found".into())),
+    }
+}
+
+async fn reset_clock(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path((session_id, clock_id)): Path<(String, String)>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    session.game.repo.reset_doom_clock(&clock_id).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn delete_clock(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path((session_id, clock_id)): Path<(String, String)>,
+    headers: axum::http::header::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    session.game.repo.delete_doom_clock(&clock_id).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(session::WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// Check if the player is the host (first player in session).
+/// NOTE: This peeks without locking — safe because callers already authenticated
+/// and session.players is only mutated on join/leave (rare).
+async fn require_host(session: &session::Session, player_id: &str) -> Result<(), (StatusCode, String)> {
+    let players = session.players.read().await;
+    let is_host = players.first().map_or(false, |p| p.id == player_id);
+    if is_host { Ok(()) } else { Err((StatusCode::FORBIDDEN, "Only the host can perform this action".into())) }
 }
 
 // ── WebSocket ────────────────────────────────────────────────────────
