@@ -270,6 +270,16 @@ export function newStatBlock(name: string): EncounterStatBlock {
     attributes: { STR: 12, DEX: 12, CON: 12, INT: 8, WIS: 10, CHA: 8 },
     actions: [],
     loot_table: [],
+    resistances: [],
+    vulnerabilities: [],
+    immunities: [],
+    senses: [],
+    languages: [],
+    condition_immunities: [],
+    traits: [],
+    multiattack: null,
+    reactions: [],
+    description: null,
   };
 }
 

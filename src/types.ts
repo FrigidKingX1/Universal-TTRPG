@@ -112,6 +112,11 @@ export interface LootTableEntry {
   chance: number;
 }
 
+export interface MonsterTrait {
+  name: string;
+  description: string;
+}
+
 export interface EncounterStatBlock {
   id: string;
   name: string;
@@ -125,6 +130,16 @@ export interface EncounterStatBlock {
   attributes: Record<string, number>;
   actions: string[];
   loot_table: LootTableEntry[];
+  resistances?: string[];
+  vulnerabilities?: string[];
+  immunities?: string[];
+  senses?: string[];
+  languages?: string[];
+  condition_immunities?: string[];
+  traits?: MonsterTrait[];
+  multiattack?: string | null;
+  reactions?: MonsterTrait[];
+  description?: string | null;
 }
 
 export interface Scene {

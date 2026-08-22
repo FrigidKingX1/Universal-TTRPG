@@ -341,7 +341,7 @@ async fn import_campaign(
 
     // Only the host can import campaign data.
     let players = session.players.read().await;
-    let is_host = players.first().map_or(false, |p| p.id == player_id);
+    let is_host = players.first().is_some_and(|p| p.id == player_id);
     drop(players);
     if !is_host {
         return Err((StatusCode::FORBIDDEN, "Only the host can import campaign data".into()));
@@ -553,7 +553,7 @@ async fn link_character(
     }
     // Only host can link characters to other players.
     let players = session.players.read().await;
-    let is_host = players.first().map_or(false, |p| p.id == caller_id);
+    let is_host = players.first().is_some_and(|p| p.id == caller_id);
     drop(players);
     if !is_host {
         return Err((StatusCode::FORBIDDEN, "Only the host can link characters".into()));
@@ -1088,7 +1088,7 @@ async fn delete_clock(
 /// and session.players is only mutated on join/leave (rare).
 async fn require_host(session: &session::Session, player_id: &str) -> Result<(), (StatusCode, String)> {
     let players = session.players.read().await;
-    let is_host = players.first().map_or(false, |p| p.id == player_id);
+    let is_host = players.first().is_some_and(|p| p.id == player_id);
     if is_host { Ok(()) } else { Err((StatusCode::FORBIDDEN, "Only the host can perform this action".into())) }
 }
 

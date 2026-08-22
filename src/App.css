@@ -703,6 +703,10 @@ button.muted:hover, button.secondary:hover {
 /* Sheet */
 .sheet { margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
 
+/* Defense groups (bestiary resist/vuln/immune chip rows) */
+.defense-group { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.6rem; }
+.defense-group > span:first-child { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+
 /* HP Bar */
 .hp-bar {
   height: 10px; background: var(--bg);

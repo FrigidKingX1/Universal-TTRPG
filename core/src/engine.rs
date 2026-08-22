@@ -749,6 +749,13 @@ mod tests {
             resistances: Vec::new(),
             vulnerabilities: Vec::new(),
             immunities: Vec::new(),
+            senses: Vec::new(),
+            languages: Vec::new(),
+            condition_immunities: Vec::new(),
+            traits: Vec::new(),
+            multiattack: None,
+            reactions: Vec::new(),
+            description: None,
         }
     }
 
@@ -978,6 +985,13 @@ mod tests {
             resistances: Vec::new(),
             vulnerabilities: Vec::new(),
             immunities: Vec::new(),
+            senses: Vec::new(),
+            languages: Vec::new(),
+            condition_immunities: Vec::new(),
+            traits: Vec::new(),
+            multiattack: None,
+            reactions: Vec::new(),
+            description: None,
         };
         let c = Combatant::from(&s);
         assert_eq!(c.name, "Orc");
@@ -1065,6 +1079,13 @@ mod tests {
             resistances: vec!["fire".into()],
             vulnerabilities: vec!["cold".into()],
             immunities: vec!["poison".into()],
+            senses: Vec::new(),
+            languages: Vec::new(),
+            condition_immunities: Vec::new(),
+            traits: Vec::new(),
+            multiattack: None,
+            reactions: Vec::new(),
+            description: None,
         };
         let c = Combatant::from(&s);
         assert_eq!(c.resistances, vec!["fire"]);

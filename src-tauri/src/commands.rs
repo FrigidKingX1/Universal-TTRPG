@@ -979,6 +979,13 @@ pub async fn seed_defaults(state: State<'_, GameState>) -> CmdResult<()> {
         resistances: Vec::new(),
         vulnerabilities: Vec::new(),
         immunities: Vec::new(),
+        senses: vec!["darkvision 60 ft.".to_string()],
+        languages: vec!["Common".to_string(), "Goblin".to_string()],
+        condition_immunities: Vec::new(),
+        traits: Vec::new(),
+        multiattack: None,
+        reactions: Vec::new(),
+        description: Some("Goblins are small, black-hearted humanoids that lair in despoiled dungeons and other dismal settings. Individually weak, they gather in large numbers to torment other creatures.".to_string()),
     };
     repo.save_stat_block(&goblin).await.map_err(err)?;
 

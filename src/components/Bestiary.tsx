@@ -2,7 +2,82 @@ import { useState } from "react";
 import { useStore, newStatBlock } from "../store";
 import { backend } from "../backend";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
-import type { EncounterStatBlock, LootTableEntry, Size } from "../types";
+import { PRESET_ACTIONS, PRESET_MONSTERS } from "../presets/bestiary";
+import type { EncounterStatBlock, LootTableEntry, MonsterTrait, Size } from "../types";
+
+const DAMAGE_TYPES = [
+  "slashing", "piercing", "bludgeoning", "fire", "cold", "lightning", "poison",
+  "psychic", "necrotic", "radiant", "force", "thunder", "acid",
+];
+
+const CONDITIONS = [
+  "blinded", "charmed", "deafened", "frightened", "grappled", "incapacitated",
+  "invisible", "paralyzed", "petrified", "poisoned", "prone", "restrained",
+  "stunned", "unconscious", "exhaustion",
+];
+
+function TagChips({ options, selected, onToggle }: {
+  options: string[];
+  selected: string[];
+  onToggle: (tag: string) => void;
+}) {
+  return (
+    <div className="action-chips">
+      {options.map((o) => (
+        <button
+          key={o}
+          className={selected.includes(o) ? "" : "muted"}
+          onClick={() => onToggle(o)}
+          type="button"
+        >
+          {selected.includes(o) ? "✓ " : ""}{o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const toggleIn = (list: string[], tag: string) =>
+  list.includes(tag) ? list.filter((t) => t !== tag) : [...list, tag];
+
+/** Editor for named trait/reaction lists (name + description rows). */
+function TraitListEditor({ title, items, onChange }: {
+  title: string;
+  items: MonsterTrait[];
+  onChange: (items: MonsterTrait[]) => void;
+}) {
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+
+  const add = () => {
+    if (!name.trim()) return;
+    onChange([...items, { name: name.trim(), description: desc.trim() }]);
+    setName("");
+    setDesc("");
+  };
+
+  return (
+    <>
+      {title && <h3>{title}</h3>}
+      {items.length > 0 && (
+        <div className="loot-table-list">
+          {items.map((t, idx) => (
+            <div key={idx} className="card-row" style={{ gap: "0.4rem", marginBottom: "0.25rem", alignItems: "flex-start" }}>
+              <span style={{ whiteSpace: "nowrap" }}><strong>{t.name}.</strong></span>
+              <span className="muted" style={{ flex: 1 }}>{t.description}</span>
+              <button className="danger" onClick={() => onChange(items.filter((_, i) => i !== idx))} style={{ fontSize: "0.7rem" }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="row" style={{ marginTop: "0.25rem" }}>
+        <input value={name} onChange={(e) => setName(e.currentTarget.value)} placeholder="Name" style={{ width: "10rem" }} />
+        <input value={desc} onChange={(e) => setDesc(e.currentTarget.value)} placeholder="Description" />
+        <button onClick={add} disabled={!name.trim()}>Add</button>
+      </div>
+    </>
+  );
+}
 
 export function Bestiary() {
   const statBlocks = useStore((s) => s.statBlocks);
@@ -10,13 +85,46 @@ export function Bestiary() {
   const deleteStatBlock = useStore((s) => s.deleteStatBlock);
   const cloneStatBlock = useStore((s) => s.cloneStatBlock);
   const actions = useStore((s) => s.actions);
+  const saveAction = useStore((s) => s.saveAction);
+  const showToast = useStore((s) => s.showToast);
   const { confirm, dialog } = useConfirmDialog();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [presetKey, setPresetKey] = useState<string>("");
 
   const create = () => {
     const block = newStatBlock(`Monster ${statBlocks.length + 1}`);
     void saveStatBlock(block);
     setEditingId(block.id);
+  };
+
+  const importPreset = async () => {
+    const preset = PRESET_MONSTERS.find((m) => m.key === presetKey);
+    if (!preset) return;
+
+    // Ensure referenced actions exist; import any that are missing.
+    const existingIds = new Set(actions.map((a) => a.id));
+    for (const actionId of preset.actions ?? []) {
+      if (existingIds.has(actionId)) continue;
+      const def = PRESET_ACTIONS.find((a) => a.id === actionId);
+      if (def && actionId !== "act_shortsword") await saveAction(def);
+    }
+
+    // Skip if this exact monster already exists.
+    if (statBlocks.some((b) => b.name === preset.name)) {
+      showToast(`"${preset.name}" is already in your bestiary.`);
+      return;
+    }
+
+    const block: EncounterStatBlock = {
+      ...newStatBlock(preset.name),
+      ...preset,
+      id: crypto.randomUUID(),
+      hit_points: { ...preset.hit_points },
+      loot_table: preset.loot_table.map((l) => ({ ...l })),
+    };
+    await saveStatBlock(block);
+    setEditingId(block.id);
+    setPresetKey("");
   };
 
   const requestDelete = async (id: string, name: string) => {
@@ -28,7 +136,16 @@ export function Bestiary() {
   return (
     <section className="panel">
       <h2>Bestiary</h2>
-      <button onClick={create}>New Monster</button>
+      <div className="row">
+        <button onClick={create}>New Monster</button>
+        <select value={presetKey} onChange={(e) => setPresetKey(e.currentTarget.value)}>
+          <option value="">Add preset…</option>
+          {PRESET_MONSTERS.filter((p) => !statBlocks.some((b) => b.name === p.name)).map((p) => (
+            <option key={p.key} value={p.key}>{p.name} (CR {p.challenge_rating})</option>
+          ))}
+        </select>
+        <button onClick={() => void importPreset()} disabled={!presetKey}>Add</button>
+      </div>
       <ul className="card-list">
         {statBlocks.map((b) => (
           <li key={b.id} className="card">
@@ -42,6 +159,11 @@ export function Bestiary() {
               <span className="muted">
                 HP {b.hit_points.current}/{b.hit_points.maximum}
               </span>
+              {(b.resistances?.length || b.immunities?.length || b.vulnerabilities?.length) ? (
+                <span className="muted" title={`Resists: ${(b.resistances ?? []).join(", ")} | Immune: ${(b.immunities ?? []).join(", ")}`}>
+                  ⛨
+                </span>
+              ) : null}
               <button onClick={() => setEditingId(editingId === b.id ? null : b.id)}>
                 {editingId === b.id ? "Close" : "Edit"}
               </button>
@@ -102,6 +224,21 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
   const [newLootQty, setNewLootQty] = useState("1");
   const [newLootChance, setNewLootChance] = useState(100);
 
+  const [resistances, setResistances] = useState<string[]>(block.resistances ?? []);
+  const [vulnerabilities, setVulnerabilities] = useState<string[]>(block.vulnerabilities ?? []);
+  const [immunities, setImmunities] = useState<string[]>(block.immunities ?? []);
+  const [conditionImmunities, setConditionImmunities] = useState<string[]>(block.condition_immunities ?? []);
+
+  const [sensesRaw, setSensesRaw] = useState((block.senses ?? []).join(", "));
+  const [languagesRaw, setLanguagesRaw] = useState((block.languages ?? []).join(", "));
+  const parseList = (raw: string) =>
+    raw.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const [traits, setTraits] = useState<MonsterTrait[]>(block.traits ?? []);
+  const [reactions, setReactions] = useState<MonsterTrait[]>(block.reactions ?? []);
+  const [multiattack, setMultiattack] = useState(block.multiattack ?? "");
+  const [description, setDescription] = useState(block.description ?? "");
+
   const save = () => {
     void saveStatBlock({
       ...block,
@@ -120,6 +257,16 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
       attributes: attrs,
       actions,
       loot_table: lootTable,
+      resistances,
+      vulnerabilities,
+      immunities,
+      condition_immunities: conditionImmunities,
+      senses: parseList(sensesRaw),
+      languages: parseList(languagesRaw),
+      traits,
+      reactions,
+      multiattack: multiattack.trim() || null,
+      description: description.trim() || null,
     });
   };
 
@@ -212,6 +359,64 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
           </label>
         ))}
       </div>
+
+      <h3>Defenses</h3>
+      <div className="defense-group">
+        <span className="muted">Resistant (half)</span>
+        <TagChips options={DAMAGE_TYPES} selected={resistances} onToggle={(t) => setResistances(toggleIn(resistances, t))} />
+      </div>
+      <div className="defense-group">
+        <span className="muted">Vulnerable (double)</span>
+        <TagChips options={DAMAGE_TYPES} selected={vulnerabilities} onToggle={(t) => setVulnerabilities(toggleIn(vulnerabilities, t))} />
+      </div>
+      <div className="defense-group">
+        <span className="muted">Immune (no damage)</span>
+        <TagChips options={DAMAGE_TYPES} selected={immunities} onToggle={(t) => setImmunities(toggleIn(immunities, t))} />
+      </div>
+      <div className="defense-group">
+        <span className="muted">Condition immunities</span>
+        <TagChips options={CONDITIONS} selected={conditionImmunities} onToggle={(t) => setConditionImmunities(toggleIn(conditionImmunities, t))} />
+      </div>
+
+      <h3>Senses &amp; Languages</h3>
+      <div className="row">
+        <input
+          value={sensesRaw}
+          onChange={(e) => setSensesRaw(e.currentTarget.value)}
+          placeholder='Senses, e.g. "darkvision 60 ft., passive Perception 12"'
+        />
+      </div>
+      <div className="row" style={{ marginTop: "0.25rem" }}>
+        <input
+          value={languagesRaw}
+          onChange={(e) => setLanguagesRaw(e.currentTarget.value)}
+          placeholder='Languages, e.g. "Common, Giant"'
+        />
+      </div>
+      <p className="muted">Comma-separated.</p>
+
+      <TraitListEditor title="Traits" items={traits} onChange={setTraits} />
+
+      <h3>Multiattack</h3>
+      <div className="row">
+        <input
+          value={multiattack}
+          onChange={(e) => setMultiattack(e.currentTarget.value)}
+          placeholder="e.g. The troll makes three attacks: one bite and two claws."
+        />
+      </div>
+
+      <h3>Reactions</h3>
+      <TraitListEditor title="" items={reactions} onChange={setReactions} />
+
+      <h3>Description</h3>
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.currentTarget.value)}
+        placeholder="Flavor text and lore…"
+        rows={3}
+        style={{ width: "100%" }}
+      />
 
       <h3>Actions</h3>
       <div className="action-chips">

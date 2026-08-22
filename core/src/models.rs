@@ -254,6 +254,34 @@ pub struct EncounterStatBlock {
     /// Damage types this creature is immune to (takes no damage).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub immunities: Vec<String>,
+    /// Senses (e.g. "darkvision 60 ft.", "passive Perception 14").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub senses: Vec<String>,
+    /// Languages the creature understands.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub languages: Vec<String>,
+    /// Conditions this creature is immune to (e.g. "charmed", "frightened").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub condition_immunities: Vec<String>,
+    /// Passive traits (e.g. "Keen Senses", "Innate Spellcasting").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub traits: Vec<MonsterTrait>,
+    /// Description of the Multiattack action, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multiattack: Option<String>,
+    /// Reactions (e.g. "Opportunity Attack").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reactions: Vec<MonsterTrait>,
+    /// Lore / flavor description.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+/// A named trait or reaction on a monster stat block.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MonsterTrait {
+    pub name: String,
+    pub description: String,
 }
 
 /// A single entry in a monster's loot table.
