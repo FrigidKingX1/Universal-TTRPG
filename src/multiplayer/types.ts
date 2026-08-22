@@ -76,6 +76,8 @@ export interface ResyncPayload {
   combat_state: string | null;
   characters: CharacterProfile[];
   player_characters: Record<string, string>;
+  combatants: Record<string, any>[];
+  combatant_conditions: Record<string, string[]>;
   recent_logs: LogEntry[];
 }
 

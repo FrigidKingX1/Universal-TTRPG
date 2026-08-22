@@ -1,4 +1,4 @@
-use axum::{
+﻿use axum::{
     extract::{
         ws::{Message, WebSocket},
         Path, Query, State as AxumState, WebSocketUpgrade,
@@ -76,6 +76,10 @@ async fn main() {
         .route("/sessions/{session_id}/clocks/{clock_id}/advance", post(advance_clock))
         .route("/sessions/{session_id}/clocks/{clock_id}/reset", post(reset_clock))
         .route("/sessions/{session_id}/clocks/{clock_id}", delete(delete_clock))
+        .route("/sessions/{session_id}/combat/attack", post(server_combat_attack))
+        .route("/sessions/{session_id}/combat/heal", post(server_combat_heal))
+        .route("/sessions/{session_id}/combat/condition", post(server_combat_condition))
+        .route("/sessions/{session_id}/combat/sync", post(server_combat_sync))
         .route("/ollama/configure", post(configure_ollama).get(get_ollama_config))
         .route("/ollama/models", get(list_ollama_models))
         .with_state(state);
@@ -90,7 +94,7 @@ async fn health() -> Json<Value> {
     Json(json!({ "status": "ok" }))
 }
 
-// ── Ollama configuration ────────────────────────────────────────────
+// â”€â”€ Ollama configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[derive(Deserialize)]
 struct ConfigureOllamaRequest {
@@ -143,7 +147,7 @@ async fn list_ollama_models(
     Ok(Json(json!({ "models": models })))
 }
 
-// ── Bearer token extraction ──────────────────────────────────────────
+// â”€â”€ Bearer token extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 fn extract_token(
     headers: &axum::http::header::HeaderMap,
@@ -157,7 +161,7 @@ fn extract_token(
         .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Invalid Authorization format".into()))
 }
 
-// ── Session management ───────────────────────────────────────────────
+// â”€â”€ Session management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[derive(Deserialize)]
 struct CreateSessionRequest {
@@ -206,7 +210,7 @@ async fn list_sessions(AxumState(state): AxumState<Arc<AppState>>) -> Json<Value
     Json(json!(sessions))
 }
 
-// ── Resolve ──────────────────────────────────────────────────────────
+// â”€â”€ Resolve â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async fn resolve(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -223,7 +227,7 @@ async fn resolve(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
 
-    // Per-session lock — check turn gate INSIDE the lock for atomicity.
+    // Per-session lock â€” check turn gate INSIDE the lock for atomicity.
     // In exploration: anyone can act.  In combat: only the current turn-holder.
     let _lock = session.session_lock.lock().await;
 
@@ -232,7 +236,7 @@ async fn resolve(
         TurnCheck::Waiting { position } => {
             return Err((
                 StatusCode::CONFLICT,
-                format!("Not your turn — you are #{position} in the queue"),
+                format!("Not your turn â€” you are #{position} in the queue"),
             ));
         }
         TurnCheck::NotInQueue => {
@@ -266,7 +270,7 @@ async fn resolve(
 
     let events = apply_session_effects(&session.game, &request, &mut response).await;
 
-    // Broadcast WHILE session lock held — order guarantee.
+    // Broadcast WHILE session lock held â€” order guarantee.
     for event in &events {
         let _ = session.event_tx.send(WsMessage::Event { event: event.clone() });
     }
@@ -286,7 +290,7 @@ async fn resolve(
     Ok(Json(response))
 }
 
-// ── Logs ─────────────────────────────────────────────────────────────
+// â”€â”€ Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async fn list_logs(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -317,7 +321,7 @@ async fn list_logs(
     Ok(Json(logs))
 }
 
-// ── Campaign import (host uploads campaign data to session DB) ─────
+// â”€â”€ Campaign import (host uploads campaign data to session DB) â”€â”€â”€â”€â”€
 
 async fn import_campaign(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -355,7 +359,7 @@ async fn import_campaign(
     Ok(Json(json!({ "ok": true })))
 }
 
-// ── Combat management (C4) ───────────────────────────────────────────
+// â”€â”€ Combat management (C4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async fn start_combat(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -456,7 +460,7 @@ async fn combat_status(
     Ok(Json(json!({ "mode": mode, "current_turn": current, "queue": queue })))
 }
 
-// ── Character management (player actions) ───────────────────────────
+// â”€â”€ Character management (player actions) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async fn list_characters(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -684,7 +688,7 @@ async fn rest_character(
     Ok(Json(json!({ "character": profile })))
 }
 
-// ── Scene management (DM world-building) ────────────────────────────
+// â”€â”€ Scene management (DM world-building) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[derive(Deserialize)]
 struct CreateSceneRequest {
@@ -761,7 +765,7 @@ async fn update_scene(
         session.game.repo.update_scene_chaos_factor(&scene_id, cf).await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
-    // Note: title update not directly supported by repo — summary + chaos are the main DM controls.
+    // Note: title update not directly supported by repo â€” summary + chaos are the main DM controls.
 
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
@@ -819,7 +823,7 @@ async fn delete_scene(
     Ok(Json(json!({ "ok": true })))
 }
 
-// ── NPC management ──────────────────────────────────────────────────
+// â”€â”€ NPC management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[derive(Deserialize)]
 struct CreateNpcRequest {
@@ -948,7 +952,7 @@ async fn delete_npc(
     Ok(Json(json!({ "ok": true })))
 }
 
-// ── Doom clock management ───────────────────────────────────────────
+// â”€â”€ Doom clock management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[derive(Deserialize)]
 struct CreateClockRequest {
@@ -1079,7 +1083,7 @@ async fn delete_clock(
 }
 
 /// Check if the player is the host (first player in session).
-/// NOTE: This peeks without locking — safe because callers already authenticated
+/// NOTE: This peeks without locking â€” safe because callers already authenticated
 /// and session.players is only mutated on join/leave (rare).
 async fn require_host(session: &session::Session, player_id: &str) -> Result<(), (StatusCode, String)> {
     let players = session.players.read().await;
@@ -1087,7 +1091,241 @@ async fn require_host(session: &session::Session, player_id: &str) -> Result<(),
     if is_host { Ok(()) } else { Err((StatusCode::FORBIDDEN, "Only the host can perform this action".into())) }
 }
 
-// ── WebSocket ────────────────────────────────────────────────────────
+// ── Combat actions (server-authoritative) ────────────────────────────
+
+/// Patch a combatant JSON value in-place with updated HP and status from a
+/// resolved `Combatant`.  Handles both `CharacterProfile` (resource_pools.hp.current)
+/// and `EncounterStatBlock` (hit_points.current) formats, plus defeated status.
+fn patch_combatant_json(entry: &mut Value, hp: i32, status: Option<&str>, conditions: &[String]) {
+    // Try CharacterProfile format: resource_pools.hp.current
+    if let Some(rp) = entry.get_mut("resource_pools").and_then(|v| v.get_mut("hp")) {
+        if let Some(cur) = rp.get_mut("current") {
+            *cur = Value::Number(hp.into());
+        }
+    }
+    // Try EncounterStatBlock format: hit_points.current
+    if let Some(hp_obj) = entry.get_mut("hit_points") {
+        if let Some(cur) = hp_obj.get_mut("current") {
+            *cur = Value::Number(hp.into());
+        }
+    }
+    if let Some(s) = status {
+        entry["status"] = Value::String(s.to_string());
+    } else {
+        entry.as_object_mut().map(|o| o.remove("status"));
+    }
+    // Patch conditions array if present.
+    entry["conditions"] = serde_json::to_value(conditions).unwrap_or_default();
+}
+
+#[derive(Deserialize)]
+struct CombatAttackRequest {
+    attacker: Value,
+    target: Value,
+    action_id: String,
+    prereq: Option<auto_dm_core::engine::PrerequisiteCheck>,
+    attacker_conditions: Option<Vec<String>>,
+    target_conditions: Option<Vec<String>>,
+}
+
+async fn server_combat_attack(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CombatAttackRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+
+    let mut dice = auto_dm_core::dice::DiceEngine::new();
+    let mut actor = auto_dm_engine::combatant_from_value(&req.attacker)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    let mut victim = auto_dm_engine::combatant_from_value(&req.target)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    actor.conditions = req.attacker_conditions.unwrap_or_default();
+    victim.conditions = req.target_conditions.unwrap_or_default();
+
+    let action = session
+        .game
+        .repo
+        .load_action(&req.action_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("action `{}` not found", req.action_id)))?;
+
+    let outcome = auto_dm_core::engine::execute_attack(
+        &mut dice,
+        &actor,
+        &mut victim,
+        &action,
+        req.prereq.as_ref(),
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Update server-authoritative combatant state.
+    {
+        let mut combatants = session.combatants.write().await;
+        for c in combatants.iter_mut() {
+            if c.get("id").and_then(|v| v.as_str()) == Some(&victim.id) {
+                patch_combatant_json(
+                    c,
+                    victim.hit_points,
+                    victim.status.as_deref(),
+                    &victim.conditions,
+                );
+                break;
+            }
+        }
+    }
+
+    // Broadcast damage event.
+    if let Some(ref dr) = outcome.damage_result {
+        let event = auto_dm_engine::GameEvent::DamageApplied {
+            target_id: victim.id.clone(),
+            target_name: victim.name.clone(),
+            amount: outcome.damage_dealt,
+            temp_absorbed: dr.temp_absorbed,
+            hp_remaining: dr.hp_remaining,
+            defeated: dr.defeated,
+            shock: dr.shock,
+        };
+        let _ = session.event_tx.send(WsMessage::Event { event });
+    }
+
+    // Broadcast resync so all clients get updated combatant state.
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(WsMessage::Resync(resync));
+
+    Ok(Json(serde_json::to_value(&outcome).unwrap_or_default()))
+}
+
+#[derive(Deserialize)]
+struct CombatHealRequest {
+    target: Value,
+    amount: i32,
+}
+
+async fn server_combat_heal(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CombatHealRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+
+    let mut victim = auto_dm_engine::combatant_from_value(&req.target)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    let healed = auto_dm_core::engine::apply_healing(&mut victim, req.amount);
+
+    // Update server-authoritative combatant state.
+    {
+        let mut combatants = session.combatants.write().await;
+        for c in combatants.iter_mut() {
+            if c.get("id").and_then(|v| v.as_str()) == Some(&victim.id) {
+                patch_combatant_json(
+                    c,
+                    victim.hit_points,
+                    victim.status.as_deref(),
+                    &victim.conditions,
+                );
+                break;
+            }
+        }
+    }
+
+    // Broadcast resync.
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(WsMessage::Resync(resync));
+
+    Ok(Json(json!({
+        "healed": healed,
+        "hit_points": victim.hit_points,
+        "status": victim.status,
+    })))
+}
+
+#[derive(Deserialize)]
+struct CombatConditionRequest {
+    target_id: String,
+    condition: String,
+    add: bool,
+}
+
+async fn server_combat_condition(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CombatConditionRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+
+    {
+        let mut conditions = session.combatant_conditions.write().await;
+        let entry = conditions.entry(req.target_id.clone()).or_default();
+        if req.add {
+            if !entry.contains(&req.condition) {
+                entry.push(req.condition.clone());
+            }
+        } else {
+            entry.retain(|c| c != &req.condition);
+        }
+    }
+
+    // Broadcast resync.
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(WsMessage::Resync(resync));
+
+    let conditions = session.combatant_conditions.read().await;
+    let current = conditions.get(&req.target_id).cloned().unwrap_or_default();
+    Ok(Json(json!({ "target_id": req.target_id, "conditions": current })))
+}
+
+#[derive(Deserialize)]
+struct CombatSyncRequest {
+    combatants: Vec<Value>,
+    conditions: std::collections::HashMap<String, Vec<String>>,
+}
+
+async fn server_combat_sync(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CombatSyncRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    require_host(&session, &player_id).await?;
+
+    *session.combatants.write().await = req.combatants;
+    *session.combatant_conditions.write().await = req.conditions;
+
+    // Broadcast resync.
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(WsMessage::Resync(resync));
+
+    Ok(Json(json!({ "ok": true })))
+}
+
+// â”€â”€ WebSocket â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PING_INTERVAL: Duration = Duration::from_secs(30);
 const PONG_TIMEOUT: Duration = Duration::from_secs(90);
@@ -1134,7 +1372,7 @@ async fn handle_socket(
     let mut ping_interval = tokio::time::interval(PING_INTERVAL);
     let mut last_activity = tokio::time::Instant::now();
 
-    // Initial resync — materialized state, not raw logs.
+    // Initial resync â€” materialized state, not raw logs.
     let resync = session::build_resync(&session).await;
     let msg = WsMessage::Resync(resync);
     if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
@@ -1144,7 +1382,7 @@ async fn handle_socket(
 
     loop {
         tokio::select! {
-            // ── Broadcast events → forward to client ──────────────
+            // â”€â”€ Broadcast events â†’ forward to client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             result = rx.recv() => {
                 last_activity = tokio::time::Instant::now();
                 match result {
@@ -1159,7 +1397,7 @@ async fn handle_socket(
                     }
                     Ok(WsMessage::Resync(_)) => {}
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged — resync");
+                        tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged â€” resync");
                         let resync = session::build_resync(&session).await;
                         let msg = WsMessage::Resync(resync);
                         if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
@@ -1169,11 +1407,11 @@ async fn handle_socket(
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
             }
-            // ── Ping every 30s, check pong timeout ───────────────
+            // â”€â”€ Ping every 30s, check pong timeout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _ = ping_interval.tick() => {
                 // Send ping.
                 if socket.send(Message::Ping(vec![].into())).await.is_err() {
-                    break; // send failed → connection dead
+                    break; // send failed â†’ connection dead
                 }
                 // Check if we've heard nothing in PONG_TIMEOUT.
                 if last_activity.elapsed() > PONG_TIMEOUT {
@@ -1181,12 +1419,12 @@ async fn handle_socket(
                         session = %session.id,
                         player = %player_id,
                         idle = ?last_activity.elapsed(),
-                        "No pong within timeout — closing dead connection"
+                        "No pong within timeout â€” closing dead connection"
                     );
                     break;
                 }
             }
-            // ── Read from socket (pongs, close frames) ───────────
+            // â”€â”€ Read from socket (pongs, close frames) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             msg = socket.recv() => {
                 match msg {
                     Some(Ok(Message::Pong(_))) => {
@@ -1213,7 +1451,7 @@ async fn mark_disconnected(state: &AppState, session: &session::Session, player_
             session = %session.id,
             disconnected = %player_id,
             next_turn = ?next_turn,
-            "Player disconnected during combat — turn advanced"
+            "Player disconnected during combat â€” turn advanced"
         );
     }
 

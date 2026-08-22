@@ -8,6 +8,7 @@
 
 use auto_dm_engine::GameState;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
@@ -213,6 +214,12 @@ pub struct Session {
     pub session_lock: tokio::sync::Mutex<()>,
     pub players: RwLock<Vec<PlayerSlot>>,
     pub turn_gate: TurnGate,
+    /// Server-authoritative combatant state: full JSON values (CharacterProfile
+    /// or EncounterStatBlock) keyed by position.  Synced from the host via
+    /// `/combat/sync` and mutated by `/combat/attack`, `/combat/heal`, etc.
+    pub combatants: RwLock<Vec<Value>>,
+    /// Per-combatant condition tags (e.g. "Poisoned", "Prone").
+    pub combatant_conditions: RwLock<std::collections::HashMap<String, Vec<String>>>,
 }
 
 // ── WsMessage ─────────────────────────────────────────────────────────
@@ -233,6 +240,10 @@ pub struct ResyncPayload {
     pub characters: Vec<auto_dm_core::models::CharacterProfile>,
     /// Player-to-character mapping: player_id → character_id
     pub player_characters: std::collections::HashMap<String, String>,
+    /// Server-authoritative combatant JSON list (CharacterProfile or EncounterStatBlock).
+    pub combatants: Vec<Value>,
+    /// Per-combatant condition tags.
+    pub combatant_conditions: std::collections::HashMap<String, Vec<String>>,
     /// Last 200 log entries for narrative scrollback display only —
     /// NOT for state reconstruction.
     pub recent_logs: Vec<auto_dm_engine::LogEntry>,
@@ -437,6 +448,8 @@ impl SessionRegistry {
                 session_lock: tokio::sync::Mutex::new(()),
                 players: RwLock::new(players),
                 turn_gate,
+                combatants: RwLock::new(Vec::new()),
+                combatant_conditions: RwLock::new(std::collections::HashMap::new()),
             });
 
             // Populate in-memory maps.
@@ -719,6 +732,8 @@ impl SessionRegistry {
                 character_id: None,
             }]),
             turn_gate: TurnGate::new(),
+            combatants: RwLock::new(Vec::new()),
+            combatant_conditions: RwLock::new(std::collections::HashMap::new()),
         });
 
         // Register session + token in memory.
@@ -943,6 +958,8 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         combat_state: combat.ok().flatten(),
         characters: characters.unwrap_or_default(),
         player_characters,
+        combatants: session.combatants.read().await.clone(),
+        combatant_conditions: session.combatant_conditions.read().await.clone(),
         recent_logs: logs.unwrap_or_default(),
     })
 }

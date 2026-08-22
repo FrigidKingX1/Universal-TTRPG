@@ -770,15 +770,29 @@ export const useStore = create<AutoDmState>()(
         ? { ...target, hit_points: { ...target.hit_points, current: states[target.id].hit_points } }
         : { ...target, resource_pools: { ...target.resource_pools, hp: { ...target.resource_pools.hp!, current: states[target.id].hit_points } } })
       : target;
-    const outcome = await backend.combatAttack(
-      attacker,
-      liveTarget,
-      actionId,
-      prereq ?? null,
-      sceneId,
-      get().combatantConditions[attacker.id] ?? [],
-      get().combatantConditions[target.id] ?? [],
-    );
+
+    let outcome;
+    if (isInMultiplayerSession()) {
+      const client = (await import("./multiplayer")).getMultiplayerClient();
+      outcome = await client!.combatAttack(
+        attacker,
+        liveTarget,
+        actionId,
+        prereq ?? null,
+        get().combatantConditions[attacker.id] ?? [],
+        get().combatantConditions[target.id] ?? [],
+      );
+    } else {
+      outcome = await backend.combatAttack(
+        attacker,
+        liveTarget,
+        actionId,
+        prereq ?? null,
+        sceneId,
+        get().combatantConditions[attacker.id] ?? [],
+        get().combatantConditions[target.id] ?? [],
+      );
+    }
     set((s) => ({
       lastCombat: outcome,
       lastHpChange: { entityId: target.id, previousHp: prevHp, newHp: outcome.target_hp_remaining },
@@ -847,9 +861,16 @@ export const useStore = create<AutoDmState>()(
       if (current < max) {
         // Route through the engine's apply_healing: max-clamped, revives,
         // clears conditions — one source of truth for healing rules.
-        try {
-          await backend.combatHeal(c, max - current);
-        } catch { /* fall back to direct save below */ }
+        if (isInMultiplayerSession()) {
+          try {
+            const client = (await import("./multiplayer")).getMultiplayerClient();
+            await client?.combatHeal(c, max - current);
+          } catch { /* fall back to direct save below */ }
+        } else {
+          try {
+            await backend.combatHeal(c, max - current);
+          } catch { /* fall back to direct save below */ }
+        }
         await s.saveCharacter({
           ...c,
           resource_pools: {
@@ -885,9 +906,16 @@ export const useStore = create<AutoDmState>()(
       if (current < max && halfMax > 0) {
         const restored = Math.min(halfMax, max - current);
         const newHp = current + restored;
-        try {
-          await backend.combatHeal(c, restored);
-        } catch { /* fall through to direct save */ }
+        if (isInMultiplayerSession()) {
+          try {
+            const client = (await import("./multiplayer")).getMultiplayerClient();
+            await client?.combatHeal(c, restored);
+          } catch { /* fall through to direct save */ }
+        } else {
+          try {
+            await backend.combatHeal(c, restored);
+          } catch { /* fall through to direct save */ }
+        }
         await s.saveCharacter({
           ...c,
           resource_pools: {
@@ -912,13 +940,27 @@ export const useStore = create<AutoDmState>()(
     persistCombat();
   },
 
-  toggleCondition: (entityId, condition) => { set((s) => {
-    const current = s.combatantConditions[entityId] ?? [];
-    const updated = current.includes(condition)
-      ? current.filter((c) => c !== condition)
-      : [...current, condition];
-    return { combatantConditions: { ...s.combatantConditions, [entityId]: updated } };
-  }); persistCombat(); },
+  toggleCondition: (entityId, condition) => {
+    set((s) => {
+      const current = s.combatantConditions[entityId] ?? [];
+      const updated = current.includes(condition)
+        ? current.filter((c) => c !== condition)
+        : [...current, condition];
+      return { combatantConditions: { ...s.combatantConditions, [entityId]: updated } };
+    });
+    persistCombat();
+    // Fire-and-forget: sync condition to server in multiplayer.
+    if (isInMultiplayerSession()) {
+      const current = get().combatantConditions[entityId] ?? [];
+      const add = current.includes(condition);
+      (async () => {
+        try {
+          const client = (await import("./multiplayer")).getMultiplayerClient();
+          await client?.combatCondition(entityId, condition, add);
+        } catch { /* best-effort */ }
+      })();
+    }
+  },
 
   showToast: (message: string, type: "info" | "success" | "warning" | "error" = "info", duration = 3000) => {
     const id = crypto.randomUUID();

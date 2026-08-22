@@ -447,6 +447,37 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
   if (payload.characters) {
     setState(() => ({ characters: payload.characters }));
   }
+
+  // Sync server-authoritative combatant state into main store.
+  if (payload.combatants) {
+    const combatantStates: Record<string, { id: string; name: string; hit_points: number; status?: string }> = {};
+    for (const c of payload.combatants) {
+      const id = (c as any).id as string | undefined;
+      if (!id) continue;
+      // CharacterProfile has resource_pools.hp.current; EncounterStatBlock has hit_points.current
+      let hp = 0;
+      let name = (c as any).name as string || id;
+      let status: string | undefined;
+      if ("resource_pools" in (c as any)) {
+        hp = (c as any).resource_pools?.hp?.current ?? 0;
+        name = (c as any).name ?? id;
+      } else if ("hit_points" in (c as any)) {
+        const hpObj = (c as any).hit_points;
+        hp = typeof hpObj === "object" ? (hpObj.current ?? hpObj) : hpObj;
+        name = (c as any).name ?? id;
+      }
+      // Check for defeated status
+      if ("status" in (c as any) && (c as any).status) {
+        status = (c as any).status;
+      }
+      combatantStates[id] = { id, name, hit_points: hp, status };
+    }
+    setState(() => ({ combatantStates }));
+  }
+
+  if (payload.combatant_conditions) {
+    setState(() => ({ combatantConditions: payload.combatant_conditions }));
+  }
 }
 
 function _dispatchEventToMainStore(event: GameEvent) {

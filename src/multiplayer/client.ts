@@ -152,6 +152,52 @@ export class MultiplayerClient {
     return this.httpGet("/characters");
   }
 
+  // ── Combat actions ─────────────────────────────────────────────────
+
+  /** Execute an attack through the server's combat engine. */
+  async combatAttack(
+    attacker: unknown,
+    target: unknown,
+    actionId: string,
+    prereq: unknown | null,
+    attackerConditions: string[],
+    targetConditions: string[],
+  ): Promise<import("../types").EngineOutcome> {
+    return this.httpPost("/combat/attack", {
+      attacker,
+      target,
+      action_id: actionId,
+      prereq,
+      attacker_conditions: attackerConditions,
+      target_conditions: targetConditions,
+    });
+  }
+
+  /** Heal a combatant through the server. */
+  async combatHeal(
+    target: unknown,
+    amount: number,
+  ): Promise<{ healed: number; hit_points: number; status: string | null }> {
+    return this.httpPost("/combat/heal", { target, amount });
+  }
+
+  /** Toggle a condition on a combatant. */
+  async combatCondition(
+    targetId: string,
+    condition: string,
+    add: boolean,
+  ): Promise<{ target_id: string; conditions: string[] }> {
+    return this.httpPost("/combat/condition", { target_id: targetId, condition, add });
+  }
+
+  /** Push the full combatant list to the server (host only). */
+  async combatSync(
+    combatants: unknown[],
+    conditions: Record<string, string[]>,
+  ): Promise<{ ok: boolean }> {
+    return this.httpPost("/combat/sync", { combatants, conditions });
+  }
+
   /** Generic authenticated POST to the session's REST API. */
   async httpPost<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetch(`${this.httpBase}/sessions/${this.sessionId}${path}`, {
