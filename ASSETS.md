@@ -43,10 +43,19 @@ Every preset monster carries a stable `key` (e.g. `goblin`,
 automatically tries `/assets/monsters/<key>.png`. So to give your whole
 bestiary art with zero manual entry:
 
-1. Download tokens from the sources below.
-2. Rename each file to the monster's key: `goblin.png`, `zombie_brute.png`,
-   `ancient_red_dragon.png` … (keys are visible in `src/presets/bestiary.ts`).
-3. Drop them into `public/assets/monsters/`.
+1. Download tokens from the sources below into `public/assets/incoming/`.
+2. Run the batch mapper — it strips pack noise (`_token`, `40px`,
+   `Portrait`, spaces/dashes), matches files to monster keys/names, and
+   copies each hit to `public/assets/monsters/<key>.<ext>`:
+
+   ```bash
+   node scripts/map_tokens.mjs --dry-run          # preview matches
+   node scripts/map_tokens.mjs                    # copy for real
+   node scripts/map_tokens.mjs path/to/pack --force
+   ```
+
+3. It prints matched pairs, unmatched leftovers, and how many monsters
+   still lack art.
 
 An explicit portrait set in the Bestiary editor always wins over the
 convention. Broken/missing files hide silently (`onError`).
