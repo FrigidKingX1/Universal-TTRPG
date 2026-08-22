@@ -1776,6 +1776,17 @@ input[type="range"] {
   font-size: 0.75rem;
   cursor: default;
 }
+.ability-chip.cast-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  cursor: pointer;
+}
+.ability-chip.cast-row:disabled { opacity: 0.5; cursor: not-allowed; }
+.cast-cost { color: var(--muted, #9a8f86); font-size: 0.7rem; white-space: nowrap; }
+.cast-target-select { width: 100%; margin-bottom: 0.4rem; font-size: 0.8rem; }
 .resources-grid {
   display: flex;
   flex-direction: column;

@@ -83,8 +83,8 @@ const mkHeal = (
   slot_cost: { pool: slotPool, amount: 1 },
 });
 
-/** Spell-like abilities for casters (attack-roll approximation of save spells). */
-export const SPELL_ACTIONS: ActionDefinition[] = [
+/** Base spell list before slot-tier costs are applied (cantrips stay free). */
+const BASE_SPELLS: ActionDefinition[] = [
   mk("act_magic_missile", "Magic Missile", "3d4 + 3", "force", "INT", 120, undefined, undefined, true),
   mk("act_eldritch_blast", "Eldritch Blast", "1d10", "force", "CHA", 120),
   mk("act_ray_of_frost", "Ray of Frost", "1d8", "cold", "INT", 60),
@@ -115,6 +115,38 @@ export const SPELL_ACTIONS: ActionDefinition[] = [
   mkHeal("act_healing_word", "Healing Word", "1d4 + @attributes.WIS.derived_modifier", "WIS", 60, "bonus_action"),
   mkHeal("act_mass_cure_wounds", "Mass Cure Wounds", "3d8 + @attributes.WIS.derived_modifier", "WIS", 60, "action", "spell_slots_l3"),
 ];
+
+/**
+ * Spell tier → resource pool for character casters. Cantrips stay free;
+ * everything else draws one slot from its tier. Monsters/NPC stat blocks
+ * carry no pools and are never gated by the store's slot check.
+ */
+const SPELL_SLOT_TIERS: Record<string, string> = {
+  // 1st-tier spells
+  act_magic_missile: "spell_slots_l1",
+  act_burning_hands: "spell_slots_l1",
+  act_thunderwave: "spell_slots_l1",
+  act_guiding_bolt: "spell_slots_l1",
+  act_inflict_wounds: "spell_slots_l1",
+  // 2nd-tier spells
+  act_shatter: "spell_slots_l2",
+  act_ray_of_sickness: "spell_slots_l2",
+  act_scorching_ray: "spell_slots_l2",
+  act_spiritual_weapon: "spell_slots_l2",
+  // 3rd tier (our stand-in for 4th-level and above)
+  act_fireball: "spell_slots_l3",
+  act_lightning_bolt: "spell_slots_l3",
+  act_ice_storm: "spell_slots_l3",
+  act_chain_lightning: "spell_slots_l3",
+  act_flame_strike: "spell_slots_l3",
+  act_cone_of_cold: "spell_slots_l3",
+  act_meteor_swarm: "spell_slots_l3",
+};
+
+export const SPELL_ACTIONS: ActionDefinition[] = BASE_SPELLS.map((a) => {
+  const pool = SPELL_SLOT_TIERS[a.id];
+  return pool ? { ...a, slot_cost: { pool, amount: 1 } } : a;
+});
 
 /** Monster-specific attacks shared across creatures. */
 export const MONSTER_ATTACK_ACTIONS: ActionDefinition[] = [

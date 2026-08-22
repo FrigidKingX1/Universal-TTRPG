@@ -2,17 +2,21 @@ import { useState } from "react";
 import { Shield, Sword, Package, Heart, Crosshair } from "lucide-react";
 import { useStore } from "../store";
 import { getMultiplayerClient, useMultiplayerStore } from "../multiplayer/store";
-import type { CharacterProfile, InventoryItem, ResourcePool, AttributeState } from "../types";
+import type { CharacterProfile, EncounterStatBlock, InventoryItem, ResourcePool, AttributeState } from "../types";
 import "../App.css";
 
 export function PlayerPanel() {
   const characters = useStore((s) => s.characters);
   const activeCharacter = useStore((s) => s.activeCharacter);
   const setActiveCharacter = useStore((s) => s.setActiveCharacter);
+  const actions = useStore((s) => s.actions);
+  const statBlocks = useStore((s) => s.statBlocks);
+  const runAttack = useStore((s) => s.runAttack);
   const playerId = useMultiplayerStore((s) => s.playerId);
   const players = useMultiplayerStore((s) => s.players);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [targetKey, setTargetKey] = useState("");
 
   const client = getMultiplayerClient();
 
@@ -103,6 +107,44 @@ export function PlayerPanel() {
     }
   };
 
+  // Cast/attack straight from the panel: known abilities resolved to
+  // definitions, with a shared target picker and live slot counts.
+  const knownActions = character
+    ? character.abilities
+        .map((id) => actions.find((a) => a.id === id))
+        .filter((a): a is NonNullable<typeof a> => Boolean(a))
+    : [];
+  const targets = [
+    ...characters
+      .filter((c) => c.id !== character?.id)
+      .map((c) => ({ key: `char:${c.id}`, name: c.identity.name })),
+    ...statBlocks.map((b) => ({ key: `block:${b.id}`, name: b.name })),
+  ];
+  const resolveTarget = (key: string): CharacterProfile | EncounterStatBlock | null => {
+    if (key.startsWith("char:")) {
+      return characters.find((c) => `char:${c.id}` === key) ?? null;
+    }
+    if (key.startsWith("block:")) {
+      return statBlocks.find((b) => `block:${b.id}` === key) ?? null;
+    }
+    return null;
+  };
+  const canUse = (a: NonNullable<typeof knownActions[number]>): boolean => {
+    if (!character || !targetKey || !resolveTarget(targetKey)) return false;
+    const cost = a.slot_cost;
+    if (!cost) return true;
+    return (character.resource_pools[cost.pool]?.current ?? 0) >= cost.amount;
+  };
+  const handleUseAbility = async (actionId: string) => {
+    if (!character) return;
+    const target = resolveTarget(targetKey);
+    if (!target) {
+      setError("Pick a target first.");
+      return;
+    }
+    await withLoading(() => runAttack(character, target, actionId));
+  };
+
   if (!client) return null;
 
   return (
@@ -191,16 +233,50 @@ export function PlayerPanel() {
             </div>
           )}
 
-          {/* Abilities */}
-          {character.abilities.length > 0 && (
+          {/* Abilities — pick a target, then cast/attack */}
+          {knownActions.length > 0 && (
             <div className="abilities-section">
               <h4><Sword size={14} /> Abilities</h4>
-              <div className="abilities-list">
-                {character.abilities.map((ability, i) => (
-                  <button key={i} className="ability-chip" type="button">
-                    {ability}
-                  </button>
+              <select
+                className="cast-target-select"
+                value={targetKey}
+                onChange={(e) => setTargetKey(e.currentTarget.value)}
+                aria-label="Ability target"
+              >
+                <option value="">Cast target…</option>
+                {targets.map((t) => (
+                  <option key={t.key} value={t.key}>{t.name}</option>
                 ))}
+              </select>
+              <div className="abilities-list">
+                {knownActions.map((a) => {
+                  const cost = a.slot_cost;
+                  const pool = cost ? character!.resource_pools[cost.pool] : undefined;
+                  const usable = canUse(a);
+                  return (
+                    <button
+                      key={a.id}
+                      className="ability-chip cast-row"
+                      type="button"
+                      disabled={!usable || loading}
+                      title={
+                        !targetKey
+                          ? "Pick a target first"
+                          : cost && (pool?.current ?? 0) < cost.amount
+                            ? `No ${cost.pool.replace(/_/g, " ")} left`
+                            : a.resolution.outcomes?.on_success?.formula ?? ""
+                      }
+                      onClick={() => void handleUseAbility(a.id)}
+                    >
+                      <span>{a.name}</span>
+                      {cost && (
+                        <span className="cast-cost">
+                          {pool ? `${pool.current}/${pool.maximum}` : "0"} {cost.pool.replace(/_/g, " ")}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

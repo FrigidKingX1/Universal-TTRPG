@@ -148,6 +148,21 @@ describe("Preset actions", () => {
     expect(PRESET_CLASSES.find((c) => c.id === "fighter")!.pool_unlocks ?? []).toEqual([]);
   });
 
+  it("offensive spells draw slots by tier; cantrips stay free", () => {
+    const tierOf = (id: string) => findPresetAction(id)?.slot_cost?.pool;
+    expect(tierOf("act_magic_missile")).toBe("spell_slots_l1");
+    expect(tierOf("act_burning_hands")).toBe("spell_slots_l1");
+    expect(tierOf("act_shatter")).toBe("spell_slots_l2");
+    expect(tierOf("act_scorching_ray")).toBe("spell_slots_l2");
+    expect(tierOf("act_fireball")).toBe("spell_slots_l3");
+    expect(tierOf("act_cone_of_cold")).toBe("spell_slots_l3");
+    expect(tierOf("act_meteor_swarm")).toBe("spell_slots_l3");
+    // Cantrips are at-will.
+    for (const cantrip of ["act_fire_bolt", "act_sacred_flame", "act_eldritch_blast", "act_ray_of_frost", "act_vicious_mockery"]) {
+      expect(findPresetAction(cantrip)?.slot_cost, cantrip).toBeUndefined();
+    }
+  });
+
   it("cleric starts with healing options", () => {
     const cleric = PRESET_CLASSES.find((c) => c.id === "cleric")!;
     expect(cleric.starting_abilities).toContain("act_cure_wounds");
