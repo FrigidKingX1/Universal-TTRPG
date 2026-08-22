@@ -1,0 +1,2597 @@
+[
+ {
+  "id": "act_scimitar",
+  "name": "Scimitar",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.DEX.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_greataxe",
+  "name": "Greataxe",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d12 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_claw",
+  "name": "Claw",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_greatclub",
+  "name": "Greatclub",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_gore",
+  "name": "Gore",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_bite_sm",
+  "name": "Bite",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_bite_md",
+  "name": "Bite (Large)",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_bite_trip",
+  "name": "Bite (Trip)",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing",
+     "applied_status": "Prone"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_poison_bite",
+  "name": "Poison Bite",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing",
+     "applied_status": "Poisoned"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_longbow",
+  "name": "Longbow",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 150,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_rapier",
+  "name": "Rapier",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_mace",
+  "name": "Mace",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_dagger",
+  "name": "Dagger",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_fire_bolt",
+  "name": "Fire Bolt",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 120,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d10",
+     "damage_type": "fire"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_sacred_flame",
+  "name": "Sacred Flame",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8",
+     "damage_type": "radiant"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_longsword",
+  "name": "Longsword",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_shortsword",
+  "name": "Shortsword",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_greatsword",
+  "name": "Greatsword",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_javelin",
+  "name": "Javelin",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_battleaxe",
+  "name": "Battleaxe",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_warhammer",
+  "name": "Warhammer",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_spear",
+  "name": "Spear",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_halberd",
+  "name": "Halberd",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d10 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_whip",
+  "name": "Whip",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 10,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4 + @attributes.DEX.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_morningstar_sm",
+  "name": "Morningstar",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_handaxe",
+  "name": "Handaxe",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_lightcrossbow",
+  "name": "Light Crossbow",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 80,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_heavycrossbow",
+  "name": "Heavy Crossbow",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 100,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d10 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_shortbow",
+  "name": "Shortbow",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 80,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_sling",
+  "name": "Sling",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4 + @attributes.DEX.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_magic_missile",
+  "name": "Magic Missile",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 120,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "guaranteed_effect",
+   "primary_attribute": "INT",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d4 + 3",
+     "damage_type": "force"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l1",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_eldritch_blast",
+  "name": "Eldritch Blast",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 120,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CHA",
+   "roll_formula": "1d20 + @attributes.CHA.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d10",
+     "damage_type": "force"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_ray_of_frost",
+  "name": "Ray of Frost",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8",
+     "damage_type": "cold"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_chill_touch",
+  "name": "Chill Touch",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 120,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8",
+     "damage_type": "necrotic"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_acid_splash",
+  "name": "Acid Splash",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6",
+     "damage_type": "acid"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_poison_spray",
+  "name": "Poison Spray",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 10,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d12",
+     "damage_type": "poison"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_vicious_mockery",
+  "name": "Vicious Mockery",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CHA",
+   "roll_formula": "1d20 + @attributes.CHA.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4",
+     "damage_type": "psychic"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_burning_hands",
+  "name": "Burning Hands",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 15,
+   "target_type": "area_of_effect",
+   "shape": "cone",
+   "size_feet": 15
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d6",
+     "damage_type": "fire"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l1",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_thunderwave",
+  "name": "Thunderwave",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 15,
+   "target_type": "area_of_effect",
+   "shape": "cube",
+   "size_feet": 15
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8",
+     "damage_type": "thunder",
+     "applied_status": "Prone"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l1",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_shatter",
+  "name": "Shatter",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d8",
+     "damage_type": "thunder"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l2",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_guiding_bolt",
+  "name": "Guiding Bolt",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 120,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "4d6",
+     "damage_type": "radiant"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l1",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_inflict_wounds",
+  "name": "Inflict Wounds",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d10",
+     "damage_type": "necrotic"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l1",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_shocking_grasp",
+  "name": "Shocking Grasp",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8",
+     "damage_type": "lightning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_ray_of_sickness",
+  "name": "Ray of Sickness",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8",
+     "damage_type": "poison",
+     "applied_status": "Poisoned"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l2",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_cone_of_cold",
+  "name": "Cone of Cold",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "cone",
+   "size_feet": 30
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "8d8",
+     "damage_type": "cold"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_thorn_whip",
+  "name": "Thorn Whip",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_scorching_ray",
+  "name": "Scorching Ray",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 120,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + 2d6 + 2d6",
+     "damage_type": "fire"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l2",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_fireball",
+  "name": "Fireball",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 150,
+   "target_type": "area_of_effect",
+   "shape": "sphere",
+   "size_feet": 20
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "8d6",
+     "damage_type": "fire"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_lightning_bolt",
+  "name": "Lightning Bolt",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 100,
+   "target_type": "area_of_effect",
+   "shape": "line",
+   "size_feet": 100
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "8d6",
+     "damage_type": "lightning"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_ice_storm",
+  "name": "Ice Storm",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 300,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + 2d8",
+     "damage_type": "bludgeoning"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_chain_lightning",
+  "name": "Chain Lightning",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 150,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "10d8",
+     "damage_type": "lightning"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_flame_strike",
+  "name": "Flame Strike",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "4d6 + 4d6",
+     "damage_type": "fire"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_meteor_swarm",
+  "name": "Meteor Swarm",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 1000,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "20d6",
+     "damage_type": "fire"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_spiritual_weapon",
+  "name": "Spiritual Weapon",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8",
+     "damage_type": "force"
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l2",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_cure_wounds",
+  "name": "Cure Wounds",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "guaranteed_effect",
+   "primary_attribute": "WIS",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + @attributes.WIS.derived_modifier",
+     "heal": true
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l1",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_healing_word",
+  "name": "Healing Word",
+  "action_cost": {
+   "type": "bonus_action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "guaranteed_effect",
+   "primary_attribute": "WIS",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4 + @attributes.WIS.derived_modifier",
+     "heal": true
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l1",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_mass_cure_wounds",
+  "name": "Mass Cure Wounds",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "guaranteed_effect",
+   "primary_attribute": "WIS",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d8 + @attributes.WIS.derived_modifier",
+     "heal": true
+    }
+   }
+  },
+  "slot_cost": {
+   "pool": "spell_slots_l3",
+   "amount": 1
+  }
+ },
+ {
+  "id": "act_rat_bite",
+  "name": "Rat Bite",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_stirge_drain",
+  "name": "Blood Drain",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d4 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_talons",
+  "name": "Talons",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_grasp",
+  "name": "Grasp",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning",
+     "applied_status": "Restrained"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_engulf",
+  "name": "Engulf",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d6",
+     "damage_type": "acid",
+     "applied_status": "Restrained"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_slam_generic",
+  "name": "Slam",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_golem_slam",
+  "name": "Golem Slam",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d10 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_corrupting_touch",
+  "name": "Corrupting Touch",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CHA",
+   "roll_formula": "1d20 + @attributes.CHA.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d12",
+     "damage_type": "necrotic"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_life_drain",
+  "name": "Life Drain",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8",
+     "damage_type": "necrotic"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_strength_drain",
+  "name": "Strength Drain",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6",
+     "damage_type": "necrotic"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_draining_touch",
+  "name": "Withering Touch",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "WIS",
+   "roll_formula": "1d20 + @attributes.WIS.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "4d8",
+     "damage_type": "necrotic"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_wisp_shock",
+  "name": "Shock",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CHA",
+   "roll_formula": "1d20 + @attributes.CHA.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8",
+     "damage_type": "lightning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_hooves",
+  "name": "Hooves",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d4 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_tail_spikes",
+  "name": "Tail Spikes",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 100,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "DEX",
+   "roll_formula": "1d20 + @attributes.DEX.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.DEX.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_wind_slam",
+  "name": "Wind Slam",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_fire_touch",
+  "name": "Fire Touch",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "fire"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_rock_throw",
+  "name": "Rock Throw",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_giant_axe",
+  "name": "Greataxe (Giant)",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d8 + @attributes.STR.derived_modifier",
+     "damage_type": "slashing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_oni_bite",
+  "name": "Bite (Oni)",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_basilisk_bite",
+  "name": "Bite (Basilisk)",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_wyvern_sting",
+  "name": "Sting",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d8 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing",
+     "applied_status": "Poisoned"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_dragon_bite",
+  "name": "Bite (Dragon)",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d10 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_wyrm_bite",
+  "name": "Wyrm Bite",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d10 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_wyrm_tail",
+  "name": "Wyrm Tail",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "3d6 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_fire_breath_sm",
+  "name": "Fire Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 15,
+   "target_type": "area_of_effect",
+   "shape": "cone",
+   "size_feet": 15
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "6d6",
+     "damage_type": "fire"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_fire_breath_lg",
+  "name": "Fire Breath (Dragon)",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "cone",
+   "size_feet": 30
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "16d8",
+     "damage_type": "fire"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_poison_breath",
+  "name": "Poison Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "cone",
+   "size_feet": 30
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "12d6",
+     "damage_type": "poison"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_cold_breath",
+  "name": "Cold Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "cone",
+   "size_feet": 30
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "10d8",
+     "damage_type": "cold"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_acid_breath_line",
+  "name": "Acid Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "area_of_effect",
+   "shape": "line",
+   "size_feet": 60
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "12d6",
+     "damage_type": "acid"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_tail_sweep",
+  "name": "Tail Sweep",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning",
+     "applied_status": "Prone"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_horn",
+  "name": "Horn",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d10 + @attributes.STR.derived_modifier",
+     "damage_type": "piercing"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_wing_buffet",
+  "name": "Wing Buffet",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "1d6 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning",
+     "applied_status": "Prone"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_eye_ray",
+  "name": "Eye Ray",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8",
+     "damage_type": "force"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_mind_blast",
+  "name": "Mind Blast",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "INT",
+   "roll_formula": "1d20 + @attributes.INT.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "4d8",
+     "damage_type": "psychic"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_pseudopod",
+  "name": "Pseudopod",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning",
+     "applied_status": "Restrained"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_ochre_slam",
+  "name": "Slam",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d6 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_constrict",
+  "name": "Constrict",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 5,
+   "target_type": "single_entity",
+   "size_feet": 0
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "STR",
+   "roll_formula": "1d20 + @attributes.STR.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "2d8 + @attributes.STR.derived_modifier",
+     "damage_type": "bludgeoning",
+     "applied_status": "Restrained"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_breath_lightning",
+  "name": "Lightning Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 60,
+   "target_type": "area_of_effect",
+   "shape": "line",
+   "size_feet": 60
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "8d10",
+     "damage_type": "lightning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_breath_acid_brass",
+  "name": "Fire Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "line",
+   "size_feet": 60
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "10d8",
+     "damage_type": "fire"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_breath_poison_bronze",
+  "name": "Lightning Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "line",
+   "size_feet": 30
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "11d8",
+     "damage_type": "lightning"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_breath_cold_white",
+  "name": "Cold Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "cone",
+   "size_feet": 30
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "8d8",
+     "damage_type": "cold"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_breath_fire_black",
+  "name": "Acid Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "line",
+   "size_feet": 60
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "10d8",
+     "damage_type": "acid"
+    }
+   }
+  }
+ },
+ {
+  "id": "act_breath_fire_blue",
+  "name": "Lightning Breath",
+  "action_cost": {
+   "type": "action",
+   "amount": 1
+  },
+  "targeting": {
+   "range_feet": 30,
+   "target_type": "area_of_effect",
+   "shape": "line",
+   "size_feet": 30
+  },
+  "resolution": {
+   "type": "target_dc",
+   "primary_attribute": "CON",
+   "roll_formula": "1d20 + @attributes.CON.derived_modifier",
+   "vs_defense": "armor_class",
+   "outcomes": {
+    "on_success": {
+     "formula": "12d10",
+     "damage_type": "lightning"
+    }
+   }
+  }
+ }
+]

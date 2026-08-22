@@ -382,6 +382,15 @@ impl SessionRegistry {
                 .map_err(|e| e.to_string())?;
             let repo = auto_dm_engine::SqliteRepository::new(pool);
 
+            // Idempotent: tops up content added to the preset library since
+            // this session's database was first created.
+            match crate::presets::seed_content(&repo).await {
+                Ok((actions, monsters)) => {
+                    tracing::info!(session = %session_id, actions, monsters, "preset content topped up");
+                }
+                Err(e) => tracing::warn!(session = %session_id, "preset seeding failed: {e}"),
+            }
+
             let pipeline = self.build_pipeline();
             let model_name = self.ollama_model.read().unwrap().clone();
 
@@ -704,6 +713,14 @@ impl SessionRegistry {
             .await
             .map_err(|e| e.to_string())?;
         let repo = auto_dm_engine::SqliteRepository::new(pool);
+
+        // Ship every new session with the full preset bestiary + action vault.
+        match crate::presets::seed_content(&repo).await {
+            Ok((actions, monsters)) => {
+                tracing::info!(actions, monsters, "preset content seeded");
+            }
+            Err(e) => tracing::warn!("preset seeding failed (session continues without): {e}"),
+        }
 
         let pipeline = self.build_pipeline();
         let model_name = self.ollama_model.read().unwrap().clone();

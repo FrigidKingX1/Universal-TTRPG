@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+mod presets;
 mod session;
 use session::{GameMode, SessionRegistry, TurnCheck, WsMessage};
 
