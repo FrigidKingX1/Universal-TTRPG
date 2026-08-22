@@ -15,6 +15,8 @@ export function Scenes() {
   const setActiveScene = useStore((s) => s.setActiveScene);
   const deleteScene = useStore((s) => s.deleteScene);
   const completeScene = useStore((s) => s.completeScene);
+  const episodeSummaries = useStore((s) => s.episodeSummaries);
+  const summarizeScene = useStore((s) => s.summarizeScene);
   const { confirm, dialog } = useConfirmDialog();
   const [title, setTitle] = useState("");
   const [cf, setCf] = useState(5);
@@ -124,6 +126,36 @@ export function Scenes() {
         </button>
         {showExploration && <ExplorationPanel />}
       </div>
+
+      {/* ── Episodic Summaries ─────────────────────────────────── */}
+      {activeSceneId && (
+        <div style={{ marginTop: "0.75rem" }}>
+          <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Episodic Summaries</span>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: "0.75rem" }}
+              onClick={() => void summarizeScene(activeSceneId)}
+            >
+              Generate Summary
+            </button>
+          </div>
+          {episodeSummaries.filter((s) => s.scene_id === activeSceneId).length > 0 && (
+            <div style={{ marginTop: "0.4rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              {episodeSummaries
+                .filter((s) => s.scene_id === activeSceneId)
+                .map((ep) => (
+                  <div key={ep.id} style={{ fontSize: "0.8rem", padding: "0.4rem", background: "var(--bg-secondary, #1a1a2e)", borderRadius: "4px" }}>
+                    <div style={{ fontSize: "0.7rem", opacity: 0.5, marginBottom: "0.2rem" }}>
+                      {new Date(ep.created_at).toLocaleString()}
+                    </div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{ep.summary}</div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {dialog}
 

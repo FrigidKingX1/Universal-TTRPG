@@ -249,6 +249,15 @@ export const backend = {
   deleteNpcCharacter: (id: string) =>
     invoke<boolean>("delete_npc_character", { id }),
 
+  // ── Episodic Summaries ────────────────────────────────────────────
+
+  summarizeScene: (sceneId: string) =>
+    invoke<EpisodicSummaryRow>("summarize_scene", { sceneId }),
+  listEpisodicSummaries: (sceneId: string) =>
+    invoke<EpisodicSummaryRow[]>("list_episodic_summaries", { sceneId }),
+  checkSummaryStale: (sceneId: string, lastLogId: string) =>
+    invoke<boolean>("check_summary_stale", { sceneId, lastLogId }),
+
   // ── Campaign Generation Pipeline ───────────────────────────────────────
 
   generateCampaign: (concept: string, levelRange?: string, sceneCount?: number) =>
@@ -320,6 +329,14 @@ export interface NpcCharacterRow {
   leverage: string | null;
   flaw: string | null;
   flaw_revealed: boolean;
+  created_at: string;
+}
+
+export interface EpisodicSummaryRow {
+  id: string;
+  scene_id: string;
+  summary: string;
+  last_log_id: string;
   created_at: string;
 }
 

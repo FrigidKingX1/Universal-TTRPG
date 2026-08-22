@@ -12,6 +12,7 @@ import type {
   DmResponse,
   EncounterStatBlock,
   EngineOutcome,
+  EpisodicSummary,
   EventMeaning,
   ExplorationNode,
   ExplorationZone,
@@ -167,6 +168,10 @@ export interface AutoDmState {
   deleteNpcCharacter: (id: string) => Promise<void>;
   updateNpcPillars: (id: string, drive?: string, leverage?: string, flaw?: string) => Promise<void>;
   revealNpcFlaw: (id: string) => Promise<void>;
+
+  // Episodic Summaries
+  episodeSummaries: EpisodicSummary[];
+  summarizeScene: (sceneId: string) => Promise<void>;
 
   // Doom Clocks
   doomClocks: DoomClock[];
@@ -442,6 +447,20 @@ export const useStore = create<AutoDmState>()(
       try {
         doomClocks = await backend.listDoomClocks();
       } catch { /* best-effort */ }
+      // Load episodic summaries for the active scene.
+      let episodeSummaries: EpisodicSummary[] = [];
+      if (activeSceneId) {
+        try {
+          const rows = await backend.listEpisodicSummaries(activeSceneId);
+          episodeSummaries = rows.map((r) => ({
+            id: r.id,
+            scene_id: r.scene_id,
+            summary: r.summary,
+            last_log_id: r.last_log_id,
+            created_at: r.created_at,
+          }));
+        } catch { /* best-effort */ }
+      }
       // Load exploration zones.
       let explorationZones: ExplorationZone[] = [];
       try {
@@ -461,6 +480,7 @@ export const useStore = create<AutoDmState>()(
         plotThreads,
         npcCharacters,
         doomClocks,
+        episodeSummaries,
         explorationZones,
         // Auto-select the first character so the tabletop command deck and DM
         // context have an actor; the user can change it in the Characters view.
@@ -1297,6 +1317,28 @@ export const useStore = create<AutoDmState>()(
         ),
       }));
       get().showToast("Flaw revealed!");
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  // ── Episodic Summaries ──────────────────────────────────────────
+
+  episodeSummaries: [],
+
+  summarizeScene: async (sceneId) => {
+    try {
+      get().showToast("Generating episode summary...");
+      const row = await backend.summarizeScene(sceneId);
+      const summary: EpisodicSummary = {
+        id: row.id,
+        scene_id: row.scene_id,
+        summary: row.summary,
+        last_log_id: row.last_log_id,
+        created_at: row.created_at,
+      };
+      set((s) => ({ episodeSummaries: [...s.episodeSummaries, summary] }));
+      get().showToast("Episode summary generated!");
     } catch (e) {
       get().showToast(`Error: ${e}`);
     }

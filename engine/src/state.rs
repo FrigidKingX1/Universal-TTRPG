@@ -133,6 +133,16 @@ pub trait Repository: Send + Sync {
     async fn load_stream_checkpoint(&self, id: &str) -> Result<Option<String>, DbError>;
     async fn clear_stream_checkpoint(&self, id: &str) -> Result<(), DbError>;
 
+    // Episodic summaries (compressed scene recaps)
+    async fn save_episodic_summary(
+        &self,
+        scene_id: &str,
+        summary: &str,
+        last_log_id: &str,
+    ) -> Result<EpisodicSummary, DbError>;
+    async fn list_episodic_summaries(&self, scene_id: &str) -> Result<Vec<EpisodicSummary>, DbError>;
+    async fn delete_episodic_summary(&self, id: &str) -> Result<bool, DbError>;
+
     // Plot Threads
     async fn save_thread(
         &self,
@@ -401,6 +411,31 @@ pub struct CampaignExport {
     pub npc_characters: Vec<NpcCharacterRow>,
 }
 
+/// A compressed prose recap of a completed scene/episode.
+///
+/// `last_log_id` records which log entry the summary covers up to.
+/// On audit-log rewind, if that entry was deleted, the summary is stale
+/// and should be flagged or regenerated — see [`is_summary_stale`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EpisodicSummary {
+    pub id: String,
+    pub scene_id: String,
+    pub summary: String,
+    /// The ID of the last log entry this summary covers.
+    /// If that entry no longer exists in the log, the summary is stale.
+    pub last_log_id: String,
+    pub created_at: String,
+}
+
+/// Pure check: is an episodic summary stale given the current log?
+///
+/// A summary is stale if its `last_log_id` no longer appears in the
+/// scene's log — meaning events were deleted (rewind) or the log was
+/// cleared.  This is golden-testable without a database.
+pub fn is_summary_stale(last_log_id: &str, current_log_ids: &[String]) -> bool {
+    !current_log_ids.iter().any(|id| id == last_log_id)
+}
+
 /// SQLite-backed repository using an async connection pool.
 #[derive(Clone)]
 pub struct SqliteRepository {
@@ -583,6 +618,13 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
             content TEXT NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
+        "CREATE TABLE IF NOT EXISTS episodic_summaries (
+            id TEXT PRIMARY KEY,
+            scene_id TEXT NOT NULL REFERENCES campaign_scenes(id) ON DELETE CASCADE,
+            summary TEXT NOT NULL,
+            last_log_id TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
         // Indexes for hot query paths (idempotent).
         "CREATE INDEX IF NOT EXISTS idx_log_entries_scene_ts ON log_entries(scene_id, timestamp);",
         "CREATE INDEX IF NOT EXISTS idx_loot_entries_scene ON loot_entries(scene_id);",
@@ -590,6 +632,7 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
         "CREATE INDEX IF NOT EXISTS idx_exploration_nodes_zone ON exploration_nodes(zone_id);",
         "CREATE INDEX IF NOT EXISTS idx_plot_threads_status ON plot_threads(status);",
         "CREATE INDEX IF NOT EXISTS idx_scenes_active ON campaign_scenes(is_active);",
+        "CREATE INDEX IF NOT EXISTS idx_episodic_summaries_scene ON episodic_summaries(scene_id);",
     ];
     let mut tx = pool.begin().await?;
     for stmt in schema {
@@ -1404,6 +1447,45 @@ impl Repository for SqliteRepository {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    // ── Episodic summaries ─────────────────────────────────────────
+
+    async fn save_episodic_summary(
+        &self,
+        scene_id: &str,
+        summary: &str,
+        last_log_id: &str,
+    ) -> Result<EpisodicSummary, DbError> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let created_at = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO episodic_summaries (id, scene_id, summary, last_log_id, created_at)
+             VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(scene_id)
+        .bind(summary)
+        .bind(last_log_id)
+        .bind(&created_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(EpisodicSummary { id, scene_id: scene_id.to_string(), summary: summary.to_string(), last_log_id: last_log_id.to_string(), created_at })
+    }
+
+    async fn list_episodic_summaries(&self, scene_id: &str) -> Result<Vec<EpisodicSummary>, DbError> {
+        let rows: Vec<(String, String, String, String, String)> = sqlx::query_as(
+            "SELECT id, scene_id, summary, last_log_id, created_at FROM episodic_summaries WHERE scene_id = ? ORDER BY created_at ASC",
+        )
+        .bind(scene_id)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows.into_iter().map(|(id, scene_id, summary, last_log_id, created_at)| EpisodicSummary { id, scene_id, summary, last_log_id, created_at }).collect())
+    }
+
+    async fn delete_episodic_summary(&self, id: &str) -> Result<bool, DbError> {
+        let r = sqlx::query("DELETE FROM episodic_summaries WHERE id = ?").bind(id).execute(&self.pool).await?;
+        Ok(r.rows_affected() > 0)
     }
 
     // Ã¢â€â‚¬Ã¢â€â‚¬ Plot Threads Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -2342,5 +2424,22 @@ mod tests {
         assert!(repo.delete_exploration_zone("z1").await.expect("delete zone"));
         assert!(repo.list_exploration_nodes("z1").await.expect("list").is_empty());
         assert!(repo.list_exploration_zones().await.expect("list zones").is_empty());
+    }
+
+    // ── Golden tests: is_summary_stale ─────────────────────────────
+
+    #[test]
+    fn stale_when_log_id_absent() {
+        assert!(is_summary_stale("log-42", &["log-1".into(), "log-2".into()]));
+    }
+
+    #[test]
+    fn fresh_when_log_id_present() {
+        assert!(!is_summary_stale("log-2", &["log-1".into(), "log-2".into(), "log-3".into()]));
+    }
+
+    #[test]
+    fn stale_when_log_is_empty() {
+        assert!(is_summary_stale("log-1", &[]));
     }
 }

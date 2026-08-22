@@ -17,7 +17,7 @@ pub use session::{
     apply_session_effects, remember, resolve_entity_descriptor, EntityRef, ResolveResult,
 };
 pub use state::{
-    backup_before_migrate, open_pool, run_migrations, CampaignExport, DoomClockRow, GameState,
-    ExplorationNodeRow, ExplorationZoneRow, LootRow, LogEntry, NpcCharacterRow, NpcNoteRow,
-    Repository, Scene, SqliteRepository, ThreadRow,
+    backup_before_migrate, is_summary_stale, open_pool, run_migrations, CampaignExport,
+    DoomClockRow, EpisodicSummary, GameState, ExplorationNodeRow, ExplorationZoneRow, LootRow,
+    LogEntry, NpcCharacterRow, NpcNoteRow, Repository, Scene, SqliteRepository, ThreadRow,
 };

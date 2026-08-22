@@ -433,3 +433,11 @@ export interface CampaignGenerationResult {
   lines: string[];
   veils: string[];
 }
+
+export interface EpisodicSummary {
+  id: string;
+  scene_id: string;
+  summary: string;
+  last_log_id: string;
+  created_at: string;
+}

@@ -1665,3 +1665,85 @@ pub async fn reveal_flaw(state: State<'_, GameState>, id: String) -> CmdResult<(
 pub async fn delete_npc_character(state: State<'_, GameState>, id: String) -> CmdResult<bool> {
     state.repo.delete_npc_character(&id).await.map_err(err)
 }
+
+/// Generate an episodic summary for a scene by compressing its log entries
+/// into prose.  The LLM call lives here (command layer) rather than in the
+/// engine crate so the deterministic core stays free of Ollama dependencies.
+#[tauri::command]
+pub async fn summarize_scene(
+    state: State<'_, GameState>,
+    scene_id: String,
+) -> CmdResult<auto_dm_engine::EpisodicSummary> {
+    let logs = state
+        .repo
+        .list_logs(&scene_id, 500)
+        .await
+        .map_err(err)?;
+
+    if logs.is_empty() {
+        return Err("No log entries to summarize.".into());
+    }
+
+    let last_log_id = logs.last().unwrap().id.clone();
+
+    let log_text: String = logs
+        .iter()
+        .map(|l| format!("[{}] {}: {}", l.timestamp, l.speaker, l.content))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let system = "You are a concise RPG session recorder. Compress the following \
+        campaign log into a short episodic summary (2-4 paragraphs). Focus on \
+        key events, decisions, and consequences. Write in past tense. \
+        Do NOT invent events not present in the log.";
+
+    let pipeline = {
+        let dm = state.dm.lock().await;
+        dm.as_ref()
+            .cloned()
+            .ok_or_else(|| "DM backend not initialized".to_string())?
+    };
+
+    let summary_text = pipeline
+        .backend()
+        .complete(system, &log_text, Some(512))
+        .await
+        .map_err(err)?;
+
+    let record = state
+        .repo
+        .save_episodic_summary(&scene_id, &summary_text, &last_log_id)
+        .await
+        .map_err(err)?;
+
+    Ok(record)
+}
+
+/// List episodic summaries for a scene.
+#[tauri::command]
+pub async fn list_episodic_summaries(
+    state: State<'_, GameState>,
+    scene_id: String,
+) -> CmdResult<Vec<auto_dm_engine::EpisodicSummary>> {
+    state
+        .repo
+        .list_episodic_summaries(&scene_id)
+        .await
+        .map_err(err)
+}
+
+/// Check whether an episodic summary is stale (its last_log_id was deleted).
+#[tauri::command]
+pub async fn check_summary_stale(
+    state: State<'_, GameState>,
+    scene_id: String,
+    last_log_id: String,
+) -> CmdResult<bool> {
+    let logs = state
+        .repo
+        .list_logs(&scene_id, 10_000)
+        .await
+        .map_err(err)?;
+    let ids: Vec<String> = logs.into_iter().map(|l| l.id).collect();
+    Ok(auto_dm_engine::is_summary_stale(&last_log_id, &ids))
+}
