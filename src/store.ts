@@ -138,6 +138,7 @@ export interface AutoDmState {
   rollDeathSave: (entityId: string) => Promise<void>;
   /** entityId → action name the entity is concentrating on. */
   concentration: Record<string, string>;
+  dropConcentration: (entityId: string) => void;
   lastHpChange: { entityId: string; previousHp: number; newHp: number } | null;
   undoLastHpChange: () => void;
   exportCampaign: () => Promise<string>;
@@ -266,6 +267,21 @@ export function newCharacter(name: string): CharacterProfile {
 
 export const entityName = (e: CharacterProfile | EncounterStatBlock): string =>
   "identity" in e ? e.identity.name : e.name;
+
+/** Shared concentration-clearing logic (voluntary drop / toggle-off). */
+function dropConcentrationRecord(
+  entityId: string,
+  set: (fn: (s: AutoDmState) => Partial<AutoDmState>) => void,
+): void {
+  set((s) => ({
+    concentration: Object.fromEntries(Object.entries(s.concentration).filter(([id]) => id !== entityId)),
+    combatantConditions: {
+      ...s.combatantConditions,
+      [entityId]: (s.combatantConditions[entityId] ?? []).filter((c) => c !== "Concentrating"),
+    },
+  }));
+  persistCombat();
+}
 
 /**
  * Pools (other than HP) whose reset_condition matches this rest type,
@@ -938,6 +954,20 @@ export const useStore = create<AutoDmState>()(
         persistCombat();
       }
     }
+    // Incapacitation ends concentration outright.
+    if (
+      outcome.target_status === "DEFEATED" &&
+      get().concentration[target.id]
+    ) {
+      set((s) => ({
+        concentration: Object.fromEntries(Object.entries(s.concentration).filter(([id]) => id !== target.id)),
+        combatantConditions: {
+          ...s.combatantConditions,
+          [target.id]: (s.combatantConditions[target.id] ?? []).filter((c) => c !== "Concentrating"),
+        },
+      }));
+      persistCombat();
+    }
     set((s) => ({
       lastCombat: outcome,
       lastHpChange: { entityId: target.id, previousHp: prevHp, newHp: outcome.target_hp_remaining },
@@ -1117,6 +1147,7 @@ export const useStore = create<AutoDmState>()(
       return { combatantConditions: { ...s.combatantConditions, [entityId]: updated } };
     });
     persistCombat();
+    if (condition === "Concentrating") dropConcentrationRecord(entityId, set);
     // Fire-and-forget: sync condition to server in multiplayer.
     if (isInMultiplayerSession()) {
       const current = get().combatantConditions[entityId] ?? [];
@@ -1124,10 +1155,13 @@ export const useStore = create<AutoDmState>()(
       (async () => {
         try {
           const client = (await import("./multiplayer")).getMultiplayerClient();
-          await client?.combatCondition(entityId, condition, add);
-        } catch { /* best-effort */ }
+          await client?.combatCondition(entityId, condition, add);        } catch { /* best-effort */ }
       })();
     }
+  },
+
+  dropConcentration: (entityId) => {
+    dropConcentrationRecord(entityId, set);
   },
 
   showToast: (message: string, type: "info" | "success" | "warning" | "error" = "info", duration = 3000) => {

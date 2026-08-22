@@ -309,9 +309,13 @@ export function Combat() {
                 {hp.status && <span className="badge">{hp.status}</span>}
                 {isCurrentTurn && <span className="badge turn-badge">active</span>}
                 {concentration[e.value.id] && (
-                  <span className="badge conc-badge" title="Ends if the caster takes damage and fails a CON save">
-                    ◎ {concentration[e.value.id]}
-                  </span>
+                  <button
+                    className="badge conc-badge"
+                    title="Click to end concentration voluntarily — Ends if the caster takes damage and fails a CON save"
+                    onClick={() => useStore.getState().dropConcentration(e.value.id)}
+                  >
+                    ◎ {concentration[e.value.id]} ✕
+                  </button>
                 )}
               </div>
               <div className="hp-row">

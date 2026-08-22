@@ -629,4 +629,35 @@ describe("Concentration", () => {
     const state = useStore.getState();
     expect(Object.keys(state.concentration)).toHaveLength(0);
   });
+
+  it("being defeated ends concentration outright", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 25, detail: "save ok" });
+    const { caster, target, spell } = setUpCaster();
+    await useStore.getState().runAttack(caster, target, spell.id);
+
+    // A killing blow: status DEFEATED bypasses the save path entirely.
+    vi.mocked(backend.combatAttack).mockResolvedValue({
+      attack_result: "HIT", attack_roll: 20, target_ac: 10,
+      damage_dealt: 50, heal_amount: 0,
+      target_hp_remaining: 0, target_status: "DEFEATED",
+    } as never);
+    await useStore.getState().runAttack(target, caster, "act_cure_wounds");
+
+    const state = useStore.getState();
+    expect(state.concentration[caster.id]).toBeUndefined();
+    expect(state.combatantConditions[caster.id] ?? []).not.toContain("Concentrating");
+  });
+
+  it("dropConcentration clears the record and condition voluntarily", async () => {
+    const { caster, target, spell } = setUpCaster();
+    await useStore.getState().runAttack(caster, target, spell.id);
+    expect(useStore.getState().concentration[caster.id]).toBeDefined();
+
+    useStore.getState().dropConcentration(caster.id);
+
+    const state = useStore.getState();
+    expect(state.concentration[caster.id]).toBeUndefined();
+    expect(state.combatantConditions[caster.id] ?? []).not.toContain("Concentrating");
+  });
 });
