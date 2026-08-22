@@ -1,4 +1,6 @@
-use auto_dm_engine::{apply_session_effects, combatant_from_value, remember, GameState, Repository};
+use auto_dm_engine::{
+    apply_session_effects, combatant_from_value, remember, tick_idle_clocks, GameState, Repository,
+};
 use auto_dm_core::dice::DiceEngine;
 use auto_dm_core::engine::{
     execute_attack, roll_initiative, Combatant, EngineOutcome, PrerequisiteCheck,
@@ -806,7 +808,18 @@ pub async fn dm_resolve(
             .ok_or_else(|| "DM backend not initialized".to_string())?
     };
     let mut response = pipeline.resolve_action(&request).await.map_err(err)?;
-    let events = apply_session_effects(&state, &request, &mut response).await;
+    let mut events = apply_session_effects(&state, &request, &mut response).await;
+    // Idle clock ticking: if the log tail shows N consecutive idle
+    // entries, advance all active doom clocks by 1.
+    if let Some(ref scene_id) = request.scene_id {
+        let idle_events = tick_idle_clocks(&state, scene_id).await;
+        if !idle_events.is_empty() {
+            for e in &idle_events {
+                response.mechanical_events.push(e.describe());
+            }
+            events.extend(idle_events);
+        }
+    }
     if !events.is_empty() {
         emit(&app, "game:events", &events);
     }

@@ -356,6 +356,82 @@ pub async fn apply_session_effects(
     events
 }
 
+// ── Idle clock ticking ───────────────────────────────────────────────
+
+/// Snapshot types that count as "idle" — no mechanical game-state mutation.
+/// SceneUpdated and NpcSpoke are narrative; ClockAdvanced, DamageApplied,
+/// ConditionApplied, ItemAdded are mechanical mutations that reset idle.
+fn snapshot_is_idle(payload: &serde_json::Value) -> bool {
+    match payload.get("type").and_then(|v| v.as_str()) {
+        Some("clock_advanced") => false,
+        Some("damage_applied") => false,
+        Some("condition_applied") => false,
+        Some("item_added") => false,
+        // SceneUpdated, None, or anything else = idle.
+        _ => true,
+    }
+}
+
+/// Count consecutive idle entries at the tail of the log (most-recent
+/// first).  Derived from the live log so rewind invalidates the count
+/// automatically — no standalone counter to drift.
+pub fn count_idle_trail(logs: &[crate::state::LogEntry]) -> usize {
+    let mut count = 0;
+    for entry in logs.iter().rev() {
+        match &entry.payload {
+            Some(p) if snapshot_is_idle(p) => count += 1,
+            None => count += 1,
+            _ => break,
+        }
+    }
+    count
+}
+
+/// Threshold: after this many consecutive idle entries, doom clocks tick.
+const IDLE_TICK_THRESHOLD: u32 = 3;
+
+/// If the log tail shows `IDLE_TICK_THRESHOLD` or more consecutive idle
+/// entries, advance every active doom clock by 1.  Returns the events
+/// emitted (zero or more `ClockAdvanced`) so the caller can broadcast.
+pub async fn tick_idle_clocks(state: &GameState, scene_id: &str) -> Vec<GameEvent> {
+    let logs = state
+        .repo
+        .list_logs(scene_id, 100)
+        .await
+        .unwrap_or_default();
+    let idle = count_idle_trail(&logs) as u32;
+    if idle < IDLE_TICK_THRESHOLD {
+        return vec![];
+    }
+    let clocks = state.repo.list_doom_clocks().await.unwrap_or_default();
+    let mut events = Vec::new();
+    for cl in clocks.iter().filter(|c| c.active) {
+        let prev_current = cl.current;
+        let prev_max = cl.max;
+        if let Ok(Some((_current, _max))) =
+            state.repo.advance_doom_clock(&cl.id, 1).await
+        {
+            let snapshot = serde_json::to_value(&Snapshot::ClockAdvanced {
+                clock_id: cl.id.clone(),
+                previous_current: prev_current,
+                previous_max: prev_max,
+            })
+            .ok();
+            let _ = state
+                .repo
+                .append_log(
+                    scene_id,
+                    "system",
+                    &format!("Clock '{}' advanced by 1 (idle)", cl.label),
+                    snapshot,
+                )
+                .await;
+            events.push(GameEvent::ClockAdvanced { clock_id: cl.id.clone(), ticks: 1 });
+        }
+    }
+    events
+}
+
 // ── Audit-log rewind ─────────────────────────────────────────────────
 
 /// Non-destructive history rewind: restore entity state from snapshots
@@ -539,5 +615,88 @@ mod tests {
     fn empty_descriptor_is_not_found() {
         let entities = vec![cultist("c1", "Cultist")];
         assert_eq!(resolve_entity_descriptor("", &entities), ResolveResult::NotFound);
+    }
+
+    // ── Golden tests: idle trail detection ─────────────────────────
+
+    fn log_with_snapshot(id: &str, snapshot_type: &str) -> crate::state::LogEntry {
+        crate::state::LogEntry {
+            id: id.into(),
+            scene_id: Some("s1".into()),
+            speaker: "system".into(),
+            content: "test".into(),
+            payload: Some(serde_json::json!({ "type": snapshot_type })),
+            timestamp: id.into(),
+        }
+    }
+
+    fn log_without_snapshot(id: &str) -> crate::state::LogEntry {
+        crate::state::LogEntry {
+            id: id.into(),
+            scene_id: Some("s1".into()),
+            speaker: "system".into(),
+            content: "test".into(),
+            payload: None,
+            timestamp: id.into(),
+        }
+    }
+
+    #[test]
+    fn idle_trail_all_scene_updated() {
+        let logs = vec![
+            log_with_snapshot("1", "scene_updated"),
+            log_with_snapshot("2", "scene_updated"),
+            log_with_snapshot("3", "scene_updated"),
+        ];
+        assert_eq!(count_idle_trail(&logs), 3);
+    }
+
+    #[test]
+    fn idle_trail_clock_advanced_breaks_streak() {
+        let logs = vec![
+            log_with_snapshot("1", "scene_updated"),
+            log_with_snapshot("2", "clock_advanced"),
+            log_with_snapshot("3", "scene_updated"),
+            log_with_snapshot("4", "scene_updated"),
+        ];
+        // Scanning from most-recent: 4=scene_updated, 3=scene_updated, 2=clock_advanced (breaks)
+        assert_eq!(count_idle_trail(&logs), 2);
+    }
+
+    #[test]
+    fn idle_trail_no_snapshots_counted() {
+        let logs = vec![
+            log_without_snapshot("1"),
+            log_without_snapshot("2"),
+            log_without_snapshot("3"),
+        ];
+        assert_eq!(count_idle_trail(&logs), 3);
+    }
+
+    #[test]
+    fn idle_trail_mixed_breaks_at_mechanical() {
+        let logs = vec![
+            log_without_snapshot("1"),
+            log_with_snapshot("2", "scene_updated"),
+            log_with_snapshot("3", "damage_applied"),
+            log_without_snapshot("4"),
+        ];
+        // Most-recent: 4=None, 3=damage_applied (breaks)
+        assert_eq!(count_idle_trail(&logs), 1);
+    }
+
+    #[test]
+    fn idle_trail_empty_log() {
+        let logs: Vec<crate::state::LogEntry> = vec![];
+        assert_eq!(count_idle_trail(&logs), 0);
+    }
+
+    #[test]
+    fn idle_trail_condition_applied_breaks() {
+        let logs = vec![
+            log_with_snapshot("1", "scene_updated"),
+            log_with_snapshot("2", "condition_applied"),
+        ];
+        assert_eq!(count_idle_trail(&logs), 0);
     }
 }
