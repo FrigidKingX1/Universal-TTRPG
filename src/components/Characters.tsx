@@ -270,12 +270,19 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
     setLevel(newLevel);
     setMaxHp(maxHp + hpGain);
     setHp(hp + hpGain);
-    // Caster progression: every resource pool grows by one use per level.
-    setExtraPools((pools) =>
-      Object.fromEntries(
+    // Caster progression: existing pools grow by one use, and class
+    // unlocks grant new tiers (e.g. spell_slots_l2 at level 3).
+    setExtraPools((pools) => {
+      const next = Object.fromEntries(
         Object.entries(pools).map(([k, p]) => [k, { ...p, maximum: p.maximum + 1 }]),
-      ),
-    );
+      );
+      for (const u of template?.pool_unlocks ?? []) {
+        if (u.level === newLevel && !next[u.pool]) {
+          next[u.pool] = { current: u.amount, maximum: u.amount, temporary: 0, reset_condition: "long_rest" };
+        }
+      }
+      return next;
+    });
   };
 
   const addAbility = () => {

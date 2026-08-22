@@ -130,6 +130,22 @@ describe("Preset actions", () => {
     }
     // Healing Word is the classic quick bonus-action pick-me-up.
     expect(word.action_cost.type).toBe("bonus_action");
+    // Tiered slots: basic heals draw l1, Mass Cure Wounds draws l3.
+    expect(cure.slot_cost?.pool).toBe("spell_slots_l1");
+    expect(word.slot_cost?.pool).toBe("spell_slots_l1");
+    expect(mass.slot_cost?.pool).toBe("spell_slots_l3");
+  });
+
+  it("caster classes unlock higher slot tiers as they level", () => {
+    const cleric = PRESET_CLASSES.find((c) => c.id === "cleric")!;
+    const wizard = PRESET_CLASSES.find((c) => c.id === "wizard")!;
+    const ranger = PRESET_CLASSES.find((c) => c.id === "ranger")!;
+    expect(cleric.pool_unlocks).toContainEqual({ level: 3, pool: "spell_slots_l2", amount: 2 });
+    expect(cleric.pool_unlocks).toContainEqual({ level: 5, pool: "spell_slots_l3", amount: 2 });
+    expect(wizard.pool_unlocks).toContainEqual({ level: 3, pool: "spell_slots_l2", amount: 2 });
+    expect(ranger.pool_unlocks).toContainEqual({ level: 5, pool: "spell_slots_l2", amount: 2 });
+    // Martials never unlock spell tiers.
+    expect(PRESET_CLASSES.find((c) => c.id === "fighter")!.pool_unlocks ?? []).toEqual([]);
   });
 
   it("cleric starts with healing options", () => {

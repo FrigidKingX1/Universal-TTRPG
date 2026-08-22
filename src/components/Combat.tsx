@@ -130,8 +130,24 @@ export function Combat() {
     return matched.length > 0 ? matched : actions;
   })();
 
-  const quickHpAdjust = (entity: CharacterProfile | EncounterStatBlock, isChar: boolean, amount: number) => {
-    const previousHp = combatantStates[entity.id]?.hit_points ?? (isChar ? (entity as CharacterProfile).resource_pools.hp?.current ?? 0 : (entity as EncounterStatBlock).hit_points.current);
+  // Slot gate: character casters must have the resource an action costs.
+  const slotGate = (() => {
+    const attacker = resolve(attackerKey);
+    if (!attacker || !("identity" in attacker)) return { ok: true, isChar: false };
+    const cost = actions.find((a) => a.id === actionId)?.slot_cost;
+    if (!cost) return { ok: true, isChar: true };
+    const pool = attacker.resource_pools[cost.pool];
+    return {
+      ok: (pool?.current ?? 0) >= cost.amount,
+      isChar: true,
+      remaining: pool?.current ?? 0,
+      maximum: pool?.maximum ?? 0,
+      required: cost.amount,
+      poolName: cost.pool.replace(/_/g, " "),
+    };
+  })();
+
+  const quickHpAdjust = (entity: CharacterProfile | EncounterStatBlock, isChar: boolean, amount: number) => {    const previousHp = combatantStates[entity.id]?.hit_points ?? (isChar ? (entity as CharacterProfile).resource_pools.hp?.current ?? 0 : (entity as EncounterStatBlock).hit_points.current);
     if (isChar) {
       const c = characters.find((x) => x.id === entity.id);
       if (!c) return;
@@ -457,17 +473,30 @@ export function Combat() {
           Action
           <select value={actionId} onChange={(e) => setActionId(e.currentTarget.value)}>
             <option value="">—</option>
-            {attackerActions.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
+            {attackerActions.map((a) => {
+              const cost = slotGate.isChar ? a.slot_cost : undefined;
+              const attacker = cost ? resolve(attackerKey) : undefined;
+              const pool =
+                attacker && "identity" in attacker && cost
+                  ? attacker.resource_pools?.[cost.pool]
+                  : undefined;
+              return (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {cost ? ` · ${pool ? `${pool.current}/${pool.maximum}` : "0"} ${cost.pool.replace(/_/g, " ")}` : ""}
+                </option>
+              );
+            })}
           </select>
         </label>
       </div>
       <div className="row">
-        <button onClick={() => void attack()} disabled={busy}>
-          {busy ? "Rolling…" : "Attack"}
+        <button
+          onClick={() => void attack()}
+          disabled={busy || !slotGate.ok}
+          title={!slotGate.ok ? `No ${slotGate.poolName} left (needs ${slotGate.required})` : undefined}
+        >
+          {busy ? "Rolling…" : !slotGate.ok ? "No slots" : "Attack"}
         </button>
         <button onClick={initiative}>Roll Initiative</button>
       </div>

@@ -65,6 +65,7 @@ const mkHeal = (
   attr: "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA",
   rangeFeet = 5,
   costType: "action" | "bonus_action" = "action",
+  slotPool = "spell_slots_l1",
 ): ActionDefinition => ({
   id,
   name,
@@ -78,8 +79,8 @@ const mkHeal = (
       on_success: { formula, damage_type: undefined, applied_status: undefined, heal: true },
     },
   },
-  // All healing spells draw from the caster's level-1 spell slot pool.
-  slot_cost: { pool: "spell_slots_l1", amount: 1 },
+  // Healing spells draw from the caster's spell-slot pool for their tier.
+  slot_cost: { pool: slotPool, amount: 1 },
 });
 
 /** Spell-like abilities for casters (attack-roll approximation of save spells). */
@@ -112,7 +113,7 @@ export const SPELL_ACTIONS: ActionDefinition[] = [
   // Healing spells (heal-outcome path — restore HP on the target).
   mkHeal("act_cure_wounds", "Cure Wounds", "2d8 + @attributes.WIS.derived_modifier", "WIS"),
   mkHeal("act_healing_word", "Healing Word", "1d4 + @attributes.WIS.derived_modifier", "WIS", 60, "bonus_action"),
-  mkHeal("act_mass_cure_wounds", "Mass Cure Wounds", "3d8 + @attributes.WIS.derived_modifier", "WIS", 60),
+  mkHeal("act_mass_cure_wounds", "Mass Cure Wounds", "3d8 + @attributes.WIS.derived_modifier", "WIS", 60, "action", "spell_slots_l3"),
 ];
 
 /** Monster-specific attacks shared across creatures. */

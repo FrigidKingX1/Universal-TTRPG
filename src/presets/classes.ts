@@ -30,6 +30,8 @@ export interface ClassTemplate {
   suggested_attributes: Record<string, number>;
   /** Extra resource pools beyond HP (rage uses, spell slots...). */
   starting_pools: { name: string; maximum: number; reset_condition: ResetCondition }[];
+  /** Pools unlocked when the character reaches a given level (higher spell tiers). */
+  pool_unlocks?: { level: number; pool: string; amount: number }[];
   /** ActionDefinition IDs granted at creation. Must exist in CLASS_ACTIONS or the global action pool. */
   starting_abilities: string[];
   /** Starting equipment. First item marked equipped. */
@@ -157,6 +159,7 @@ export const PRESET_CLASSES: ClassTemplate[] = [
     starting_pools: [
       { name: "spell_slots_l1", maximum: 2, reset_condition: "long_rest" },
     ],
+    pool_unlocks: [{ level: 5, pool: "spell_slots_l2", amount: 2 }],
     starting_abilities: ["act_longbow", "act_shortsword"],
     starting_items: [
       { name: "Longbow", quantity: 1, weight: 2 },
@@ -182,6 +185,10 @@ export const PRESET_CLASSES: ClassTemplate[] = [
     starting_pools: [
       { name: "spell_slots_l1", maximum: 2, reset_condition: "long_rest" },
     ],
+    pool_unlocks: [
+      { level: 3, pool: "spell_slots_l2", amount: 2 },
+      { level: 5, pool: "spell_slots_l3", amount: 2 },
+    ],
     starting_abilities: ["act_mace", "act_sacred_flame", "act_cure_wounds", "act_healing_word"],
     starting_items: [
       { name: "Mace", quantity: 1, weight: 4 },
@@ -206,6 +213,10 @@ export const PRESET_CLASSES: ClassTemplate[] = [
     suggested_attributes: { STR: 8, DEX: 14, CON: 14, INT: 16, WIS: 12, CHA: 8 },
     starting_pools: [
       { name: "spell_slots_l1", maximum: 2, reset_condition: "long_rest" },
+    ],
+    pool_unlocks: [
+      { level: 3, pool: "spell_slots_l2", amount: 2 },
+      { level: 5, pool: "spell_slots_l3", amount: 2 },
     ],
     starting_abilities: ["act_fire_bolt", "act_dagger"],
     starting_items: [
