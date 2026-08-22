@@ -1211,20 +1211,20 @@ impl Repository for SqliteRepository {
         // Import NPC characters
         for npc in &data.npc_characters {
             sqlx::query(
-                "INSERT INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at)
+                "INSERT INTO npc_characters (id, name, drive, leverage, flaw, flaw_revealed, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
                    name = excluded.name,
+                   drive = excluded.drive,
+                   leverage = excluded.leverage,
+                   flaw = excluded.flaw,
+                   flaw_revealed = excluded.flaw_revealed,
                    disposition = excluded.disposition,
                    alive = excluded.alive,
                    location = excluded.location,
                    knows_json = excluded.knows_json,
                    notes = excluded.notes,
-                   last_seen_scene_id = excluded.last_seen_scene_id,
-                   drive = excluded.drive,
-                   leverage = excluded.leverage,
-                   flaw = excluded.flaw,
-                   flaw_revealed = excluded.flaw_revealed",
+                   last_seen_scene_id = excluded.last_seen_scene_id",
             )
             .bind(&npc.id)
             .bind(&npc.name)

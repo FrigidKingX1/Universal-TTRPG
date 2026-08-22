@@ -249,6 +249,7 @@ async fn start_combat(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    let _lock = session.session_lock.lock().await;
     session.turn_gate.start_combat(player_id.clone()).await;
     tracing::info!(session = %session_id, starter = %player_id, "Combat started");
     Ok(Json(json!({ "mode": "combat", "current_turn": player_id })))
@@ -265,6 +266,7 @@ async fn end_combat(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    let _lock = session.session_lock.lock().await;
     session.turn_gate.end_combat().await;
     tracing::info!(session = %session_id, "Combat ended");
     Ok(Json(json!({ "mode": "exploration" })))
@@ -281,6 +283,7 @@ async fn join_combat_queue(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    let _lock = session.session_lock.lock().await;
     session.turn_gate.join_queue(&player_id).await;
     let (mode, current, queue) = session.turn_gate.status().await;
     Ok(Json(json!({
@@ -302,6 +305,10 @@ async fn skip_turn(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
     let _lock = session.session_lock.lock().await;
+    let (mode, _, _) = session.turn_gate.status().await;
+    if mode != GameMode::Combat {
+        return Err((StatusCode::CONFLICT, "Can only skip turns during combat".into()));
+    }
     match session.turn_gate.can_act(&player_id).await {
         TurnCheck::Allowed => {
             let (mode, next) = session.turn_gate.advance_turn().await;

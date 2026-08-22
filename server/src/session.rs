@@ -105,9 +105,14 @@ impl TurnGate {
     }
 
     /// After a player acts, advance to the next in the queue.
+    /// No-op in exploration mode (no turns to advance).
     /// Returns the new mode + current turn holder.
     pub async fn advance_turn(&self) -> (GameMode, Option<String>) {
         let mut state = self.inner.lock().await;
+        // In exploration mode, there's nothing to advance.
+        if state.mode == GameMode::Exploration {
+            return (GameMode::Exploration, None);
+        }
         if let Some(next) = state.queue.pop_front() {
             state.current_turn = Some(next.clone());
             (state.mode, Some(next))
@@ -138,8 +143,13 @@ impl TurnGate {
     }
 
     /// Add a player to the back of the combat queue.
+    /// No-op if the player is already in the queue or is the current
+    /// turn holder (they shouldn't wait for themselves).
     pub async fn join_queue(&self, player_id: &str) {
         let mut state = self.inner.lock().await;
+        if state.current_turn.as_deref() == Some(player_id) {
+            return; // Already acting — don't queue them.
+        }
         if !state.queue.contains(&player_id.to_string()) {
             state.queue.push_back(player_id.to_string());
         }
@@ -250,7 +260,7 @@ impl SessionRegistry {
         title: &str,
     ) -> Result<(String, String, String), String> {
         let session_id = uuid::Uuid::new_v4().to_string();
-        let join_code = generate_join_code();
+        let join_code = generate_unique_join_code(&self.codes).await;
         let host_id = uuid::Uuid::new_v4().to_string();
         let host_token = uuid::Uuid::new_v4().to_string();
 
@@ -391,8 +401,22 @@ pub struct SessionSummary {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-/// Generate a 6-character uppercase alphanumeric join code.
-fn generate_join_code() -> String {
+/// Generate a 6-character uppercase alphanumeric join code, retrying
+/// on collision (astronomically unlikely but free to check).
+async fn generate_unique_join_code(codes: &RwLock<HashMap<String, String>>) -> String {
+    const MAX_RETRIES: usize = 5;
+    for _ in 0..MAX_RETRIES {
+        let code = generate_join_code_raw();
+        let exists = { codes.read().await.contains_key(&code) };
+        if !exists {
+            return code;
+        }
+    }
+    // Fallback: use UUID-based code (guaranteed unique).
+    format!("{:.6}", uuid::Uuid::new_v4().to_string().to_uppercase())
+}
+
+fn generate_join_code_raw() -> String {
     const CHARS: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/0/O/1
     let mut code = String::with_capacity(6);
     for _ in 0..6 {
