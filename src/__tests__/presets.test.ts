@@ -1,0 +1,172 @@
+import { describe, it, expect } from "vitest";
+import { PRESET_MONSTERS, PRESET_ACTIONS } from "../presets/bestiary";
+import { PRESET_CLASSES, CLASS_ACTIONS } from "../presets/classes";
+import {
+  ALL_PRESET_ACTIONS,
+  findPresetAction,
+  WEAPON_ACTIONS,
+  SPELL_ACTIONS,
+  MONSTER_ATTACK_ACTIONS,
+} from "../presets/actions";
+import { EQUIPMENT_CATALOG } from "../presets/equipment";
+
+describe("Bestiary presets", () => {
+  it("has a large library of monsters", () => {
+    expect(PRESET_MONSTERS.length).toBeGreaterThanOrEqual(50);
+  });
+
+  it("monster keys and names are unique", () => {
+    const keys = PRESET_MONSTERS.map((m) => m.key);
+    const names = PRESET_MONSTERS.map((m) => m.name);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("every monster has required combat stats", () => {
+    for (const m of PRESET_MONSTERS) {
+      expect(m.armor_class, `${m.name} AC`).toBeGreaterThan(0);
+      expect(m.hit_points.maximum, `${m.name} max HP`).toBeGreaterThan(0);
+      expect(m.attributes.STR, `${m.name} STR`).toBeDefined();
+      expect(m.attributes.DEX, `${m.name} DEX`).toBeDefined();
+      expect(m.attributes.CON, `${m.name} CON`).toBeDefined();
+      expect(m.description, `${m.name} description`).toBeTruthy();
+    }
+  });
+
+  it("CR values are valid ascending tiers", () => {
+    const crs = PRESET_MONSTERS.map((m) => m.challenge_rating).sort((a, b) => a - b);
+    expect(crs[0]).toBeLessThanOrEqual(0.25);
+    expect(crs[crs.length - 1]).toBeGreaterThanOrEqual(10); // bosses exist
+  });
+
+  it("includes ally stat blocks", () => {
+    const names = PRESET_MONSTERS.map((m) => m.name);
+    expect(names).toContain("Town Guard");
+    expect(names).toContain("Knight");
+    expect(names).toContain("Priest");
+    expect(names).toContain("Scout");
+  });
+
+  it("includes boss-tier monsters with legendary traits", () => {
+    const youngRed = PRESET_MONSTERS.find((m) => m.name === "Young Red Dragon")!;
+    expect(youngRed.challenge_rating).toBeGreaterThanOrEqual(10);
+    expect(youngRed.traits?.some((t) => t.name.includes("Legendary"))).toBe(true);
+
+    const green = PRESET_MONSTERS.find((m) => m.name === "Young Green Dragon")!;
+    expect(green.actions).toContain("act_poison_breath");
+  });
+});
+
+describe("Preset actions", () => {
+  it("registry is deduped by id", () => {
+    const ids = ALL_PRESET_ACTIONS.map((a) => a.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("contains a broad action library", () => {
+    expect(WEAPON_ACTIONS.length + SPELL_ACTIONS.length + MONSTER_ATTACK_ACTIONS.length).toBeGreaterThanOrEqual(35);
+    expect(ALL_PRESET_ACTIONS.length).toBeGreaterThanOrEqual(45);
+  });
+
+  it("every monster action reference resolves to a definition", () => {
+    const missing: string[] = [];
+    for (const m of PRESET_MONSTERS) {
+      for (const actionId of m.actions ?? []) {
+        if (!findPresetAction(actionId)) missing.push(`${m.name}: ${actionId}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("every class ability reference resolves to a definition", () => {
+    const missing: string[] = [];
+    for (const c of PRESET_CLASSES) {
+      for (const abilityId of c.starting_abilities) {
+        if (!findPresetAction(abilityId)) missing.push(`${c.name}: ${abilityId}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("attack formulas use valid attribute paths", () => {
+    const validAttrs = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+    for (const a of [...PRESET_ACTIONS, ...CLASS_ACTIONS, ...SPELL_ACTIONS]) {
+      const roll = a.resolution.roll_formula;
+      if (!roll) continue; // guaranteed_effect actions skip rolls
+      expect(roll.startsWith("1d20"), `${a.id} roll`).toBe(true);
+      if (roll.includes("@attributes.")) {
+        const attr = roll.split("@attributes.")[1]?.split(".")[0];
+        expect(validAttrs, `${a.id} attr ${attr}`).toContain(attr);
+      }
+    }
+  });
+
+  it("damage types are from the standard list", () => {
+    const standard = new Set([
+      "slashing", "piercing", "bludgeoning", "fire", "cold", "lightning", "poison",
+      "psychic", "necrotic", "radiant", "force", "thunder", "acid",
+    ]);
+    for (const a of ALL_PRESET_ACTIONS) {
+      const dt = a.resolution.outcomes?.on_success?.damage_type;
+      if (dt) expect(standard.has(dt), `${a.id} type ${dt}`).toBe(true);
+    }
+  });
+
+  it("magic missile is a guaranteed-effect auto-hit", () => {
+    const mm = findPresetAction("act_magic_missile")!;
+    expect(mm.resolution.type).toBe("guaranteed_effect");
+    expect(mm.resolution.outcomes?.on_success?.formula).toBe("3d4 + 3");
+  });
+});
+
+describe("Class templates", () => {
+  it("covers six core classes", () => {
+    expect(PRESET_CLASSES.map((c) => c.id)).toEqual([
+      "fighter", "barbarian", "rogue", "ranger", "cleric", "wizard",
+    ]);
+  });
+
+  it("hit dice span d6 to d12", () => {
+    const dice = PRESET_CLASSES.map((c) => c.hit_die).sort((a, b) => a - b);
+    expect(dice[0]).toBe(6);
+    expect(dice[dice.length - 1]).toBe(12);
+  });
+
+  it("features are level-gated sensibly", () => {
+    for (const c of PRESET_CLASSES) {
+      for (const f of c.features_by_level) {
+        expect(f.level, `${c.name}: ${f.name}`).toBeGreaterThanOrEqual(1);
+        expect(f.level, `${c.name}: ${f.name}`).toBeLessThanOrEqual(20);
+        expect(f.description.length, `${c.name}: ${f.name}`).toBeGreaterThan(10);
+      }
+    }
+  });
+
+  it("class actions registry is non-empty and referenced", () => {
+    expect(CLASS_ACTIONS.length).toBeGreaterThanOrEqual(5);
+    for (const def of CLASS_ACTIONS) {
+      expect(findPresetAction(def.id)).toBeDefined();
+    }
+  });
+});
+
+describe("Equipment catalog", () => {
+  it("has a broad library across categories", () => {
+    expect(EQUIPMENT_CATALOG.length).toBeGreaterThanOrEqual(60);
+    const cats = new Set(EQUIPMENT_CATALOG.map((e) => e.category));
+    for (const expected of ["weapon", "armor", "gear", "tool", "potion", "magic"] as const) {
+      expect(cats.has(expected), `category ${expected}`).toBe(true);
+    }
+  });
+
+  it("item names are unique", () => {
+    const names = EQUIPMENT_CATALOG.map((e) => e.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("weights are non-negative", () => {
+    for (const e of EQUIPMENT_CATALOG) {
+      expect(e.weight, e.name).toBeGreaterThanOrEqual(0);
+    }
+  });
+});

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useStore, newStatBlock } from "../store";
 import { backend } from "../backend";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
-import { PRESET_ACTIONS, PRESET_MONSTERS } from "../presets/bestiary";
+import { PRESET_MONSTERS } from "../presets/bestiary";
+import { findPresetAction, ALL_PRESET_ACTIONS } from "../presets/actions";
 import type { EncounterStatBlock, LootTableEntry, MonsterTrait, Size } from "../types";
 
 const DAMAGE_TYPES = [
@@ -105,8 +106,8 @@ export function Bestiary() {
     const existingIds = new Set(actions.map((a) => a.id));
     for (const actionId of preset.actions ?? []) {
       if (existingIds.has(actionId)) continue;
-      const def = PRESET_ACTIONS.find((a) => a.id === actionId);
-      if (def && actionId !== "act_shortsword") await saveAction(def);
+      const def = findPresetAction(actionId);
+      if (def) await saveAction(def);
     }
 
     // Skip if this exact monster already exists.
@@ -127,6 +128,34 @@ export function Bestiary() {
     setPresetKey("");
   };
 
+  /** Bulk-install every missing preset action + monster. */
+  const installAll = async () => {
+    const existingActionIds = new Set(actions.map((a) => a.id));
+    let actionsInstalled = 0;
+    for (const def of ALL_PRESET_ACTIONS) {
+      if (!existingActionIds.has(def.id)) {
+        await saveAction({ ...def });
+        existingActionIds.add(def.id);
+        actionsInstalled += 1;
+      }
+    }
+    const existingNames = new Set(statBlocks.map((b) => b.name));
+    let monstersInstalled = 0;
+    for (const preset of PRESET_MONSTERS) {
+      if (existingNames.has(preset.name)) continue;
+      const block: EncounterStatBlock = {
+        ...newStatBlock(preset.name),
+        ...preset,
+        id: crypto.randomUUID(),
+        hit_points: { ...preset.hit_points },
+        loot_table: preset.loot_table.map((l) => ({ ...l })),
+      };
+      await saveStatBlock(block);
+      monstersInstalled += 1;
+    }
+    showToast(`Installed ${monstersInstalled} monsters and ${actionsInstalled} actions`, "success");
+  };
+
   const requestDelete = async (id: string, name: string) => {
     if (await confirm({ title: "Delete Monster", message: `Delete ${name}? This cannot be undone.` })) {
       void deleteStatBlock(id);
@@ -145,6 +174,14 @@ export function Bestiary() {
           ))}
         </select>
         <button onClick={() => void importPreset()} disabled={!presetKey}>Add</button>
+        {statBlocks.length < PRESET_MONSTERS.length && (
+          <button
+            onClick={() => void installAll()}
+            title={`Install all ${PRESET_MONSTERS.length} preset monsters and every preset action`}
+          >
+            Install All ({PRESET_MONSTERS.length})
+          </button>
+        )}
       </div>
       <ul className="card-list">
         {statBlocks.map((b) => (

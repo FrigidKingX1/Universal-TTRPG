@@ -3,6 +3,7 @@ import { backend } from "../backend";
 import { useStore } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { PRESET_CLASSES, findClassByArchetype } from "../presets/classes";
+import { EQUIPMENT_CATALOG, findEquipment } from "../presets/equipment";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
 
 function NewCharacterForm() {
@@ -218,9 +219,18 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
 
   const addItem = () => {
     if (!newItemName.trim()) return;
+    // Autofill weight (and typical quantity) when the name matches the catalog.
+    const catalog = findEquipment(newItemName);
     setInventory([
       ...inventory,
-      { id: crypto.randomUUID(), name: newItemName.trim(), quantity: 1, state: "stowed", weight: 0, tags: [] },
+      {
+        id: crypto.randomUUID(),
+        name: newItemName.trim(),
+        quantity: catalog?.qty ?? 1,
+        state: "stowed",
+        weight: catalog?.weight ?? 0,
+        tags: catalog?.tags ?? [],
+      },
     ]);
     setNewItemName("");
   };
@@ -409,9 +419,15 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
         <input
           value={newItemName}
           onChange={(e) => setNewItemName(e.currentTarget.value)}
-          placeholder="New item"
+          placeholder="New item (type to search catalog)"
+          list="equipment-catalog-options"
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
         />
+        <datalist id="equipment-catalog-options">
+          {EQUIPMENT_CATALOG.map((e) => (
+            <option key={e.name} value={e.name}>{e.notes ?? `${e.category} · ${e.weight} lb`}</option>
+          ))}
+        </datalist>
         <button onClick={addItem}>Add Item</button>
       </div>
 

@@ -61,12 +61,8 @@ const mk = (
   },
 });
 
-/** Actions referenced by class templates that may not exist in older vaults. */
+/** Class-specific actions (core weapons like longsword/longbow live in presets/actions.ts). */
 export const CLASS_ACTIONS: ActionDefinition[] = [
-  mk("act_longsword", "Longsword", "1d8 + @attributes.STR.derived_modifier", "slashing", "STR"),
-  mk("act_longbow", "Longbow", "1d8 + @attributes.DEX.derived_modifier", "piercing", "DEX", 150),
-  mk("act_shortsword", "Shortsword", "1d6 + @attributes.DEX.derived_modifier", "piercing", "DEX"),
-  mk("act_greataxe", "Greataxe", "1d12 + @attributes.STR.derived_modifier", "slashing", "STR"),
   mk("act_rapier", "Rapier", "1d8 + @attributes.DEX.derived_modifier", "piercing", "DEX"),
   mk("act_mace", "Mace", "1d6 + @attributes.STR.derived_modifier", "bludgeoning", "STR"),
   mk("act_dagger", "Dagger", "1d4 + @attributes.DEX.derived_modifier", "piercing", "DEX"),

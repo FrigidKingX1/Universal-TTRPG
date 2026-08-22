@@ -3,7 +3,8 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { backend } from "./backend";
 import { isInMultiplayerSession, useMultiplayerStore } from "./multiplayer";
-import { CLASS_ACTIONS, PRESET_CLASSES, applyClassTemplate } from "./presets/classes";
+import { PRESET_CLASSES, applyClassTemplate } from "./presets/classes";
+import { findPresetAction } from "./presets/actions";
 import type {
   ActionDefinition,
   CampaignGenerationResult,
@@ -536,7 +537,7 @@ export const useStore = create<AutoDmState>()(
         const existingIds = new Set(get().actions.map((a) => a.id));
         for (const abilityId of template.starting_abilities) {
           if (existingIds.has(abilityId)) continue;
-          const def = CLASS_ACTIONS.find((a) => a.id === abilityId);
+          const def = findPresetAction(abilityId);
           if (def) await backend.saveAction(def);
         }
         set({ actions: await backend.listActions() });
