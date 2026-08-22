@@ -364,7 +364,7 @@ fn execute_intent(
             extra.push(format!("Doom clock advanced by {ticks}."));
             "Time marches on — a clock ticks forward.".to_string()
         }
-        GameIntent::ApplyCondition { target, condition } => {
+        GameIntent::ApplyCondition { target, condition, .. } => {
             extra.push(format!("Condition '{condition}' marked on {target}."));
             format!("{target} is now {condition}.")
         }

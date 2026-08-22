@@ -8,6 +8,79 @@ use auto_dm_core::llm::{DmRequest, DmResponse};
 use crate::events::GameEvent;
 use crate::state::{GameState, Repository};
 
+// ── Target resolution (the "pronoun interceptor") ────────────────────
+
+/// Lightweight entity reference used for descriptor matching.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntityRef {
+    pub id: String,
+    pub name: String,
+}
+
+/// Result of resolving a free-text descriptor against a live entity roster.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResolveResult {
+    /// Exactly one entity matched.
+    Resolved(EntityRef),
+    /// Two or more entities matched — the caller should emit `AmbiguousTarget`.
+    Ambiguous { candidates: Vec<String> },
+    /// No entities matched — the caller should surface a clean rejection.
+    NotFound,
+}
+
+/// Strip common filler and normalise for case-insensitive matching.
+fn normalize(s: &str) -> String {
+    let t = s.to_lowercase();
+    let t = t.trim();
+    // Strip leading "the " / "a " / "an " — the LLM often prepends articles.
+    let t = t.strip_prefix("the ").unwrap_or(t);
+    let t = t.strip_prefix("a ").unwrap_or(t);
+    let t = t.strip_prefix("an ").unwrap_or(t);
+    t.trim().to_string()
+}
+
+/// Match a free-text descriptor against a list of live entities.
+///
+/// Matching strategy (intentionally simple — no prose parsing):
+/// 1. **Exact** normalised name match → single result (fast path).
+/// 2. **Substring** — descriptor is contained in the entity name (or vice
+///    versa) after normalisation → collect all hits.
+/// 3. Nothing matches → `NotFound`.
+///
+/// This is the engine-side equivalent of the clock resolution already used
+/// in `AdvanceClock`: the LLM proposes a descriptor, the engine resolves
+/// it against what's actually present.
+pub fn resolve_entity_descriptor(descriptor: &str, entities: &[EntityRef]) -> ResolveResult {
+    let needle = normalize(descriptor);
+    if needle.is_empty() {
+        return ResolveResult::NotFound;
+    }
+
+    // 1. Exact match (fast path).
+    let exact: Vec<&EntityRef> =
+        entities.iter().filter(|e| normalize(&e.name) == needle).collect();
+    if exact.len() == 1 {
+        return ResolveResult::Resolved(exact[0].clone());
+    }
+
+    // 2. Substring match (needle ⊆ name  OR  name ⊆ needle).
+    let hits: Vec<&EntityRef> = entities
+        .iter()
+        .filter(|e| {
+            let hay = normalize(&e.name);
+            hay.contains(&needle) || needle.contains(&hay)
+        })
+        .collect();
+
+    match hits.len() {
+        0 => ResolveResult::NotFound,
+        1 => ResolveResult::Resolved(hits[0].clone()),
+        _ => ResolveResult::Ambiguous {
+            candidates: hits.into_iter().map(|e| e.name.clone()).collect(),
+        },
+    }
+}
+
 /// Record a campaign event in both the in-memory ring buffer and SQLite so
 /// the DM's context survives restarts. DB failures are non-fatal.
 pub async fn remember(state: &GameState, speaker: &str, content: &str) {
@@ -175,13 +248,49 @@ pub async fn apply_session_effects(
                 }
             }
         }
-        GameIntent::ApplyCondition { target, condition } => {
-            // Tag-only effect for now; combat-engine integration lands in Phase B.
+        GameIntent::ApplyCondition { target, condition, kind } => {
+            // Resolve the descriptor against the live entity roster before
+            // applying.  `kind` defaults to Npc (backward-compat with old
+            // LLM output that omits it).
+            let target_kind = kind.unwrap_or(auto_dm_core::intent::TargetKind::Npc);
+            let resolved_name: Option<String> = match target_kind {
+                auto_dm_core::intent::TargetKind::Npc => {
+                    let npcs = state.repo.list_npc_characters().await.unwrap_or_default();
+                    let entities: Vec<EntityRef> = npcs
+                        .iter()
+                        .filter(|n| n.alive)
+                        .map(|n| EntityRef { id: n.id.clone(), name: n.name.clone() })
+                        .collect();
+                    match resolve_entity_descriptor(target, &entities) {
+                        ResolveResult::Resolved(e) => Some(e.name),
+                        ResolveResult::Ambiguous { candidates } => {
+                            events.push(GameEvent::AmbiguousTarget {
+                                kind: "npc".into(),
+                                message: format!(
+                                    "Multiple NPCs match '{target}' — specify which one."
+                                ),
+                                candidates,
+                            });
+                            return events;
+                        }
+                        ResolveResult::NotFound => {
+                            response.mechanical_events.push(format!(
+                                "No NPC matching '{target}' is present."
+                            ));
+                            return events;
+                        }
+                    }
+                }
+                _ => Some(target.clone()),
+            };
+            let resolved = resolved_name.unwrap();
             events.push(GameEvent::ConditionApplied {
-                target: target.clone(),
+                target: resolved.clone(),
                 condition: condition.clone(),
             });
-            response.mechanical_events.push(format!("Condition '{condition}' marked on {target}."));
+            response
+                .mechanical_events
+                .push(format!("Condition '{condition}' marked on {resolved}."));
         }
         _ => {}
     }
@@ -189,4 +298,92 @@ pub async fn apply_session_effects(
         response.mechanical_events.push(e.describe());
     }
     events
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cultist(id: &str, name: &str) -> EntityRef {
+        EntityRef { id: id.into(), name: name.into() }
+    }
+
+    // ── Golden tests: the three canonical cases ──────────────────────
+
+    #[test]
+    fn ambiguous_n_cultists() {
+        let entities = vec![
+            cultist("c1", "Cultist"),
+            cultist("c2", "Cultist"),
+            cultist("c3", "Cultist"),
+        ];
+        match resolve_entity_descriptor("the cultist", &entities) {
+            ResolveResult::Ambiguous { candidates } => assert_eq!(candidates.len(), 3),
+            other => panic!("expected Ambiguous, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn resolves_single_match() {
+        let entities = vec![cultist("c1", "Cultist")];
+        match resolve_entity_descriptor("the cultist", &entities) {
+            ResolveResult::Resolved(e) => assert_eq!(e.id, "c1"),
+            other => panic!("expected Resolved, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn not_found_when_empty() {
+        let entities = vec![];
+        assert_eq!(
+            resolve_entity_descriptor("the cultist", &entities),
+            ResolveResult::NotFound
+        );
+    }
+
+    // ── Matching subtleties ─────────────────────────────────────────
+
+    #[test]
+    fn exact_match_beats_substring() {
+        // "Guard" is exact; "Captain Guard" is substring — exact wins.
+        let entities = vec![cultist("g1", "Guard"), cultist("g2", "Captain Guard")];
+        match resolve_entity_descriptor("guard", &entities) {
+            ResolveResult::Resolved(e) => assert_eq!(e.name, "Guard"),
+            other => panic!("expected Resolved(Guard), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn substring_matches_subset() {
+        // Descriptor "cultist" is contained in "Lead Cultist".
+        let entities = vec![cultist("c1", "Lead Cultist")];
+        match resolve_entity_descriptor("cultist", &entities) {
+            ResolveResult::Resolved(e) => assert_eq!(e.id, "c1"),
+            other => panic!("expected Resolved, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn articles_stripped() {
+        let entities = vec![cultist("c1", "Cultist")];
+        match resolve_entity_descriptor("a cultist", &entities) {
+            ResolveResult::Resolved(e) => assert_eq!(e.id, "c1"),
+            other => panic!("expected Resolved, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn case_insensitive() {
+        let entities = vec![cultist("c1", "CULTIST")];
+        match resolve_entity_descriptor("The Cultist", &entities) {
+            ResolveResult::Resolved(e) => assert_eq!(e.id, "c1"),
+            other => panic!("expected Resolved, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn empty_descriptor_is_not_found() {
+        let entities = vec![cultist("c1", "Cultist")];
+        assert_eq!(resolve_entity_descriptor("", &entities), ResolveResult::NotFound);
+    }
 }

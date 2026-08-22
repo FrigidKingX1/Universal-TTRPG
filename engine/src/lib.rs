@@ -13,7 +13,9 @@ pub mod state;
 pub use combat::combatant_from_value;
 pub use error::{DbError, EngineError};
 pub use events::{GameEvent, VersionedEvent, GAME_EVENT_SCHEMA_VERSION};
-pub use session::{apply_session_effects, remember};
+pub use session::{
+    apply_session_effects, remember, resolve_entity_descriptor, EntityRef, ResolveResult,
+};
 pub use state::{
     backup_before_migrate, open_pool, run_migrations, CampaignExport, DoomClockRow, GameState,
     ExplorationNodeRow, ExplorationZoneRow, LootRow, LogEntry, NpcCharacterRow, NpcNoteRow,

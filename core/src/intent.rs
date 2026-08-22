@@ -1,6 +1,17 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Discriminates which entity pool a target descriptor should resolve against.
+/// The LLM proposes a descriptor ("the cultist", "him") and the engine matches
+/// it against the live roster of the given kind — never the other way around.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TargetKind {
+    Npc,
+    Monster,
+    Combatant,
+}
+
 /// A single structured instruction emitted by the narrative model when it resolves
 /// a player action. The DM pipeline parses this and applies the effect to the
 /// world before delivering the spoken prose to the player.
@@ -28,7 +39,14 @@ pub enum GameIntent {
     /// Advance a doom clock (None id = the first active clock).
     AdvanceClock { clock_id: Option<String>, ticks: i32 },
     /// Attach a condition tag to an actor by name or id.
-    ApplyCondition { target: String, condition: String },
+    ApplyCondition {
+        target: String,
+        condition: String,
+        /// Entity pool to resolve `target` against. Defaults to `Npc` when absent
+        /// (backward-compat with old LLM output that omits it).
+        #[serde(default)]
+        kind: Option<TargetKind>,
+    },
 }
 
 impl GameIntent {
@@ -47,7 +65,7 @@ impl GameIntent {
             GameIntent::Ooc { message } => message.clone(),
             GameIntent::AddItem { name, quantity } => format!("({quantity}× {name} added)"),
             GameIntent::AdvanceClock { ticks, .. } => format!("(clock +{ticks})"),
-            GameIntent::ApplyCondition { target, condition } => {
+            GameIntent::ApplyCondition { target, condition, .. } => {
                 format!("({target} is {condition})")
             }
         }
@@ -119,6 +137,7 @@ impl RawIntent {
             "apply_condition" => GameIntent::ApplyCondition {
                 target: get_str(p, "target"),
                 condition: get_str(p, "condition"),
+                kind: p.get("kind").and_then(|v| serde_json::from_value(v.clone()).ok()),
             },
             other => GameIntent::Narration { text: format!("[unknown intent: {other}]\n{}", p) },
         }
