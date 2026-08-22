@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Shield, Sword, Package, Heart, Crosshair } from "lucide-react";
-import { useStore } from "../store";
+import { useStore, newCharacter } from "../store";
+import { PRESET_CLASSES, applyClassTemplate } from "../presets/classes";
 import { getMultiplayerClient, useMultiplayerStore } from "../multiplayer/store";
 import type { CharacterProfile, EncounterStatBlock, InventoryItem, ResourcePool, AttributeState } from "../types";
 import "../App.css";
@@ -17,6 +18,8 @@ export function PlayerPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targetKey, setTargetKey] = useState("");
+  const [newCharName, setNewCharName] = useState("");
+  const [newClassId, setNewClassId] = useState(PRESET_CLASSES[0].id);
 
   const client = getMultiplayerClient();
 
@@ -78,30 +81,13 @@ export function PlayerPanel() {
 
   const handleCreateCharacter = async () => {
     if (!client) return;
-    const newProfile: CharacterProfile = {
-      id: crypto.randomUUID(),
-      system_id: "universal",
-      identity: {
-        name: "New Character",
-        ancestry: "Human",
-        archetype: "Adventurer",
-        level_or_rank: 1,
-      },
-      attributes: {
-        STR: { base_value: 10, current_value: 10 },
-        DEX: { base_value: 10, current_value: 10 },
-        CON: { base_value: 10, current_value: 10 },
-        INT: { base_value: 10, current_value: 10 },
-        WIS: { base_value: 10, current_value: 10 },
-        CHA: { base_value: 10, current_value: 10 },
-      },
-      resource_pools: {
-        hp: { current: 10, maximum: 10, temporary: 0, reset_condition: "long_rest" },
-      },
-      inventory: [],
-      abilities: [],
-    };
-    const result = await withLoading(() => client.createCharacter(newProfile));
+    const template =
+      PRESET_CLASSES.find((c) => c.id === newClassId) ?? PRESET_CLASSES[0];
+    // Apply the full class template (HP, pools, gear, abilities) so hosted
+    // players get real characters — class actions already live server-side
+    // thanks to the embedded preset seed.
+    const profile = applyClassTemplate(newCharacter(newCharName.trim() || "New Character"), template);
+    const result = await withLoading(() => client.createCharacter(profile));
     if (result?.character) {
       setActiveCharacter(result.character);
     }
@@ -321,9 +307,28 @@ export function PlayerPanel() {
       ) : (
         <div className="no-character">
           <p>No character linked.</p>
+          <input
+            value={newCharName}
+            onChange={(e) => setNewCharName(e.currentTarget.value)}
+            placeholder="Character name"
+            aria-label="Character name"
+            style={{ width: "100%", marginBottom: "0.4rem" }}
+          />
+          <select
+            value={newClassId}
+            onChange={(e) => setNewClassId(e.currentTarget.value)}
+            aria-label="Class"
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+          >
+            {PRESET_CLASSES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} (d{c.hit_die})
+              </option>
+            ))}
+          </select>
           <button
             className="btn btn-small btn-primary"
-            onClick={handleCreateCharacter}
+            onClick={() => void handleCreateCharacter()}
             disabled={loading}
           >
             Create Character
