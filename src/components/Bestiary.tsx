@@ -4,6 +4,7 @@ import { backend } from "../backend";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { PRESET_MONSTERS } from "../presets/bestiary";
 import { findPresetAction, ALL_PRESET_ACTIONS } from "../presets/actions";
+import { resolvePortrait } from "../assets";
 import type { EncounterStatBlock, LootTableEntry, MonsterTrait, Size } from "../types";
 
 const DAMAGE_TYPES = [
@@ -187,9 +188,9 @@ export function Bestiary() {
         {statBlocks.map((b) => (
           <li key={b.id} className="card">
             <div className="card-row">
-              {b.portrait ? (
+              {resolvePortrait(b) ? (
                 <img
-                  src={b.portrait}
+                  src={resolvePortrait(b)!}
                   alt={b.name}
                   width={40}
                   height={40}
@@ -474,6 +475,19 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
         placeholder="Image URL or local asset path (e.g. assets/monsters/goblin.png)"
         style={{ width: "100%" }}
       />
+      <p className="muted" style={{ marginTop: 4 }}>
+        Leave blank to auto-load <code>assets/monsters/{block.key ?? "key"}.png</code> from this monster's key.
+      </p>
+      {resolvePortrait({ portrait, key: block.key }) ? (
+        <img
+          src={resolvePortrait({ portrait, key: block.key })!}
+          alt={block.name}
+          width={64}
+          height={64}
+          style={{ objectFit: "cover", borderRadius: 6, marginTop: 6 }}
+          onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+        />
+      ) : null}
 
       <h3>Actions</h3>
       <div className="action-chips">

@@ -275,9 +275,12 @@ pub struct EncounterStatBlock {
     /// Lore / flavor description.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// Optional portrait/art asset reference (URL or local path to an image).
+    /// Optional portrait/art asset reference (URL or local path).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub portrait: Option<String>,
+    /// Stable preset key (e.g. "goblin"); used to auto-resolve portrait art.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
 }
 
 /// A named trait or reaction on a monster stat block.

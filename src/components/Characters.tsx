@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { PRESET_CLASSES, findClassByArchetype } from "../presets/classes";
 import { EQUIPMENT_CATALOG, findEquipment } from "../presets/equipment";
+import { playDiceSound } from "../sound";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
 
 function NewCharacterForm() {
@@ -44,6 +45,7 @@ function QuickRollRow({ profile }: { profile: CharacterProfile }) {
 
   const roll = async (attr: string) => {
     setRolling(true);
+    playDiceSound();
     try {
       const r = await backend.rollDice(`1d20 + @attributes.${attr}.derived_modifier`);
       setResult(`${attr}: ${r.total} (${r.detail})`);

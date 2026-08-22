@@ -756,6 +756,8 @@ mod tests {
             multiattack: None,
             reactions: Vec::new(),
             description: None,
+            portrait: None,
+            key: None,
         }
     }
 
@@ -992,6 +994,8 @@ mod tests {
             multiattack: None,
             reactions: Vec::new(),
             description: None,
+            portrait: None,
+            key: None,
         };
         let c = Combatant::from(&s);
         assert_eq!(c.name, "Orc");
@@ -1086,6 +1090,8 @@ mod tests {
             multiattack: None,
             reactions: Vec::new(),
             description: None,
+            portrait: None,
+            key: None,
         };
         let c = Combatant::from(&s);
         assert_eq!(c.resistances, vec!["fire"]);

@@ -17,20 +17,35 @@ creators change terms per-pack.
 
 ## Local folders (already scaffolded)
 
-Drop files here and reference them in the monster **Portrait** field
-(`EncounterStatBlock.portrait`, editable in the Bestiary editor) or in UI:
+Static assets live under **`public/assets/`** so Vite serves them at
+`/assets/…` in dev and Tauri bundles them into the app:
 
 ```
-assets/
-  monsters/   # e.g. assets/monsters/zombie_brute.png
-  icons/      # UI / item icons
-  audio/      # sfx + music
-  fonts/      # custom .woff2
+public/
+  fonts/                  # Cinzel + IM Fell English (already wired)
+  assets/
+    monsters/             # e.g. public/assets/monsters/goblin.png
+    icons/                # UI / item icons
+    audio/dice_roll.wav   # bundled dice-roll clatter (generated)
 ```
 
-Tip: name a monster portrait after its **key** (`zombie_brute.png`,
-`ancient_red_dragon.png`) so it's easy to map. The card list already renders
-`portrait` as a 40×40 thumbnail (with `onError` fallback hiding a broken link).
+In code/UI always reference them **without** the `public/` prefix:
+`assets/monsters/zombie_brute.png`, `/assets/audio/dice_roll.wav`.
+
+### Monster portraits auto-load by key
+
+Every preset monster carries a stable `key` (e.g. `goblin`,
+`ancient_red_dragon`). If its explicit **Portrait** field is empty, the card
+automatically tries `/assets/monsters/<key>.png`. So to give your whole
+bestiary art with zero manual entry:
+
+1. Download tokens from the sources below.
+2. Rename each file to the monster's key: `goblin.png`, `zombie_brute.png`,
+   `ancient_red_dragon.png` … (keys are visible in `src/presets/bestiary.ts`).
+3. Drop them into `public/assets/monsters/`.
+
+An explicit portrait set in the Bestiary editor always wins over the
+convention. Broken/missing files hide silently (`onError`).
 
 ## Art — monsters, tokens & portraits
 
@@ -99,9 +114,13 @@ credit required (just don't sell the font file alone).
 
 ## Wiring it in (current capability)
 
-- Monster **Portrait** field → paste a URL *or* a local path like
-  `assets/monsters/goblin.png`. The Bestiary card shows it automatically.
-- To batch-link art by key, you could later add a convention resolver, but the
-  manual field already supports any path/URL today.
+- **Auto portraits** — `resolvePortrait()` (`src/assets.ts`) resolves
+  `portrait ?? assets/monsters/<key>.png`; the Bestiary card and editor preview
+  both use it. Just drop key-named PNGs into `public/assets/monsters/`.
+- **Dice sound** — `playDiceSound()` (`src/sound.ts`) plays the bundled
+  `/assets/audio/dice_roll.wav` on every user roll: Dice Roller, ability
+  checks, `/roll` + `/check` commands, death saves. Swap the file to change
+  the sound; missing files fail silently.
+- **Fonts** — Cinzel & IM Fell English are already under `public/fonts/`.
 - Keep a `CREDITS.md` at repo root listing every CC-BY / attribution asset you
   ship (Game-Icons.net, DriveThruRPG stock art, etc.).

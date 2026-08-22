@@ -142,6 +142,8 @@ export interface EncounterStatBlock {
   description?: string | null;
   /** Optional portrait/art asset reference (URL or local path). */
   portrait?: string | null;
+  /** Stable preset key (e.g. "goblin"); used to auto-resolve portrait art. */
+  key?: string | null;
 }
 
 export interface Scene {

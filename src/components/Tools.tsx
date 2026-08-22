@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { playDiceSound } from "../sound";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
 
@@ -13,6 +14,7 @@ export function DiceRoller() {
 
   const roll = async () => {
     setRolling(true);
+    playDiceSound();
     try {
       const r = await backend.rollDice(expr);
       setResult(`${r.total}  (${r.detail})`);

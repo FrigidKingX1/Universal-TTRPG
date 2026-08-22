@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { ScrollText, RefreshCw, Send, ArrowDown } from "lucide-react";
 import { backend } from "../backend";
 import { useStore } from "../store";
+import { playDiceSound } from "../sound";
 import type { StoryLogEntry } from "../types";
 import "../App.css";
 
@@ -102,6 +103,7 @@ export function NarrativeStream() {
           return true;
         }
         try {
+          playDiceSound();
           const r = await backend.rollDice(args);
           addLocalEntry("Dice", "combat", `${args} → ${r.total} (${r.detail})`);
         } catch (e) {
@@ -123,6 +125,7 @@ export function NarrativeStream() {
         }
         const mod = attr.derived_modifier ?? Math.floor((attr.base_value - 10) / 2);
         try {
+          playDiceSound();
           const r = await backend.rollDice(`1d20+${mod}`);
           const success = r.total >= 10;
           addLocalEntry(

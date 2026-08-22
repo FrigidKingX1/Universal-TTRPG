@@ -56,7 +56,7 @@ export const PRESET_ACTIONS: ActionDefinition[] = [
   mkAction("act_longbow", "Longbow", "1d8 + @attributes.DEX.derived_modifier", "piercing", "DEX", 150),
 ];
 
-type Preset = Omit<EncounterStatBlock, "id"> & { key: string };
+type Preset = Omit<EncounterStatBlock, "id" | "key"> & { key: string };
 
 const monster = (
   key: string,
@@ -64,7 +64,6 @@ const monster = (
   cr: number,
   data: Partial<EncounterStatBlock>,
 ): Preset => ({
-  key,
   name,
   challenge_rating: cr,
   armor_class: 12,
@@ -73,6 +72,7 @@ const monster = (
   actions: [],
   loot_table: [],
   ...data,
+  key,
 });
 
 export const PRESET_MONSTERS: Preset[] = [

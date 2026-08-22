@@ -5,6 +5,7 @@ import { backend } from "./backend";
 import { isInMultiplayerSession, useMultiplayerStore } from "./multiplayer";
 import { PRESET_CLASSES, applyClassTemplate } from "./presets/classes";
 import { findPresetAction } from "./presets/actions";
+import { playDiceSound } from "./sound";
 import type {
   ActionDefinition,
   CampaignGenerationResult,
@@ -283,6 +284,7 @@ export function newStatBlock(name: string): EncounterStatBlock {
     reactions: [],
     description: null,
     portrait: null,
+    key: null,
   };
 }
 
@@ -1054,6 +1056,7 @@ export const useStore = create<AutoDmState>()(
   rollDeathSave: async (entityId) => {
     const s = get();
     const ds = s.deathSaves[entityId] ?? { successes: 0, failures: 0 };
+    playDiceSound();
     const r = await backend.rollDice("1d20");
     const isTenPlus = r.total >= 10;
     const newDs = isTenPlus
