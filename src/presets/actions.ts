@@ -148,6 +148,12 @@ export const SPELL_ACTIONS: ActionDefinition[] = BASE_SPELLS.map((a) => {
   return pool ? { ...a, slot_cost: { pool, amount: 1 } } : a;
 });
 
+/**
+ * Spells requiring concentration: casting another one breaks the first,
+ * and damage forces a CON save (DC 10 or half damage) or it ends.
+ */
+export const CONCENTRATION_ACTIONS = new Set(["act_spiritual_weapon"]);
+
 /** Monster-specific attacks shared across creatures. */
 export const MONSTER_ATTACK_ACTIONS: ActionDefinition[] = [
   mk("act_rat_bite", "Rat Bite", "1d4 + @attributes.DEX.derived_modifier", "piercing", "DEX"),

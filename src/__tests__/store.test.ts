@@ -559,3 +559,74 @@ describe("Spell slot consumption", () => {
     expect(vi.mocked(backend.combatAttack)).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Concentration", () => {
+  const setUpCaster = () => {
+    const spell = findPresetAction("act_spiritual_weapon")!;
+    const cure = findPresetAction("act_cure_wounds")!;
+    const caster = newCharacter("Chaplain");
+    caster.abilities = ["act_spiritual_weapon", "act_cure_wounds"];
+    caster.resource_pools.spell_slots_l1 = { current: 1, maximum: 1, temporary: 0, reset_condition: "long_rest" };
+    caster.resource_pools.spell_slots_l2 = { current: 1, maximum: 1, temporary: 0, reset_condition: "long_rest" };
+    const target = newStatBlock("Training Dummy");
+    useStore.setState({
+      characters: [caster],
+      actions: [spell, cure],
+      statBlocks: [target],
+      concentration: {},
+      combatantConditions: {},
+    });
+    return { caster, target, spell, cure };
+  };
+
+  it("casting a concentration spell marks the caster as Concentrating", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.combatAttack).mockClear();
+    const { caster, target, spell } = setUpCaster();
+
+    await useStore.getState().runAttack(caster, target, spell.id);
+
+    const state = useStore.getState();
+    expect(state.concentration[caster.id]).toBe(spell.name);
+    expect(state.combatantConditions[caster.id]).toContain("Concentrating");
+  });
+
+  it("a failed CON save on damage breaks concentration", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20 + 0", total: 2, detail: "[1d20] = 2" });
+    const { caster, target, spell } = setUpCaster();
+    // Concentrate first.
+    await useStore.getState().runAttack(caster, target, spell.id);
+    vi.mocked(backend.combatAttack).mockClear();
+
+    // Damage the concentrating caster — DC is max(10, 5/2) = 10; rolled 2.
+    await useStore.getState().runAttack(target, caster, "act_cure_wounds");
+
+    const state = useStore.getState();
+    expect(state.concentration[caster.id]).toBeUndefined();
+    expect(state.combatantConditions[caster.id] ?? []).not.toContain("Concentrating");
+  });
+
+  it("a successful CON save holds concentration", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20 + 5", total: 25, detail: "[1d20+15] = 25" });
+    const { caster, target, spell } = setUpCaster();
+    await useStore.getState().runAttack(caster, target, spell.id);
+    vi.mocked(backend.combatAttack).mockClear();
+
+    await useStore.getState().runAttack(target, caster, "act_cure_wounds");
+
+    const state = useStore.getState();
+    expect(state.concentration[caster.id]).toBe(spell.name);
+    expect(state.combatantConditions[caster.id]).toContain("Concentrating");
+  });
+
+  it("non-concentration spells never mark the caster", async () => {
+    const { cure, caster, target } = setUpCaster();
+
+    await useStore.getState().runAttack(caster, target, cure.id);
+
+    const state = useStore.getState();
+    expect(Object.keys(state.concentration)).toHaveLength(0);
+  });
+});

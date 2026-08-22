@@ -5,6 +5,7 @@ import { backend } from "./backend";
 import { isInMultiplayerSession, useMultiplayerStore } from "./multiplayer";
 import { PRESET_CLASSES, applyClassTemplate } from "./presets/classes";
 import { findPresetAction } from "./presets/actions";
+import { CONCENTRATION_ACTIONS } from "./presets/actions";
 import { playDiceSound, playCombatSfx, sfxForOutcome } from "./sound";
 import type {
   ActionDefinition,
@@ -135,6 +136,8 @@ export interface AutoDmState {
   completeScene: (cfAdjust?: "favor" | "against") => Promise<void>;
   deathSaves: Record<string, { successes: number; failures: number }>;
   rollDeathSave: (entityId: string) => Promise<void>;
+  /** entityId → action name the entity is concentrating on. */
+  concentration: Record<string, string>;
   lastHpChange: { entityId: string; previousHp: number; newHp: number } | null;
   undoLastHpChange: () => void;
   exportCampaign: () => Promise<string>;
@@ -335,6 +338,7 @@ export const useStore = create<AutoDmState>()(
   currentRound: 0,
   currentTurnIndex: 0,
   deathSaves: {},
+  concentration: {},
   lastHpChange: null,
   ollama: { reachable: false, models: [], currentModel: "llama3.2", numPredict: 512 },
   loot: [],
@@ -884,6 +888,54 @@ export const useStore = create<AutoDmState>()(
           },
         });
         get().showToast(`${action!.name}: ${remaining}/${pool.maximum} ${slotCost.pool.replace(/_/g, " ")} left`);
+      }
+    }
+    // Concentration: starting a concentration spell ends the caster's
+    // previous one (5e RAW — only one at a time).
+    if (action && CONCENTRATION_ACTIONS.has(action.id) && "identity" in attacker) {
+      const prior = get().concentration[attacker.id];
+      set((s) => ({
+        concentration: { ...s.concentration, [attacker.id]: action.name },
+        combatantConditions: {
+          ...s.combatantConditions,
+          [attacker.id]: [
+            ...(s.combatantConditions[attacker.id] ?? []).filter((c) => c !== "Concentrating"),
+            "Concentrating",
+          ],
+        },
+      }));
+      if (prior && prior !== action.name) {
+        get().showToast(`${attacker.identity.name} stops concentrating on ${prior}`);
+      }
+      persistCombat();
+    }
+    // Concentration save: damaged casters roll CON vs DC 10 or half damage.
+    if (
+      outcome.damage_dealt > 0 &&
+      (get().combatantConditions[target.id] ?? []).some((c) => c === "Concentrating")
+    ) {
+      const dc = Math.max(10, Math.floor(outcome.damage_dealt / 2));
+      let conMod: number;
+      if ("identity" in target) {
+        const a = target.attributes.CON;
+        conMod = a?.derived_modifier ?? Math.floor(((a?.base_value ?? 10) - 10) / 2);
+      } else {
+        conMod = Math.floor((((target.attributes.CON as number | undefined) ?? 10) - 10) / 2);
+      }
+      playDiceSound();
+      const save = await backend.rollDice(`1d20 + ${conMod}`);
+      const broke = save.total < dc;
+      if (broke) {
+        const spellName = get().concentration[target.id];
+        set((s) => ({
+          concentration: Object.fromEntries(Object.entries(s.concentration).filter(([id]) => id !== target.id)),
+          combatantConditions: {
+            ...s.combatantConditions,
+            [target.id]: (s.combatantConditions[target.id] ?? []).filter((c) => c !== "Concentrating"),
+          },
+        }));
+        get().showToast(`${entityName(target)} takes ${outcome.damage_dealt} and loses concentration${spellName ? ` on ${spellName}` : ""}!`);
+        persistCombat();
       }
     }
     set((s) => ({

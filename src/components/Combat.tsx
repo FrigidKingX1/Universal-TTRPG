@@ -46,6 +46,7 @@ export function Combat() {
   const initiativeOrder = useStore((s) => s.initiativeOrder);
   const combatantStates = useStore((s) => s.combatantStates);
   const combatantConditions = useStore((s) => s.combatantConditions);
+  const concentration = useStore((s) => s.concentration);
   const toggleCondition = useStore((s) => s.toggleCondition);
   const currentRound = useStore((s) => s.currentRound);
   const currentTurnIndex = useStore((s) => s.currentTurnIndex);
@@ -307,6 +308,11 @@ export function Combat() {
                 <span className="muted">AC {getArmorClass(e.value)}</span>
                 {hp.status && <span className="badge">{hp.status}</span>}
                 {isCurrentTurn && <span className="badge turn-badge">active</span>}
+                {concentration[e.value.id] && (
+                  <span className="badge conc-badge" title="Ends if the caster takes damage and fails a CON save">
+                    ◎ {concentration[e.value.id]}
+                  </span>
+                )}
               </div>
               <div className="hp-row">
                 <span>HP {hp.current}/{hp.max}{hp.temp > 0 ? ` (+${hp.temp} temp)` : ""}</span>
