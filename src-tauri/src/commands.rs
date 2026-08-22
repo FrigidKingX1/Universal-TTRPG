@@ -1578,6 +1578,10 @@ pub async fn save_npc_character(
     knows_json: String,
     notes: Option<String>,
     last_seen_scene_id: Option<String>,
+    drive: Option<String>,
+    leverage: Option<String>,
+    flaw: Option<String>,
+    flaw_revealed: Option<bool>,
 ) -> CmdResult<auto_dm_engine::NpcCharacterRow> {
     state
         .repo
@@ -1589,6 +1593,10 @@ pub async fn save_npc_character(
             &knows_json,
             notes.as_deref(),
             last_seen_scene_id.as_deref(),
+            drive.as_deref(),
+            leverage.as_deref(),
+            flaw.as_deref(),
+            flaw_revealed.unwrap_or(false),
         )
         .await
         .map_err(err)
@@ -1628,6 +1636,28 @@ pub async fn list_npc_characters(
     state: State<'_, GameState>,
 ) -> CmdResult<Vec<auto_dm_engine::NpcCharacterRow>> {
     state.repo.list_npc_characters().await.map_err(err)
+}
+
+/// Update an NPC's three pillars (drive / leverage / flaw).
+#[tauri::command]
+pub async fn update_npc_pillars(
+    state: State<'_, GameState>,
+    id: String,
+    drive: Option<String>,
+    leverage: Option<String>,
+    flaw: Option<String>,
+) -> CmdResult<()> {
+    state
+        .repo
+        .update_npc_pillars(&id, drive.as_deref(), leverage.as_deref(), flaw.as_deref())
+        .await
+        .map_err(err)
+}
+
+/// Reveal an NPC's flaw (flip flaw_revealed to true).
+#[tauri::command]
+pub async fn reveal_flaw(state: State<'_, GameState>, id: String) -> CmdResult<()> {
+    state.repo.reveal_flaw(&id).await.map_err(err)
 }
 
 /// Delete an NPC character.

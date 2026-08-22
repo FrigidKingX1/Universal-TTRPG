@@ -165,6 +165,8 @@ export interface AutoDmState {
   removeNpcKnowledge: (id: string, index: number) => Promise<void>;
   markNpcDead: (id: string) => Promise<void>;
   deleteNpcCharacter: (id: string) => Promise<void>;
+  updateNpcPillars: (id: string, drive?: string, leverage?: string, flaw?: string) => Promise<void>;
+  revealNpcFlaw: (id: string) => Promise<void>;
 
   // Doom Clocks
   doomClocks: DoomClock[];
@@ -428,6 +430,10 @@ export const useStore = create<AutoDmState>()(
           })(),
           notes: r.notes ?? undefined,
           last_seen_scene_id: r.last_seen_scene_id ?? undefined,
+          drive: r.drive ?? undefined,
+          leverage: r.leverage ?? undefined,
+          flaw: r.flaw ?? undefined,
+          flaw_revealed: r.flaw_revealed ?? false,
           created_at: r.created_at,
         }));
       } catch { /* best-effort */ }
@@ -1155,6 +1161,10 @@ export const useStore = create<AutoDmState>()(
         })(),
         notes: row.notes ?? undefined,
         last_seen_scene_id: row.last_seen_scene_id ?? undefined,
+        drive: row.drive ?? undefined,
+        leverage: row.leverage ?? undefined,
+        flaw: row.flaw ?? undefined,
+        flaw_revealed: row.flaw_revealed ?? false,
         created_at: row.created_at,
       };
       set((s) => ({ npcCharacters: [...s.npcCharacters, npc] }));
@@ -1260,6 +1270,33 @@ export const useStore = create<AutoDmState>()(
     try {
       await backend.deleteNpcCharacter(id);
       set((s) => ({ npcCharacters: s.npcCharacters.filter((n) => n.id !== id) }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  updateNpcPillars: async (id, drive, leverage, flaw) => {
+    try {
+      await backend.updateNpcPillars(id, drive, leverage, flaw);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, drive, leverage, flaw } : n
+        ),
+      }));
+    } catch (e) {
+      get().showToast(`Error: ${e}`);
+    }
+  },
+
+  revealNpcFlaw: async (id) => {
+    try {
+      await backend.revealFlaw(id);
+      set((s) => ({
+        npcCharacters: s.npcCharacters.map((n) =>
+          n.id === id ? { ...n, flaw_revealed: true } : n
+        ),
+      }));
+      get().showToast("Flaw revealed!");
     } catch (e) {
       get().showToast(`Error: ${e}`);
     }

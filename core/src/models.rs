@@ -499,6 +499,18 @@ pub struct NpcCharacter {
     pub alive: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub location: Option<String>,
+    /// What this NPC desperately wants (behavioral anchor; DM-visible).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drive: Option<String>,
+    /// What they can offer or threaten with (DM-visible leverage hook).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leverage: Option<String>,
+    /// Hidden weakness/secret — gated behind a reveal (Insight DC or manual).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flaw: Option<String>,
+    /// Whether the flaw has been revealed through play.
+    #[serde(default)]
+    pub flaw_revealed: bool,
     /// Facts this NPC is aware of, with optional scene context.
     #[serde(
         default,
@@ -659,6 +671,10 @@ mod tests {
             }],
             notes: Some("Knows the underground".into()),
             last_seen_scene_id: None,
+            drive: None,
+            leverage: None,
+            flaw: None,
+            flaw_revealed: false,
             created_at: "2026-01-01T00:00:00Z".into(),
         };
         let json = serde_json::to_string(&npc).unwrap();
@@ -797,6 +813,10 @@ mod tests {
             ],
             notes: None,
             last_seen_scene_id: None,
+            drive: None,
+            leverage: None,
+            flaw: None,
+            flaw_revealed: false,
             created_at: "2026-01-01T00:00:00Z".into(),
         };
         let json = serde_json::to_string(&npc).unwrap();

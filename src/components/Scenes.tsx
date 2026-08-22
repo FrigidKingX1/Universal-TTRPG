@@ -359,6 +359,8 @@ function NpcCharactersPanel() {
   const removeNpcKnowledge = useStore((s) => s.removeNpcKnowledge);
   const markNpcDead = useStore((s) => s.markNpcDead);
   const deleteNpcCharacter = useStore((s) => s.deleteNpcCharacter);
+  const updateNpcPillars = useStore((s) => s.updateNpcPillars);
+  const revealNpcFlaw = useStore((s) => s.revealNpcFlaw);
   const scenes = useStore((s) => s.scenes);
   const { confirm: confirmNpc, dialog: npcDialog } = useConfirmDialog();
 
@@ -373,6 +375,9 @@ function NpcCharactersPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editLocation, setEditLocation] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editDrive, setEditDrive] = useState("");
+  const [editLeverage, setEditLeverage] = useState("");
+  const [editFlaw, setEditFlaw] = useState("");
   const [newFact, setNewFact] = useState("");
 
   const sceneTitle = (id?: string) => scenes.find((s) => s.id === id)?.title ?? "unknown";
@@ -387,6 +392,9 @@ function NpcCharactersPanel() {
     setExpandedId(npc.id);
     setEditLocation(npc.location ?? "");
     setEditNotes(npc.notes ?? "");
+    setEditDrive(npc.drive ?? "");
+    setEditLeverage(npc.leverage ?? "");
+    setEditFlaw(npc.flaw ?? "");
   };
 
   return (
@@ -454,6 +462,37 @@ function NpcCharactersPanel() {
               </div>
             )}
 
+            {(npc.drive || npc.leverage || npc.flaw) && (
+              <div style={{ fontSize: "0.8rem", margin: "0.3rem 0", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                {npc.drive && (
+                  <span><span className="muted">Drive:</span> {npc.drive}</span>
+                )}
+                {npc.leverage && (
+                  <span><span className="muted">Leverage:</span> {npc.leverage}</span>
+                )}
+                {npc.flaw && (
+                  npc.flaw_revealed
+                    ? <span><span className="muted">Flaw:</span> {npc.flaw}</span>
+                    : <span><span className="muted">Flaw:</span> <em>hidden</em>
+                        <button
+                          className="muted"
+                          style={{ fontSize: "0.7rem", marginLeft: "0.3rem" }}
+                          onClick={() => void revealNpcFlaw(npc.id)}
+                          title="Reveal flaw (e.g. Insight check passed)"
+                        >reveal</button>
+                      </span>
+                )}
+              </div>
+            )}
+
+            {!npc.drive && !npc.leverage && !npc.flaw && expandedId !== npc.id && (
+              <button
+                className="muted"
+                style={{ fontSize: "0.7rem", textAlign: "left" }}
+                onClick={() => startEdit(npc)}
+              >+ Add drive / leverage / flaw</button>
+            )}
+
             {expandedId === npc.id && (
               <div style={{ marginTop: "0.4rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
                 <div className="row">
@@ -484,6 +523,39 @@ function NpcCharactersPanel() {
                       onBlur={() => { if (expandedId === npc.id && editNotes !== (npc.notes ?? "")) void updateNpcNotes(npc.id, editNotes); }}
                       placeholder="DM notes about this NPC..."
                       rows={2}
+                    />
+                  </label>
+                </div>
+                <div className="row">
+                  <label style={{ fontSize: "0.8rem" }}>
+                    Drive (what they want)
+                    <input
+                      value={editDrive}
+                      onChange={(e) => setEditDrive(e.currentTarget.value)}
+                      onBlur={() => { if (expandedId === npc.id) void updateNpcPillars(npc.id, editDrive || undefined, editLeverage || undefined, editFlaw || undefined); }}
+                      placeholder="e.g. Protect my family at any cost"
+                    />
+                  </label>
+                </div>
+                <div className="row">
+                  <label style={{ fontSize: "0.8rem" }}>
+                    Leverage (what they offer/threaten)
+                    <input
+                      value={editLeverage}
+                      onChange={(e) => setEditLeverage(e.currentTarget.value)}
+                      onBlur={() => { if (expandedId === npc.id) void updateNpcPillars(npc.id, editDrive || undefined, editLeverage || undefined, editFlaw || undefined); }}
+                      placeholder="e.g. Knows the smugglers' tunnel layout"
+                    />
+                  </label>
+                </div>
+                <div className="row">
+                  <label style={{ fontSize: "0.8rem" }}>
+                    Flaw / secret (hidden until revealed)
+                    <input
+                      value={editFlaw}
+                      onChange={(e) => setEditFlaw(e.currentTarget.value)}
+                      onBlur={() => { if (expandedId === npc.id) void updateNpcPillars(npc.id, editDrive || undefined, editLeverage || undefined, editFlaw || undefined); }}
+                      placeholder="e.g. Addicted to hush money — won't resist a bribe"
                     />
                   </label>
                 </div>

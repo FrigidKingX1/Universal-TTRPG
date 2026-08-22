@@ -321,6 +321,8 @@ pub fn run() {
             commands::delete_thread,
             commands::save_npc_character,
             commands::update_npc_character,
+            commands::update_npc_pillars,
+            commands::reveal_flaw,
             commands::list_npc_characters,
             commands::delete_npc_character,
             commands::generate_campaign,

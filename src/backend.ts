@@ -236,10 +236,14 @@ export const backend = {
     invoke<boolean>("delete_thread", { id }),
 
   // NPC Characters
-  saveNpcCharacter: (name: string, disposition: string, alive: boolean, location?: string, knowsJson?: string, notes?: string, lastSeenSceneId?: string) =>
-    invoke<NpcCharacterRow>("save_npc_character", { name, disposition, alive, location, knowsJson: knowsJson ?? "[]", notes, lastSeenSceneId }),
+  saveNpcCharacter: (name: string, disposition: string, alive: boolean, location?: string, knowsJson?: string, notes?: string, lastSeenSceneId?: string, drive?: string, leverage?: string, flaw?: string, flawRevealed?: boolean) =>
+    invoke<NpcCharacterRow>("save_npc_character", { name, disposition, alive, location, knowsJson: knowsJson ?? "[]", notes, lastSeenSceneId, drive, leverage, flaw, flawRevealed }),
   updateNpcCharacter: (id: string, disposition?: string, alive?: boolean, location?: string, knowsJson?: string, notes?: string, lastSeenSceneId?: string) =>
     invoke<void>("update_npc_character", { id, disposition, alive, location, knowsJson, notes, lastSeenSceneId }),
+  updateNpcPillars: (id: string, drive?: string, leverage?: string, flaw?: string) =>
+    invoke<void>("update_npc_pillars", { id, drive, leverage, flaw }),
+  revealFlaw: (id: string) =>
+    invoke<void>("reveal_flaw", { id }),
   listNpcCharacters: () =>
     invoke<NpcCharacterRow[]>("list_npc_characters"),
   deleteNpcCharacter: (id: string) =>
@@ -312,6 +316,10 @@ export interface NpcCharacterRow {
   knows_json: string;
   notes: string | null;
   last_seen_scene_id: string | null;
+  drive: string | null;
+  leverage: string | null;
+  flaw: string | null;
+  flaw_revealed: boolean;
   created_at: string;
 }
 

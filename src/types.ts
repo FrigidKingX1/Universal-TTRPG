@@ -292,6 +292,14 @@ export interface NpcCharacter {
   knows: NpcKnowledge[];
   notes?: string | null;
   last_seen_scene_id?: string | null;
+  /** What this NPC desperately wants (behavioral anchor; DM-visible). */
+  drive?: string | null;
+  /** What they can offer or threaten with (DM-visible leverage hook). */
+  leverage?: string | null;
+  /** Hidden weakness/secret — gated behind Insight DC / manual reveal. */
+  flaw?: string | null;
+  /** Whether the flaw has been revealed through play. */
+  flaw_revealed?: boolean;
   created_at: string;
 }
 

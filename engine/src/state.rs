@@ -161,6 +161,10 @@ pub trait Repository: Send + Sync {
         knows_json: &str,
         notes: Option<&str>,
         last_seen_scene_id: Option<&str>,
+        drive: Option<&str>,
+        leverage: Option<&str>,
+        flaw: Option<&str>,
+        flaw_revealed: bool,
     ) -> Result<NpcCharacterRow, DbError>;
     #[allow(clippy::too_many_arguments)]
     async fn update_npc_character(
@@ -173,6 +177,14 @@ pub trait Repository: Send + Sync {
         notes: Option<&str>,
         last_seen_scene_id: Option<&str>,
     ) -> Result<(), DbError>;
+    async fn update_npc_pillars(
+        &self,
+        id: &str,
+        drive: Option<&str>,
+        leverage: Option<&str>,
+        flaw: Option<&str>,
+    ) -> Result<(), DbError>;
+    async fn reveal_flaw(&self, id: &str) -> Result<(), DbError>;
     async fn list_npc_characters(&self) -> Result<Vec<NpcCharacterRow>, DbError>;
     async fn delete_npc_character(&self, id: &str) -> Result<bool, DbError>;
 
@@ -320,6 +332,14 @@ pub struct ThreadRow {
 pub struct NpcCharacterRow {
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub drive: Option<String>,
+    #[serde(default)]
+    pub leverage: Option<String>,
+    #[serde(default)]
+    pub flaw: Option<String>,
+    #[serde(default)]
+    pub flaw_revealed: bool,
     pub disposition: String,
     pub alive: bool,
     pub location: Option<String>,
@@ -505,6 +525,10 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DbError> {
         "CREATE TABLE IF NOT EXISTS npc_characters (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            drive TEXT,
+            leverage TEXT,
+            flaw TEXT,
+            flaw_revealed BOOLEAN NOT NULL DEFAULT FALSE,
             disposition TEXT NOT NULL DEFAULT 'neutral',
             alive BOOLEAN NOT NULL DEFAULT TRUE,
             location TEXT,
@@ -1131,7 +1155,7 @@ impl Repository for SqliteRepository {
         for npc in &data.npc_characters {
             sqlx::query(
                 "INSERT INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
                    name = excluded.name,
                    disposition = excluded.disposition,
@@ -1139,7 +1163,11 @@ impl Repository for SqliteRepository {
                    location = excluded.location,
                    knows_json = excluded.knows_json,
                    notes = excluded.notes,
-                   last_seen_scene_id = excluded.last_seen_scene_id",
+                   last_seen_scene_id = excluded.last_seen_scene_id,
+                   drive = excluded.drive,
+                   leverage = excluded.leverage,
+                   flaw = excluded.flaw,
+                   flaw_revealed = excluded.flaw_revealed",
             )
             .bind(&npc.id)
             .bind(&npc.name)
@@ -1149,6 +1177,10 @@ impl Repository for SqliteRepository {
             .bind(&npc.knows_json)
             .bind(&npc.notes)
             .bind(&npc.last_seen_scene_id)
+            .bind(&npc.drive)
+            .bind(&npc.leverage)
+            .bind(&npc.flaw)
+            .bind(npc.flaw_revealed)
             .bind(&npc.created_at)
             .execute(&mut *tx)
             .await?;
@@ -1462,11 +1494,15 @@ impl Repository for SqliteRepository {
         knows_json: &str,
         notes: Option<&str>,
         last_seen_scene_id: Option<&str>,
+        drive: Option<&str>,
+        leverage: Option<&str>,
+        flaw: Option<&str>,
+        flaw_revealed: bool,
     ) -> Result<NpcCharacterRow, DbError> {
         let id = uuid::Uuid::new_v4().to_string();
         sqlx::query(
-            "INSERT INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, drive, leverage, flaw, flaw_revealed)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&id)
         .bind(name)
@@ -1476,11 +1512,19 @@ impl Repository for SqliteRepository {
         .bind(knows_json)
         .bind(notes)
         .bind(last_seen_scene_id)
+        .bind(drive)
+        .bind(leverage)
+        .bind(flaw)
+        .bind(flaw_revealed)
         .execute(&self.pool)
         .await?;
         Ok(NpcCharacterRow {
             id,
             name: name.to_string(),
+            drive: drive.map(|s| s.to_string()),
+            leverage: leverage.map(|s| s.to_string()),
+            flaw: flaw.map(|s| s.to_string()),
+            flaw_revealed,
             disposition: disposition.to_string(),
             alive,
             location: location.map(|s| s.to_string()),
@@ -1524,6 +1568,37 @@ impl Repository for SqliteRepository {
         Ok(())
     }
 
+    async fn update_npc_pillars(
+        &self,
+        id: &str,
+        drive: Option<&str>,
+        leverage: Option<&str>,
+        flaw: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE npc_characters SET
+                drive = COALESCE(?, drive),
+                leverage = COALESCE(?, leverage),
+                flaw = COALESCE(?, flaw)
+             WHERE id = ?",
+        )
+        .bind(drive)
+        .bind(leverage)
+        .bind(flaw)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn reveal_flaw(&self, id: &str) -> Result<(), DbError> {
+        sqlx::query("UPDATE npc_characters SET flaw_revealed = TRUE WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     async fn list_npc_characters(&self) -> Result<Vec<NpcCharacterRow>, DbError> {
         type NpcRow = (
             String,
@@ -1535,9 +1610,14 @@ impl Repository for SqliteRepository {
             Option<String>,
             Option<String>,
             String,
+            String,
+            String,
+            String,
+            bool,
         );
         let rows: Vec<NpcRow> = sqlx::query_as(
-            "SELECT id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at
+            "SELECT id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at,
+                    COALESCE(drive, ''), COALESCE(leverage, ''), COALESCE(flaw, ''), COALESCE(flaw_revealed, FALSE)
              FROM npc_characters ORDER BY created_at ASC",
         )
         .fetch_all(&self.pool)
@@ -1555,10 +1635,18 @@ impl Repository for SqliteRepository {
                     notes,
                     last_seen_scene_id,
                     created_at,
+                    drive,
+                    leverage,
+                    flaw,
+                    flaw_revealed,
                 )| {
                     NpcCharacterRow {
                         id,
                         name,
+                        drive: if drive.is_empty() { None } else { Some(drive) },
+                        leverage: if leverage.is_empty() { None } else { Some(leverage) },
+                        flaw: if flaw.is_empty() { None } else { Some(flaw) },
+                        flaw_revealed,
                         disposition,
                         alive,
                         location,
@@ -2089,6 +2177,10 @@ mod tests {
                 "[]",
                 Some("Knows the underground"),
                 None,
+                None,
+                None,
+                None,
+                false,
             )
             .await
             .expect("save npc");
