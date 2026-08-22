@@ -293,7 +293,22 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
 
   return (
     <div className="sheet">
-      <h3>Identity</h3>
+      <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        Identity
+        {(() => {
+          const cls = findClassByArchetype(archetype);
+          return cls ? (
+            <img
+              src={`${import.meta.env.BASE_URL}assets/icons/class_${cls.id}.png`}
+              alt={cls.name}
+              width={28}
+              height={28}
+              title={cls.name}
+              style={{ borderRadius: 5, border: "1px solid var(--border)" }}
+            />
+          ) : null;
+        })()}
+      </h3>
       <div className="attr-grid">
         <label className="attr">
           <span>Name</span>

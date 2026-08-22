@@ -147,10 +147,24 @@ export function PlayerPanel() {
         <div className="character-view">
           {/* Vitals */}
           <div className="vitals-header">
-            <div className="vitals-name">{character.identity.name}</div>
-            <div className="vitals-meta">
-              <span>{character.identity.archetype ?? character.identity.ancestry ?? "Adventurer"}</span>
-              <span>Lvl {character.identity.level_or_rank}</span>
+            {(() => {
+              const cls = PRESET_CLASSES.find((c) => c.name === character.identity.archetype);
+              return cls ? (
+                <img
+                  src={`${import.meta.env.BASE_URL}assets/icons/class_${cls.id}.png`}
+                  alt=""
+                  width={34}
+                  height={34}
+                  style={{ borderRadius: 6, border: "1px solid var(--border)" }}
+                />
+              ) : null;
+            })()}
+            <div>
+              <div className="vitals-name">{character.identity.name}</div>
+              <div className="vitals-meta">
+                <span>{character.identity.archetype ?? character.identity.ancestry ?? "Adventurer"}</span>
+                <span>Lvl {character.identity.level_or_rank}</span>
+              </div>
             </div>
           </div>
 

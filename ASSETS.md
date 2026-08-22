@@ -40,25 +40,22 @@ In code/UI always reference them **without** the `public/` prefix:
 
 Every preset monster carries a stable `key` (e.g. `goblin`,
 `ancient_red_dragon`). If its explicit **Portrait** field is empty, the card
-automatically tries `/assets/monsters/<key>.png`. So to give your whole
-bestiary art with zero manual entry:
+automatically tries `/assets/monsters/<key>.png`. **All 376 monsters already
+have art**: `scripts/gen_portraits.mjs` generates a deterministic heraldic
+sigil tile per key (type-colored: dragons crimson, undead green, fiends
+magenta...) — original procedural PNGs authored by this project, CC0.
+Regenerate any time; they're placeholders by design.
 
-1. Download tokens from the sources below into `public/assets/incoming/`.
-2. Run the batch mapper — it strips pack noise (`_token`, `40px`,
-   `Portrait`, spaces/dashes), matches files to monster keys/names, and
-   copies each hit to `public/assets/monsters/<key>.<ext>`:
+To upgrade to real illustrated tokens:
 
-   ```bash
-   node scripts/map_tokens.mjs --dry-run          # preview matches
-   node scripts/map_tokens.mjs                    # copy for real
-   node scripts/map_tokens.mjs path/to/pack --force
-   ```
+1. Download token packs from the sources below into `public/assets/incoming/`.
+2. `node scripts/map_tokens.mjs --dry-run` then without the flag — it
+   overwrites matching generated tiles with real art (same `<key>.png` names).
+3. Unmatched files are listed so you can rename or skip them.
 
-3. It prints matched pairs, unmatched leftovers, and how many monsters
-   still lack art.
-
-An explicit portrait set in the Bestiary editor always wins over the
-convention. Broken/missing files hide silently (`onError`).
+An explicit portrait set in the Bestiary editor always wins. Class crests
+(`public/assets/icons/class_<id>.png`, 12 classes) show on character sheets
+and the player panel; replace them with hand-drawn crests at the same paths.
 
 ## Art — monsters, tokens & portraits
 
