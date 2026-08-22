@@ -36,7 +36,11 @@ async fn main() {
     let pipeline = Arc::new(auto_dm_core::llm::DmPipeline::new(backend));
 
     let state = Arc::new(AppState {
-        registry: Arc::new(SessionRegistry::new(data_dir, pipeline)),
+        registry: Arc::new(
+            SessionRegistry::new(data_dir, pipeline)
+                .await
+                .expect("Failed to initialize session registry"),
+        ),
     });
 
     let app = Router::new()
@@ -193,6 +197,7 @@ async fn resolve(
 
     // Advance turn if in combat mode.
     let (mode, next_turn) = session.turn_gate.advance_turn().await;
+    state.registry.persist_turn_state(&session).await;
     if mode == GameMode::Combat {
         tracing::info!(
             session = %session_id,
@@ -251,6 +256,7 @@ async fn start_combat(
     }
     let _lock = session.session_lock.lock().await;
     session.turn_gate.start_combat(player_id.clone()).await;
+    state.registry.persist_turn_state(&session).await;
     tracing::info!(session = %session_id, starter = %player_id, "Combat started");
     Ok(Json(json!({ "mode": "combat", "current_turn": player_id })))
 }
@@ -268,6 +274,7 @@ async fn end_combat(
     }
     let _lock = session.session_lock.lock().await;
     session.turn_gate.end_combat().await;
+    state.registry.persist_turn_state(&session).await;
     tracing::info!(session = %session_id, "Combat ended");
     Ok(Json(json!({ "mode": "exploration" })))
 }
@@ -285,6 +292,7 @@ async fn join_combat_queue(
     }
     let _lock = session.session_lock.lock().await;
     session.turn_gate.join_queue(&player_id).await;
+    state.registry.persist_turn_state(&session).await;
     let (mode, current, queue) = session.turn_gate.status().await;
     Ok(Json(json!({
         "mode": mode,
@@ -312,6 +320,7 @@ async fn skip_turn(
     match session.turn_gate.can_act(&player_id).await {
         TurnCheck::Allowed => {
             let (mode, next) = session.turn_gate.advance_turn().await;
+            state.registry.persist_turn_state(&session).await;
             Ok(Json(json!({ "mode": mode, "skipped": player_id, "current_turn": next })))
         }
         other => Err((StatusCode::CONFLICT, format!("Cannot skip: {other:?}"))),
@@ -453,6 +462,7 @@ async fn handle_socket(
 async fn mark_disconnected(state: &AppState, session: &session::Session, player_id: &str) {
     // Remove from combat queue if present; advance turn if needed.
     let (mode, next_turn) = session.turn_gate.remove_player(player_id).await;
+    state.registry.persist_turn_state(session).await;
     if mode == GameMode::Combat {
         tracing::info!(
             session = %session.id,

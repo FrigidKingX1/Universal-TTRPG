@@ -8,6 +8,7 @@
 
 use auto_dm_engine::GameState;
 use serde::{Deserialize, Serialize};
+use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -183,6 +184,22 @@ impl TurnGate {
             state.queue.iter().cloned().collect(),
         )
     }
+
+    /// Restore turn state from persisted data (called on startup).
+    pub async fn restore_from_persisted(
+        &self,
+        mode: &str,
+        current_turn: Option<&str>,
+        queue: &[String],
+    ) {
+        let mut state = self.inner.lock().await;
+        state.mode = match mode {
+            "combat" => GameMode::Combat,
+            _ => GameMode::Exploration,
+        };
+        state.current_turn = current_turn.map(|s| s.to_string());
+        state.queue = queue.iter().cloned().collect();
+    }
 }
 
 /// A live game session — one database, one broadcast channel, one lock.
@@ -237,21 +254,198 @@ pub struct SessionRegistry {
     /// Shared DM pipeline (all sessions use the same LLM backend).
     #[allow(dead_code)]
     pipeline: Arc<auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>>>,
+    /// Persistent registry database (survives restarts).
+    registry_pool: SqlitePool,
 }
 
 impl SessionRegistry {
-    pub fn new(
+    pub async fn new(
         data_dir: PathBuf,
         pipeline: Arc<auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>>>,
-    ) -> Self {
+    ) -> Result<Self, String> {
         std::fs::create_dir_all(&data_dir).ok();
-        Self {
+
+        // Open (or create) the persistent registry database.
+        let registry_path = data_dir.join("registry.db");
+        let registry_pool = Self::open_registry(&registry_path).await?;
+
+        let mut registry = Self {
             sessions: RwLock::new(HashMap::new()),
             codes: RwLock::new(HashMap::new()),
             tokens: RwLock::new(HashMap::new()),
             data_dir,
             pipeline,
+            registry_pool,
+        };
+
+        // Rebuild in-memory state from the persistent registry.
+        registry.load_from_registry().await?;
+
+        Ok(registry)
+    }
+
+    /// Open or create the registry database and run its schema.
+    async fn open_registry(path: &std::path::Path) -> Result<SqlitePool, String> {
+        use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
+        let options = SqliteConnectOptions::new()
+            .filename(path)
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Wal)
+            .foreign_keys(true)
+            .busy_timeout(std::time::Duration::from_secs(5));
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect_with(options)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::query("PRAGMA synchronous = NORMAL")
+            .execute(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        // Schema (idempotent).
+        let schema = [
+            "CREATE TABLE IF NOT EXISTS registry_sessions (
+                id TEXT PRIMARY KEY,
+                join_code TEXT NOT NULL UNIQUE
+            );",
+            "CREATE TABLE IF NOT EXISTS registry_players (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES registry_sessions(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                token TEXT NOT NULL UNIQUE
+            );",
+            "CREATE TABLE IF NOT EXISTS registry_turn_state (
+                session_id TEXT PRIMARY KEY REFERENCES registry_sessions(id) ON DELETE CASCADE,
+                mode TEXT NOT NULL DEFAULT 'exploration',
+                current_turn TEXT,
+                queue_json TEXT NOT NULL DEFAULT '[]'
+            );",
+        ];
+        let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+        for stmt in schema {
+            sqlx::query(stmt)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
         }
+        tx.commit().await.map_err(|e| e.to_string())?;
+        Ok(pool)
+    }
+
+    /// Rebuild in-memory maps from the persistent registry database.
+    /// Called once at startup.
+    async fn load_from_registry(&mut self) -> Result<(), String> {
+        // Load sessions.
+        let rows: Vec<(String, String)> =
+            sqlx::query_as("SELECT id, join_code FROM registry_sessions")
+                .fetch_all(&self.registry_pool)
+                .await
+                .map_err(|e| e.to_string())?;
+
+        for (session_id, join_code) in rows {
+            // Check if the per-session database file exists.
+            let db_path = self.data_dir.join(format!("{session_id}.db"));
+            if !db_path.exists() {
+                tracing::warn!(session = %session_id, "Registry entry missing .db file — skipping");
+                continue;
+            }
+
+            let pool = auto_dm_engine::open_pool(&db_path)
+                .await
+                .map_err(|e| e.to_string())?;
+            auto_dm_engine::run_migrations(&pool)
+                .await
+                .map_err(|e| e.to_string())?;
+            let repo = auto_dm_engine::SqliteRepository::new(pool);
+
+            let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
+                Box::new(auto_dm_core::llm::StubLlmBackend);
+            let pipeline = auto_dm_core::llm::DmPipeline::new(backend);
+
+            let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
+            let game = GameState {
+                repo,
+                dm: tokio::sync::Mutex::new(Some(Arc::new(pipeline))),
+                memory: std::sync::Mutex::new(auto_dm_core::memory::CampaignMemory::new()),
+                ollama_child: std::sync::Mutex::new(None),
+                current_model: std::sync::Mutex::new("stub".into()),
+                current_num_predict: std::sync::Mutex::new(512),
+            };
+
+            // Load players for this session.
+            let player_rows: Vec<(String, String, String)> = sqlx::query_as(
+                "SELECT id, name, token FROM registry_players WHERE session_id = ?",
+            )
+            .bind(&session_id)
+            .fetch_all(&self.registry_pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            let players: Vec<PlayerSlot> = player_rows
+                .into_iter()
+                .map(|(id, name, token)| PlayerSlot {
+                    id,
+                    name,
+                    token,
+                    connected: false,
+                })
+                .collect();
+
+            // Load turn state.
+            let turn_row: Option<(String, Option<String>, String)> = sqlx::query_as(
+                "SELECT mode, current_turn, queue_json FROM registry_turn_state WHERE session_id = ?",
+            )
+            .bind(&session_id)
+            .fetch_optional(&self.registry_pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            let turn_gate = TurnGate::new();
+            if let Some((mode, current, queue_json)) = turn_row {
+                let queue: Vec<String> =
+                    serde_json::from_str(&queue_json).unwrap_or_default();
+                turn_gate.restore_from_persisted(&mode, current.as_deref(), &queue).await;
+            }
+
+            // Build token map entries.
+            let token_entries: Vec<(String, String)> = sqlx::query_as(
+                "SELECT token, id FROM registry_players WHERE session_id = ?",
+            )
+            .bind(&session_id)
+            .fetch_all(&self.registry_pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            let session = Arc::new(Session {
+                id: session_id.clone(),
+                join_code: join_code.clone(),
+                game,
+                event_tx,
+                session_lock: tokio::sync::Mutex::new(()),
+                players: RwLock::new(players),
+                turn_gate,
+            });
+
+            // Populate in-memory maps.
+            self.sessions
+                .write()
+                .await
+                .insert(session_id.clone(), session);
+            self.codes.write().await.insert(join_code, session_id.clone());
+            for (token, pid) in token_entries {
+                self.tokens
+                    .write()
+                    .await
+                    .insert(token, (session_id.clone(), pid));
+            }
+
+            tracing::info!(session = %session_id, "Restored from registry");
+        }
+
+        let count = self.sessions.read().await.len();
+        tracing::info!(sessions = count, "Registry loaded");
+        Ok(())
     }
 
     /// Create a new session and mint the host's player token.
@@ -303,7 +497,7 @@ impl SessionRegistry {
             turn_gate: TurnGate::new(),
         });
 
-        // Register session + token.
+        // Register session + token in memory.
         {
             let mut sessions = self.sessions.write().await;
             sessions.insert(session_id.clone(), session);
@@ -314,8 +508,26 @@ impl SessionRegistry {
         }
         {
             let mut tokens = self.tokens.write().await;
-            tokens.insert(host_token.clone(), (session_id.clone(), host_id));
+            tokens.insert(host_token.clone(), (session_id.clone(), host_id.clone()));
         }
+
+        // Persist to registry database.
+        sqlx::query("INSERT INTO registry_sessions (id, join_code) VALUES (?, ?)")
+            .bind(&session_id)
+            .bind(&join_code)
+            .execute(&self.registry_pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::query(
+            "INSERT INTO registry_players (id, session_id, name, token) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&host_id)
+        .bind(&session_id)
+        .bind(title)
+        .bind(&host_token)
+        .execute(&self.registry_pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
         Ok((session_id, join_code, host_token))
     }
@@ -350,6 +562,18 @@ impl SessionRegistry {
             let mut tokens = self.tokens.write().await;
             tokens.insert(token.clone(), (session_id.clone(), player_id.clone()));
         }
+
+        // Persist to registry database.
+        sqlx::query(
+            "INSERT INTO registry_players (id, session_id, name, token) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&player_id)
+        .bind(&session_id)
+        .bind(player_name)
+        .bind(&token)
+        .execute(&self.registry_pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
         Ok((session_id, token, player_id))
     }
@@ -389,6 +613,31 @@ impl SessionRegistry {
             });
         }
         out
+    }
+
+    /// Persist turn state for a session to the registry database.
+    /// Called after combat start/end, join queue, advance turn, etc.
+    pub async fn persist_turn_state(&self, session: &Session) {
+        let (mode, current, queue) = session.turn_gate.status().await;
+        let mode_str = match mode {
+            GameMode::Exploration => "exploration",
+            GameMode::Combat => "combat",
+        };
+        let queue_json = serde_json::to_string(&queue).unwrap_or_else(|_| "[]".into());
+        let _ = sqlx::query(
+            "INSERT INTO registry_turn_state (session_id, mode, current_turn, queue_json)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(session_id) DO UPDATE SET
+               mode = excluded.mode,
+               current_turn = excluded.current_turn,
+               queue_json = excluded.queue_json",
+        )
+        .bind(&session.id)
+        .bind(mode_str)
+        .bind(&current)
+        .bind(&queue_json)
+        .execute(&self.registry_pool)
+        .await;
     }
 }
 
