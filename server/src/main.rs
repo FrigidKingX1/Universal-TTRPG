@@ -80,6 +80,7 @@ async fn main() {
         .route("/sessions/{session_id}/combat/heal", post(server_combat_heal))
         .route("/sessions/{session_id}/combat/condition", post(server_combat_condition))
         .route("/sessions/{session_id}/combat/sync", post(server_combat_sync))
+        .route("/sessions/{session_id}/combat/initiative", post(server_combat_initiative))
         .route("/ollama/configure", post(configure_ollama).get(get_ollama_config))
         .route("/ollama/models", get(list_ollama_models))
         .with_state(state);
@@ -1325,6 +1326,44 @@ async fn server_combat_sync(
     Ok(Json(json!({ "ok": true })))
 }
 
+
+#[derive(Deserialize)]
+struct CombatInitiativeRequest {
+    combatants: Vec<Value>,
+    formula: Option<String>,
+}
+
+async fn server_combat_initiative(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<CombatInitiativeRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+
+    let mut dice = auto_dm_core::dice::DiceEngine::new();
+    let mut participants = Vec::new();
+    for v in &req.combatants {
+        participants.push(
+            auto_dm_engine::combatant_from_value(v)
+                .map_err(|e| (StatusCode::BAD_REQUEST, e))?
+        );
+    }
+
+    let formula = req.formula.unwrap_or_default();
+    let entries = auto_dm_core::engine::roll_initiative(&mut dice, &participants, &formula)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Persist initiative order so resync includes it.
+    // (Initiative is transient combat state — no need to broadcast resync here.)
+
+    Ok(Json(serde_json::to_value(&entries).unwrap_or_default()))
+}
 // â”€â”€ WebSocket â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PING_INTERVAL: Duration = Duration::from_secs(30);

@@ -813,7 +813,13 @@ export const useStore = create<AutoDmState>()(
   },
 
   rollInitiative: async (combatants, formula) => {
-    const order = await backend.initiative(combatants, formula ?? "");
+    let order;
+    if (isInMultiplayerSession()) {
+      const client = (await import("./multiplayer")).getMultiplayerClient();
+      order = await client!.rollInitiative(combatants, formula ?? "");
+    } else {
+      order = await backend.initiative(combatants, formula ?? "");
+    }
     set({ initiativeOrder: order, currentRound: 1, currentTurnIndex: 0 });
     persistCombat();
   },

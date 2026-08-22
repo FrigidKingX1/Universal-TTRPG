@@ -198,6 +198,14 @@ export class MultiplayerClient {
     return this.httpPost("/combat/sync", { combatants, conditions });
   }
 
+  /** Roll initiative through the server's dice engine. */
+  async rollInitiative(
+    combatants: unknown[],
+    formula: string,
+  ): Promise<import("../types").InitiativeEntry[]> {
+    return this.httpPost("/combat/initiative", { combatants, formula });
+  }
+
   /** Generic authenticated POST to the session's REST API. */
   async httpPost<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetch(`${this.httpBase}/sessions/${this.sessionId}${path}`, {
