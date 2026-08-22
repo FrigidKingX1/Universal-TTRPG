@@ -28,6 +28,13 @@ pub enum GameEvent {
         /// Single hit exceeded 50% max HP — knockdown trauma.
         shock: bool,
     },
+    /// HP restored by a heal action or the heal endpoint.
+    Healed {
+        target_id: String,
+        target_name: String,
+        amount: i32,
+        hp_remaining: i32,
+    },
     /// The mutation target was ambiguous; `candidates` are the valid choices
     /// (generic disambiguation shared by clocks, NPCs, monsters).
     AmbiguousTarget {
@@ -71,6 +78,9 @@ impl GameEvent {
                     s.push_str(" (SYSTEMIC SHOCK — knocked prone)");
                 }
                 s
+            }
+            GameEvent::Healed { target_name, amount, hp_remaining, .. } => {
+                format!("{amount} HP restored to {target_name} — {hp_remaining} HP remain")
             }
             GameEvent::AmbiguousTarget { message, candidates, .. } => {
                 format!("{message} Options: {}", candidates.join(", "))

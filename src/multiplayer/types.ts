@@ -44,6 +44,13 @@ export type GameEvent =
       defeated: boolean;
       shock: boolean;
     }
+  | {
+      type: "healed";
+      target_id: string;
+      target_name: string;
+      amount: number;
+      hp_remaining: number;
+    }
   | { type: "condition_applied"; target: string; condition: string }
   | { type: "ambiguous_target"; kind: string; message: string; candidates: string[] }
   | { type: "rule_answered"; question: string };

@@ -209,6 +209,10 @@ pub struct SuccessOutcome {
     pub damage_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub applied_status: Option<String>,
+    /// When true the success formula restores HP instead of dealing damage
+    /// (Cure Wounds and friends). No resistance/vulnerability interaction.
+    #[serde(default)]
+    pub heal: bool,
 }
 
 /// Outcome when an action fails.

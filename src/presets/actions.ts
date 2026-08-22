@@ -57,6 +57,29 @@ export const WEAPON_ACTIONS: ActionDefinition[] = [
   mk("act_sling", "Sling", "1d4 + @attributes.DEX.derived_modifier", "bludgeoning", "DEX", 30),
 ];
 
+/** Restorative actions — guaranteed effect, formula is the HP restored. */
+const mkHeal = (
+  id: string,
+  name: string,
+  formula: string,
+  attr: "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA",
+  rangeFeet = 5,
+  costType: "action" | "bonus_action" = "action",
+): ActionDefinition => ({
+  id,
+  name,
+  action_cost: { type: costType, amount: 1 },
+  targeting: { range_feet: rangeFeet, target_type: "single_entity", shape: undefined, size_feet: 0 },
+  resolution: {
+    // Healing never misses; the caster simply channels the restoration.
+    type: "guaranteed_effect",
+    primary_attribute: attr,
+    outcomes: {
+      on_success: { formula, damage_type: undefined, applied_status: undefined, heal: true },
+    },
+  },
+});
+
 /** Spell-like abilities for casters (attack-roll approximation of save spells). */
 export const SPELL_ACTIONS: ActionDefinition[] = [
   mk("act_magic_missile", "Magic Missile", "3d4 + 3", "force", "INT", 120, undefined, undefined, true),
@@ -83,6 +106,11 @@ export const SPELL_ACTIONS: ActionDefinition[] = [
   mk("act_flame_strike", "Flame Strike", "4d6 + 4d6", "fire", "WIS", 60),
   mk("act_meteor_swarm", "Meteor Swarm", "20d6", "fire", "INT", 1000),
   mk("act_spiritual_weapon", "Spiritual Weapon", "1d8", "force", "WIS"),
+
+  // Healing spells (heal-outcome path — restore HP on the target).
+  mkHeal("act_cure_wounds", "Cure Wounds", "2d8 + @attributes.WIS.derived_modifier", "WIS"),
+  mkHeal("act_healing_word", "Healing Word", "1d4 + @attributes.WIS.derived_modifier", "WIS", 60, "bonus_action"),
+  mkHeal("act_mass_cure_wounds", "Mass Cure Wounds", "3d8 + @attributes.WIS.derived_modifier", "WIS", 60),
 ];
 
 /** Monster-specific attacks shared across creatures. */

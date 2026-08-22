@@ -853,6 +853,7 @@ button.rolling {
 .oracle-history-entry:last-child { border-bottom: none; }
 
 .exceptional { color: var(--accent); font-weight: 600; }
+.heal-text { color: #4caf7d; font-weight: 600; }
 
 /* DM Response */
 .dm-response { margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }

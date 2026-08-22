@@ -182,7 +182,7 @@ export const PRESET_CLASSES: ClassTemplate[] = [
     starting_pools: [
       { name: "spell_slots_l1", maximum: 2, reset_condition: "long_rest" },
     ],
-    starting_abilities: ["act_mace", "act_sacred_flame"],
+    starting_abilities: ["act_mace", "act_sacred_flame", "act_cure_wounds", "act_healing_word"],
     starting_items: [
       { name: "Mace", quantity: 1, weight: 4 },
       { name: "Shield", quantity: 1, weight: 6 },

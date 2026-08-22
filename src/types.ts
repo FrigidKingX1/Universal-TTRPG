@@ -72,6 +72,8 @@ export interface SuccessOutcome {
   formula?: string;
   damage_type?: string;
   applied_status?: string;
+  /** When true the formula restores HP instead of dealing damage. */
+  heal?: boolean;
 }
 
 export interface FailureOutcome {
@@ -229,6 +231,8 @@ export interface EngineOutcome {
   attack_detail?: string;
   target_ac?: number;
   damage_dealt: number;
+  /** HP restored when this was a heal action (0 otherwise). */
+  heal_amount?: number;
   target_hp_remaining: number;
   target_status: string;
   applied_status?: string;

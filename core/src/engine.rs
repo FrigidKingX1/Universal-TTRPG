@@ -149,6 +149,8 @@ pub struct EngineOutcome {
     pub attack_detail: Option<String>,
     pub target_ac: Option<i32>,
     pub damage_dealt: i32,
+    /// HP actually restored when this was a heal action (0 otherwise).
+    pub heal_amount: i32,
     pub target_hp_remaining: i32,
     pub target_status: String,
     pub applied_status: Option<String>,
@@ -377,6 +379,7 @@ pub fn execute_attack(
                 attack_detail: None,
                 target_ac: None,
                 damage_dealt: 0,
+                heal_amount: 0,
                 target_hp_remaining: target.hit_points,
                 target_status: current_status(target),
                 applied_status: None,
@@ -556,7 +559,36 @@ pub fn execute_attack(
         }
     }
 
-    // 3. Apply damage-type modifiers (resistance/vulnerability/immunity).
+    // 3. Healing actions restore instead of harm — no resist/vuln interaction,
+    //    no shock, no defeat. The rolled formula is the amount restored.
+    let is_heal = resolution
+        .outcomes
+        .as_ref()
+        .and_then(|o| o.on_success.as_ref())
+        .map(|s| s.heal)
+        .unwrap_or(false);
+    if is_heal {
+        let healed = apply_healing(target, damage_dealt.max(0));
+        return Ok(EngineOutcome {
+            check_result,
+            check_roll,
+            check_detail,
+            attack_result,
+            attack_roll,
+            attack_detail,
+            target_ac: None,
+            damage_dealt: 0,
+            heal_amount: healed,
+            target_hp_remaining: target.hit_points,
+            target_status: current_status(target),
+            applied_status,
+            damage_type: None,
+            damage_modifier: None,
+            damage_result: None,
+        });
+    }
+
+    // 4. Apply damage-type modifiers (resistance/vulnerability/immunity).
     let damage_type_str = resolution
         .outcomes
         .as_ref()
@@ -600,6 +632,7 @@ pub fn execute_attack(
             .as_ref()
             .and_then(|_| resolve_defense(action, target).ok()),
         damage_dealt,
+        heal_amount: 0,
         target_hp_remaining: target.hit_points,
         target_status,
         applied_status,
@@ -722,6 +755,7 @@ mod tests {
                         formula: Some("1d8 + @attributes.STR.derived_modifier".to_string()),
                         damage_type: Some("slashing".to_string()),
                         applied_status: None,
+                        heal: false,
                     }),
                     on_failure: None,
                 }),
@@ -805,6 +839,77 @@ mod tests {
         assert_eq!(outcome.target_hp_remaining, 7);
     }
 
+    fn cure_wounds() -> ActionDefinition {
+        ActionDefinition {
+            id: "act_cure_wounds".to_string(),
+            name: "Cure Wounds".to_string(),
+            action_cost: ActionCost { cost_type: CostType::Action, amount: 1 },
+            targeting: Some(Targeting {
+                range_feet: Some(5),
+                target_type: TargetType::SingleEntity,
+                shape: None,
+                size_feet: 0,
+            }),
+            resolution: Resolution {
+                resolution_type: ResolutionType::GuaranteedEffect,
+                primary_attribute: Some("WIS".to_string()),
+                roll_formula: None,
+                vs_defense: None,
+                outcomes: Some(Outcomes {
+                    on_success: Some(SuccessOutcome {
+                        // Test profiles only carry STR/DEX, so key off DEX.
+                        formula: Some("2d8 + @attributes.DEX.derived_modifier".to_string()),
+                        damage_type: None,
+                        applied_status: None,
+                        heal: true,
+                    }),
+                    on_failure: None,
+                }),
+            },
+        }
+    }
+
+    #[test]
+    fn heal_action_restores_hp_without_damage() {
+        let mut dice = DiceEngine::with_seed(7);
+        let caster = Combatant::from(&profile_with_str("Priest", 10, 14, 20));
+        let mut target = Combatant::from(&goblin());
+        // Wound the target first so there is something to restore.
+        apply_damage(&mut target, 5);
+        let wounded = target.hit_points;
+        assert_eq!(wounded, 2);
+
+        let outcome =
+            execute_attack(&mut dice, &caster, &mut target, &cure_wounds(), None).unwrap();
+        assert_eq!(outcome.attack_result, "GUARANTEED");
+        assert!(outcome.heal_amount > 0, "heal should restore HP");
+        assert_eq!(outcome.damage_dealt, 0);
+        assert_eq!(outcome.target_hp_remaining, wounded + outcome.heal_amount);
+        assert!(outcome.target_hp_remaining <= target.max_hit_points);
+        assert_eq!(outcome.target_status, "ALIVE");
+    }
+
+    #[test]
+    fn heal_action_clamps_at_max_and_revives() {
+        let mut dice = DiceEngine::with_seed(7);
+        let caster = Combatant::from(&profile_with_str("Priest", 10, 14, 20));
+        let mut target = Combatant::from(&goblin());
+        // Drop the target, then channel a massive restoration — it must
+        // revive and clamp at max HP rather than overhealing.
+        apply_damage(&mut target, 7);
+        assert_eq!(target.hit_points, 0);
+
+        let mut big_heal = cure_wounds();
+        big_heal.resolution.outcomes.as_mut().unwrap().on_success.as_mut().unwrap().formula =
+            Some("100".to_string());
+
+        let outcome =
+            execute_attack(&mut dice, &caster, &mut target, &big_heal, None).unwrap();
+        assert_eq!(outcome.heal_amount, target.max_hit_points);
+        assert_eq!(outcome.target_hp_remaining, target.max_hit_points);
+        assert_eq!(outcome.target_status, "ALIVE");
+    }
+
     #[test]
     fn defeated_at_zero_hp() {
         let mut dice = DiceEngine::with_seed(1);
@@ -860,6 +965,7 @@ mod tests {
                         formula: Some("1d6".to_string()),
                         damage_type: Some("physical".to_string()),
                         applied_status: None,
+                        heal: false,
                     }),
                     on_failure: None,
                 }),

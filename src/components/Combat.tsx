@@ -606,6 +606,9 @@ function CombatLogEntry({ outcome }: { outcome: EngineOutcome }) {
           {outcome.damage_modifier && <span className={outcome.damage_modifier === "immune" ? "exceptional" : outcome.damage_modifier === "vulnerable" ? "fury" : "muted"}> ({outcome.damage_modifier})</span>}
         </span>
       )}
+      {(outcome.heal_amount ?? 0) > 0 && (
+        <span className="heal-text"> — <strong>+{outcome.heal_amount} HP</strong></span>
+      )}
       {outcome.damage_dealt === 0 && outcome.damage_modifier === "immune" && (
         <span className="exceptional"> — immune!</span>
       )}
@@ -660,8 +663,16 @@ function CombatResult({ outcome }: { outcome: EngineOutcome }) {
         </span>
       </p>
       <p>
-        Damage: <strong>{outcome.damage_dealt}</strong>
-        {outcome.damage_type && <span className="muted"> [{outcome.damage_type}]</span>}
+        {(outcome.heal_amount ?? 0) > 0 ? "Healed" : "Damage"}:{" "}
+        <strong>
+          {(outcome.heal_amount ?? 0) > 0 ? `+${outcome.heal_amount}` : outcome.damage_dealt}
+        </strong>
+        {(outcome.heal_amount ?? 0) > 0 && (
+          <span className="heal-text"> restored</span>
+        )}
+        {outcome.damage_type && (outcome.heal_amount ?? 0) === 0 && (
+          <span className="muted"> [{outcome.damage_type}]</span>
+        )}
         {outcome.damage_modifier && <span className={outcome.damage_modifier === "immune" ? "exceptional" : outcome.damage_modifier === "vulnerable" ? "fury" : "muted"}> ({outcome.damage_modifier})</span>}
         {" · "}Target HP:{" "}
         <strong>{outcome.target_hp_remaining}</strong> · Status:{" "}

@@ -117,6 +117,26 @@ describe("Preset actions", () => {
     expect(mm.resolution.type).toBe("guaranteed_effect");
     expect(mm.resolution.outcomes?.on_success?.formula).toBe("3d4 + 3");
   });
+
+  it("heal actions restore HP instead of dealing damage", () => {
+    const cure = findPresetAction("act_cure_wounds")!;
+    const word = findPresetAction("act_healing_word")!;
+    const mass = findPresetAction("act_mass_cure_wounds")!;
+    for (const [name, a] of [["cure", cure], ["word", word], ["mass", mass]] as const) {
+      expect(a.resolution.type, name).toBe("guaranteed_effect");
+      expect(a.resolution.outcomes?.on_success?.heal, name).toBe(true);
+      expect(a.resolution.outcomes?.on_success?.damage_type, name).toBeUndefined();
+      expect(a.resolution.outcomes?.on_success?.formula, name).toBeTruthy();
+    }
+    // Healing Word is the classic quick bonus-action pick-me-up.
+    expect(word.action_cost.type).toBe("bonus_action");
+  });
+
+  it("cleric starts with healing options", () => {
+    const cleric = PRESET_CLASSES.find((c) => c.id === "cleric")!;
+    expect(cleric.starting_abilities).toContain("act_cure_wounds");
+    expect(cleric.starting_abilities).toContain("act_healing_word");
+  });
 });
 
 describe("Class templates", () => {

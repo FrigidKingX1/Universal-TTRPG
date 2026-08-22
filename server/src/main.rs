@@ -1198,6 +1198,17 @@ async fn server_combat_attack(
         let _ = session.event_tx.send(WsMessage::Event { event });
     }
 
+    // Heal actions restore HP instead — broadcast the restoration.
+    if outcome.heal_amount > 0 {
+        let event = auto_dm_engine::GameEvent::Healed {
+            target_id: victim.id.clone(),
+            target_name: victim.name.clone(),
+            amount: outcome.heal_amount,
+            hp_remaining: victim.hit_points,
+        };
+        let _ = session.event_tx.send(WsMessage::Event { event });
+    }
+
     // Broadcast resync so all clients get updated combatant state.
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
