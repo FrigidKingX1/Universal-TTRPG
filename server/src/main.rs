@@ -31,13 +31,17 @@ async fn main() {
         .unwrap_or_else(|| PathBuf::from("sessions"));
     tracing::info!("Session data dir: {}", data_dir.display());
 
-    let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
-        Box::new(auto_dm_core::llm::StubLlmBackend);
-    let pipeline = Arc::new(auto_dm_core::llm::DmPipeline::new(backend));
+    let ollama_url = std::env::var("OLLAMA_URL")
+        .unwrap_or_else(|_| "http://localhost:11434".into());
+    let ollama_model = std::env::var("OLLAMA_MODEL")
+        .unwrap_or_else(|_| "llama3.2".into());
+
+    let reachable = auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&ollama_url);
+    tracing::info!(url = %ollama_url, model = %ollama_model, reachable, "Ollama config");
 
     let state = Arc::new(AppState {
         registry: Arc::new(
-            SessionRegistry::new(data_dir, pipeline)
+            SessionRegistry::new(data_dir, ollama_url, ollama_model)
                 .await
                 .expect("Failed to initialize session registry"),
         ),
@@ -56,6 +60,8 @@ async fn main() {
         .route("/sessions/{session_id}/combat/skip", post(skip_turn))
         .route("/sessions/{session_id}/combat/status", get(combat_status))
         .route("/sessions/{session_id}/campaign", post(import_campaign))
+        .route("/ollama/configure", post(configure_ollama).get(get_ollama_config))
+        .route("/ollama/models", get(list_ollama_models))
         .with_state(state);
 
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());
@@ -66,6 +72,59 @@ async fn main() {
 
 async fn health() -> Json<Value> {
     Json(json!({ "status": "ok" }))
+}
+
+// ── Ollama configuration ────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct ConfigureOllamaRequest {
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    model: Option<String>,
+}
+
+async fn configure_ollama(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Json(req): Json<ConfigureOllamaRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    if let Some(url) = req.url {
+        state.registry.set_ollama_url(url).await.map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, e)
+        })?;
+    }
+    if let Some(model) = req.model {
+        state.registry.set_model(model).await.map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, e)
+        })?;
+    }
+    let (url, model, reachable) = state.registry.ollama_config();
+    Ok(Json(json!({
+        "url": url,
+        "model": model,
+        "reachable": reachable,
+    })))
+}
+
+async fn get_ollama_config(
+    AxumState(state): AxumState<Arc<AppState>>,
+) -> Json<Value> {
+    let (url, model, reachable) = state.registry.ollama_config();
+    Json(json!({
+        "url": url,
+        "model": model,
+        "reachable": reachable,
+    }))
+}
+
+async fn list_ollama_models(
+    AxumState(state): AxumState<Arc<AppState>>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let (url, _, _) = state.registry.ollama_config();
+    let models = auto_dm_core::ollama::list_models_at(&url)
+        .await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, e.to_string()))?;
+    Ok(Json(json!({ "models": models })))
 }
 
 // ── Bearer token extraction ──────────────────────────────────────────

@@ -6,11 +6,12 @@ use std::time::Duration;
 use super::llm::{LlmBackend, LlmError};
 
 const DEFAULT_MODEL: &str = "llama3.2";
-const OLLAMA_URL: &str = "http://localhost:11434";
+const DEFAULT_URL: &str = "http://localhost:11434";
 
 pub struct OllamaLlmBackend {
     client: Client,
     model: String,
+    base_url: String,
 }
 
 #[derive(Serialize)]
@@ -49,16 +50,29 @@ struct TagModel {
 
 impl OllamaLlmBackend {
     pub fn new(model: Option<String>) -> Self {
-        Self { client: Client::new(), model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()) }
+        Self { client: Client::new(), model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()), base_url: DEFAULT_URL.to_string() }
+    }
+
+    pub fn new_with_url(model: Option<String>, base_url: Option<String>) -> Self {
+        Self { client: Client::new(), model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()), base_url: base_url.unwrap_or_else(|| DEFAULT_URL.to_string()) }
     }
 
     /// Fast TCP reachability probe — does not load a model.
     pub fn reachable() -> bool {
-        let addr = OLLAMA_URL
+        Self::reachable_url(DEFAULT_URL)
+    }
+
+    /// Fast TCP reachability probe against an arbitrary URL.
+    pub fn reachable_url(url: &str) -> bool {
+        let addr = url
             .strip_prefix("http://")
-            .or_else(|| OLLAMA_URL.strip_prefix("https://"))
+            .or_else(|| url.strip_prefix("https://"))
             .unwrap_or("127.0.0.1:11434");
         std::net::TcpStream::connect(addr).is_ok()
+    }
+
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 }
 
@@ -80,7 +94,7 @@ impl LlmBackend for OllamaLlmBackend {
         max_tokens: Option<u32>,
         on_token: &mut (dyn for<'a> FnMut(&'a str) + Send),
     ) -> Result<String, LlmError> {
-        let url = format!("{OLLAMA_URL}/api/generate");
+        let url = format!("{}/api/generate", self.base_url);
         let body = GenerateRequest {
             model: self.model.clone(),
             prompt: prompt.to_string(),
@@ -148,9 +162,14 @@ impl LlmBackend for OllamaLlmBackend {
 
 /// List installed model names from Ollama's `/api/tags` endpoint.
 pub async fn list_models() -> Result<Vec<String>, LlmError> {
+    list_models_at(DEFAULT_URL).await
+}
+
+/// List installed model names from a specific Ollama URL.
+pub async fn list_models_at(url: &str) -> Result<Vec<String>, LlmError> {
     let client = Client::new();
     let resp: TagResponse = client
-        .get(format!("{OLLAMA_URL}/api/tags"))
+        .get(format!("{url}/api/tags"))
         .timeout(Duration::from_secs(5))
         .send()
         .await

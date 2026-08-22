@@ -251,9 +251,10 @@ pub struct SessionRegistry {
     tokens: RwLock<HashMap<String, (String, String)>>,
     /// Base directory for per-session databases.
     data_dir: PathBuf,
-    /// Shared DM pipeline (all sessions use the same LLM backend).
-    #[allow(dead_code)]
-    pipeline: Arc<auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>>>,
+    /// Ollama base URL (configurable via env or runtime endpoint).
+    ollama_url: std::sync::RwLock<String>,
+    /// Current Ollama model name.
+    ollama_model: std::sync::RwLock<String>,
     /// Persistent registry database (survives restarts).
     registry_pool: SqlitePool,
 }
@@ -261,7 +262,8 @@ pub struct SessionRegistry {
 impl SessionRegistry {
     pub async fn new(
         data_dir: PathBuf,
-        pipeline: Arc<auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>>>,
+        ollama_url: String,
+        ollama_model: String,
     ) -> Result<Self, String> {
         std::fs::create_dir_all(&data_dir).ok();
 
@@ -274,7 +276,8 @@ impl SessionRegistry {
             codes: RwLock::new(HashMap::new()),
             tokens: RwLock::new(HashMap::new()),
             data_dir,
-            pipeline,
+            ollama_url: std::sync::RwLock::new(ollama_url),
+            ollama_model: std::sync::RwLock::new(ollama_model),
             registry_pool,
         };
 
@@ -359,9 +362,8 @@ impl SessionRegistry {
                 .map_err(|e| e.to_string())?;
             let repo = auto_dm_engine::SqliteRepository::new(pool);
 
-            let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
-                Box::new(auto_dm_core::llm::StubLlmBackend);
-            let pipeline = auto_dm_core::llm::DmPipeline::new(backend);
+            let pipeline = self.build_pipeline();
+            let model_name = self.ollama_model.read().unwrap().clone();
 
             let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
             let game = GameState {
@@ -369,7 +371,7 @@ impl SessionRegistry {
                 dm: tokio::sync::Mutex::new(Some(Arc::new(pipeline))),
                 memory: std::sync::Mutex::new(auto_dm_core::memory::CampaignMemory::new()),
                 ollama_child: std::sync::Mutex::new(None),
-                current_model: std::sync::Mutex::new("stub".into()),
+                current_model: std::sync::Mutex::new(model_name),
                 current_num_predict: std::sync::Mutex::new(512),
             };
 
@@ -448,6 +450,63 @@ impl SessionRegistry {
         Ok(())
     }
 
+    /// Build a DmPipeline from current Ollama config (OllamaLlmBackend if reachable, stub otherwise).
+    fn build_pipeline(&self) -> auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>> {
+        let url = self.ollama_url.read().unwrap().clone();
+        let model = self.ollama_model.read().unwrap().clone();
+        let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
+            if auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&url) {
+                tracing::info!(url = %url, model = %model, "Using Ollama backend");
+                Box::new(auto_dm_core::ollama::OllamaLlmBackend::new_with_url(Some(model), Some(url)))
+            } else {
+                tracing::warn!("Ollama unreachable — falling back to stub backend");
+                Box::new(auto_dm_core::llm::StubLlmBackend)
+            };
+        auto_dm_core::llm::DmPipeline::new(backend)
+    }
+
+    /// Swap the Ollama model at runtime. Rebuilds pipelines for all active sessions.
+    pub async fn set_model(&self, model: String) -> Result<(), String> {
+        {
+            let mut m = self.ollama_model.write().map_err(|e| e.to_string())?;
+            *m = model.clone();
+        }
+        // Rebuild pipelines in all active sessions.
+        let sessions = self.sessions.read().await;
+        for (id, session) in sessions.iter() {
+            let pipeline = self.build_pipeline();
+            let mut dm = session.game.dm.lock().await;
+            *dm = Some(Arc::new(pipeline));
+            *session.game.current_model.lock().map_err(|e| e.to_string())? = model.clone();
+            tracing::info!(session = %id, model = %model, "Rebuilt pipeline for session");
+        }
+        Ok(())
+    }
+
+    /// Swap the Ollama URL at runtime. Rebuilds pipelines for all active sessions.
+    pub async fn set_ollama_url(&self, url: String) -> Result<(), String> {
+        {
+            let mut u = self.ollama_url.write().map_err(|e| e.to_string())?;
+            *u = url.clone();
+        }
+        let sessions = self.sessions.read().await;
+        for (id, session) in sessions.iter() {
+            let pipeline = self.build_pipeline();
+            let mut dm = session.game.dm.lock().await;
+            *dm = Some(Arc::new(pipeline));
+            tracing::info!(session = %id, url = %url, "Rebuilt pipeline for session");
+        }
+        Ok(())
+    }
+
+    /// Get current Ollama config.
+    pub fn ollama_config(&self) -> (String, String, bool) {
+        let url = self.ollama_url.read().unwrap().clone();
+        let model = self.ollama_model.read().unwrap().clone();
+        let reachable = auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&url);
+        (url, model, reachable)
+    }
+
     /// Create a new session and mint the host's player token.
     pub async fn create_session(
         &self,
@@ -468,9 +527,8 @@ impl SessionRegistry {
             .map_err(|e| e.to_string())?;
         let repo = auto_dm_engine::SqliteRepository::new(pool);
 
-        let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
-            Box::new(auto_dm_core::llm::StubLlmBackend);
-        let pipeline = auto_dm_core::llm::DmPipeline::new(backend);
+        let pipeline = self.build_pipeline();
+        let model_name = self.ollama_model.read().unwrap().clone();
 
         let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
         let game = GameState {
@@ -478,7 +536,7 @@ impl SessionRegistry {
             dm: tokio::sync::Mutex::new(Some(Arc::new(pipeline))),
             memory: std::sync::Mutex::new(auto_dm_core::memory::CampaignMemory::new()),
             ollama_child: std::sync::Mutex::new(None),
-            current_model: std::sync::Mutex::new("stub".into()),
+            current_model: std::sync::Mutex::new(model_name),
             current_num_predict: std::sync::Mutex::new(512),
         };
 
