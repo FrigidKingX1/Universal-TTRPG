@@ -52,13 +52,31 @@ pub struct Session {
     pub players: RwLock<Vec<PlayerSlot>>,
 }
 
-// ── WsMessage (same as before, but now per-session) ──────────────────
+// ── WsMessage ─────────────────────────────────────────────────────────
+
+/// Materialized state sent on reconnect — the same data `bootstrap()`
+/// would fetch.  Client replaces its local store wholesale; no log
+/// replay, no duplicated derivation logic.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ResyncPayload {
+    pub scene: Option<auto_dm_engine::Scene>,
+    pub scene_summary: String,
+    pub doom_clocks: Vec<auto_dm_engine::DoomClockRow>,
+    pub npcs: Vec<auto_dm_engine::NpcCharacterRow>,
+    pub loot: Vec<auto_dm_engine::LootRow>,
+    pub threads: Vec<auto_dm_engine::ThreadRow>,
+    pub summaries: Vec<auto_dm_engine::EpisodicSummary>,
+    pub combat_state: Option<String>,
+    /// Last 200 log entries for narrative scrollback display only —
+    /// NOT for state reconstruction.
+    pub recent_logs: Vec<auto_dm_engine::LogEntry>,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum WsMessage {
     Event { event: auto_dm_engine::GameEvent },
-    Resync { scene_summary: String, logs: Vec<auto_dm_engine::LogEntry> },
+    Resync(Box<ResyncPayload>),
 }
 
 // ── Session registry ─────────────────────────────────────────────────
@@ -247,4 +265,40 @@ fn generate_join_code() -> String {
         code.push(CHARS[idx] as char);
     }
     code
+}
+
+// ── Resync payload builder ───────────────────────────────────────────
+
+use auto_dm_engine::Repository;
+
+/// Build a full materialized-state resync.  This is the server-side
+/// equivalent of `bootstrap()` — same data, different transport.
+pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
+    let repo = &session.game.repo;
+
+    let scene = repo.active_scene().await.ok().flatten();
+    let scene_id = scene.as_ref().map(|s| s.id.as_str()).unwrap_or("");
+
+    let (summary, clocks, npcs, loot, threads, summaries, combat, logs) = tokio::join!(
+        repo.get_scene_summary(scene_id),
+        repo.list_doom_clocks(),
+        repo.list_npc_characters(),
+        repo.list_loot(scene_id),
+        repo.list_threads(),
+        repo.list_episodic_summaries(scene_id),
+        repo.load_combat_state(scene_id),
+        repo.list_logs(scene_id, 200),
+    );
+
+    Box::new(ResyncPayload {
+        scene,
+        scene_summary: summary.ok().flatten().unwrap_or_default(),
+        doom_clocks: clocks.unwrap_or_default(),
+        npcs: npcs.unwrap_or_default(),
+        loot: loot.unwrap_or_default(),
+        threads: threads.unwrap_or_default(),
+        summaries: summaries.unwrap_or_default(),
+        combat_state: combat.ok().flatten(),
+        recent_logs: logs.unwrap_or_default(),
+    })
 }

@@ -13,6 +13,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 mod session;
 use session::{SessionRegistry, WsMessage};
@@ -205,6 +206,9 @@ async fn list_logs(
 
 // ── WebSocket ────────────────────────────────────────────────────────
 
+const PING_INTERVAL: Duration = Duration::from_secs(30);
+const PONG_TIMEOUT: Duration = Duration::from_secs(90);
+
 #[derive(Deserialize)]
 struct WsQuery {
     token: String,
@@ -231,6 +235,12 @@ async fn ws_handler(
     }
 }
 
+/// WebSocket connection handler with ping/pong heartbeat.
+///
+/// Dead connection detection: the server sends pings every 30s.  If no
+/// pong (or any activity) arrives within 90s, the connection is closed
+/// and the player slot is cleaned up.  This catches backgrounded mobile
+/// browsers and flaky networks that never send a clean close frame.
 async fn handle_socket(
     state: Arc<AppState>,
     session: Arc<session::Session>,
@@ -238,38 +248,77 @@ async fn handle_socket(
     mut socket: WebSocket,
 ) {
     let mut rx = session.event_tx.subscribe();
+    let mut ping_interval = tokio::time::interval(PING_INTERVAL);
+    let mut last_activity = tokio::time::Instant::now();
 
-    // Initial resync.
-    let resync = build_resync(&session).await;
-    if socket.send(Message::Text(resync.into())).await.is_err() {
+    // Initial resync — materialized state, not raw logs.
+    let resync = session::build_resync(&session).await;
+    let msg = WsMessage::Resync(resync);
+    if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
         mark_disconnected(&state, &session, &player_id).await;
         return;
     }
 
     loop {
-        match rx.recv().await {
-            Ok(WsMessage::Event { event }) => {
-                let json = match serde_json::to_string(&WsMessage::Event { event }) {
-                    Ok(j) => j,
-                    Err(_) => continue,
-                };
-                if socket.send(Message::Text(json.into())).await.is_err() {
+        tokio::select! {
+            // ── Broadcast events → forward to client ──────────────
+            result = rx.recv() => {
+                last_activity = tokio::time::Instant::now();
+                match result {
+                    Ok(WsMessage::Event { event }) => {
+                        let json = match serde_json::to_string(&WsMessage::Event { event }) {
+                            Ok(j) => j,
+                            Err(_) => continue,
+                        };
+                        if socket.send(Message::Text(json.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Ok(WsMessage::Resync(_)) => {}
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged — resync");
+                        let resync = session::build_resync(&session).await;
+                        let msg = WsMessage::Resync(resync);
+                        if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+            // ── Ping every 30s, check pong timeout ───────────────
+            _ = ping_interval.tick() => {
+                // Send ping.
+                if socket.send(Message::Ping(vec![].into())).await.is_err() {
+                    break; // send failed → connection dead
+                }
+                // Check if we've heard nothing in PONG_TIMEOUT.
+                if last_activity.elapsed() > PONG_TIMEOUT {
+                    tracing::warn!(
+                        session = %session.id,
+                        player = %player_id,
+                        idle = ?last_activity.elapsed(),
+                        "No pong within timeout — closing dead connection"
+                    );
                     break;
                 }
             }
-            Ok(WsMessage::Resync { .. }) => {}
-            Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged — resync");
-                let resync = build_resync(&session).await;
-                if socket.send(Message::Text(resync.into())).await.is_err() {
-                    break;
+            // ── Read from socket (pongs, close frames) ───────────
+            msg = socket.recv() => {
+                match msg {
+                    Some(Ok(Message::Pong(_))) => {
+                        last_activity = tokio::time::Instant::now();
+                    }
+                    Some(Ok(Message::Close(_))) => break,
+                    None => break,
+                    _ => {} // ignore text/binary from client
                 }
             }
-            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
         }
     }
 
     mark_disconnected(&state, &session, &player_id).await;
+    tracing::info!(session = %session.id, player = %player_id, "WebSocket disconnected");
 }
 
 async fn mark_disconnected(state: &AppState, session: &session::Session, player_id: &str) {
@@ -280,25 +329,4 @@ async fn mark_disconnected(state: &AppState, session: &session::Session, player_
             p.connected = false;
         }
     }
-}
-
-async fn build_resync(session: &session::Session) -> String {
-    let scene = session.game.repo.active_scene().await.ok().flatten();
-    let scene_id = scene.as_ref().map(|s| s.id.as_str()).unwrap_or("");
-    let summary = session
-        .game
-        .repo
-        .get_scene_summary(scene_id)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_default();
-    let logs = session
-        .game
-        .repo
-        .list_logs(scene_id, 100)
-        .await
-        .unwrap_or_default();
-    serde_json::to_string(&WsMessage::Resync { scene_summary: summary, logs })
-        .unwrap_or_default()
 }

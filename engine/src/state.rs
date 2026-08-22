@@ -372,6 +372,7 @@ pub struct NpcCharacterRow {
     pub created_at: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DoomClockRow {
     pub id: String,
     pub label: String,
