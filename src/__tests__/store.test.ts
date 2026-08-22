@@ -92,6 +92,7 @@ const localStorageMock = (() => {
 Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
 
 import { useStore, newCharacter, newStatBlock } from "../store";
+import { PRESET_CLASSES, findClassByArchetype, applyClassTemplate } from "../presets/classes";
 
 describe("Store pure logic", () => {
   beforeEach(() => {
@@ -426,5 +427,78 @@ describe("Factory functions", () => {
     const c = newCharacter("Hero");
     expect(c.attributes.STR.derived_modifier).toBe(0); // 10 -> +0
     expect(c.attributes.STR.base_value).toBe(10);
+  });
+});
+
+describe("Class templates", () => {
+  it("findClassByArchetype matches case-insensitively", () => {
+    expect(findClassByArchetype("fighter")?.id).toBe("fighter");
+    expect(findClassByArchetype("WIZARD")?.hit_die).toBe(6);
+    expect(findClassByArchetype("Bard")).toBeUndefined();
+    expect(findClassByArchetype(undefined)).toBeUndefined();
+  });
+
+  it("applyClassTemplate sets archetype, attributes, and level-1 HP", () => {
+    const base = newCharacter("Conan");
+    const fighter = PRESET_CLASSES.find((c) => c.id === "fighter")!;
+    const applied = applyClassTemplate(base, fighter);
+    expect(applied.identity.archetype).toBe("Fighter");
+    // STR 16 -> +3, CON 14 -> +2
+    expect(applied.attributes.STR.base_value).toBe(16);
+    expect(applied.attributes.STR.derived_modifier).toBe(3);
+    // Level-1 HP = hit die max (10) + CON mod (+2)
+    expect(applied.resource_pools.hp?.maximum).toBe(12);
+    expect(applied.resource_pools.hp?.current).toBe(12);
+  });
+
+  it("applyClassTemplate grants pools, abilities, and starting gear", () => {
+    const base = newCharacter("Gimble");
+    const wizard = PRESET_CLASSES.find((c) => c.id === "wizard")!;
+    const applied = applyClassTemplate(base, wizard);
+    expect(applied.resource_pools.spell_slots_l1?.current).toBe(2);
+    expect(applied.resource_pools.spell_slots_l1?.reset_condition).toBe("long_rest");
+    expect(applied.abilities).toContain("act_fire_bolt");
+    expect(applied.inventory.map((i) => i.name)).toContain("Spellbook");
+    expect(applied.inventory[0].state).toBe("equipped");
+  });
+
+  it("applyClassTemplate does not duplicate existing abilities", () => {
+    const base = newCharacter("Dupe");
+    base.abilities = ["act_longsword"];
+    const fighter = PRESET_CLASSES.find((c) => c.id === "fighter")!;
+    const applied = applyClassTemplate(base, fighter);
+    expect(applied.abilities.filter((a) => a === "act_longsword")).toHaveLength(1);
+  });
+
+  it("createCharacter applies the selected class template end-to-end", async () => {
+    const { backend } = await import("../backend");
+    const localActions: { id: string }[] = [];
+    const savedChars: unknown[] = [];
+    const mocks = {
+      saveAction: vi.mocked(backend.saveAction),
+      listActions: vi.mocked(backend.listActions),
+      saveCharacter: vi.mocked(backend.saveCharacter),
+      listCharacters: vi.mocked(backend.listCharacters),
+    };
+    mocks.saveAction.mockImplementation(async (a) => { localActions.push(a); return a; });
+    mocks.listActions.mockImplementation(async () => localActions as never);
+    mocks.saveCharacter.mockImplementation(async (c) => { savedChars.push(c); return c; });
+    mocks.listCharacters.mockImplementation(async () => savedChars as never);
+    try {
+      useStore.setState({ actions: [] });
+      await useStore.getState().createCharacter("Test Fighter", "fighter");
+      const created = savedChars[savedChars.length - 1] as { identity: { archetype?: string }; resource_pools: Record<string, { maximum?: number }> };
+      expect(created.identity.archetype).toBe("Fighter");
+      expect(created.resource_pools.hp?.maximum).toBe(12);
+      // Class-granted actions were installed into the vault.
+      const actionIds = localActions.map((a) => a.id);
+      expect(actionIds).toContain("act_longsword");
+      expect(actionIds).toContain("act_longbow");
+    } finally {
+      mocks.saveAction.mockImplementation((a) => Promise.resolve(a));
+      mocks.listActions.mockImplementation(() => Promise.resolve([]));
+      mocks.saveCharacter.mockImplementation((c) => Promise.resolve(c));
+      mocks.listCharacters.mockImplementation(() => Promise.resolve([]));
+    }
   });
 });

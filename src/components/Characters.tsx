@@ -2,17 +2,19 @@ import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { PRESET_CLASSES, findClassByArchetype } from "../presets/classes";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
 
 function NewCharacterForm() {
   const createCharacter = useStore((s) => s.createCharacter);
   const [name, setName] = useState("");
+  const [classId, setClassId] = useState("");
   return (
     <form
       className="row"
       onSubmit={(e) => {
         e.preventDefault();
-        void createCharacter(name.trim());
+        void createCharacter(name.trim(), classId || undefined);
         setName("");
       }}
     >
@@ -22,6 +24,14 @@ function NewCharacterForm() {
         placeholder="New character name"
         aria-label="Character name"
       />
+      <select value={classId} onChange={(e) => setClassId(e.currentTarget.value)} aria-label="Class">
+        <option value="">No class</option>
+        {PRESET_CLASSES.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name} (d{c.hit_die})
+          </option>
+        ))}
+      </select>
       <button type="submit">Add</button>
     </form>
   );
@@ -233,7 +243,13 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
 
   const levelUp = () => {
     const newLevel = level + 1;
-    const hpGain = Math.max(1, mod(attrs.CON?.base_value ?? 10) + 5);
+    const conBonus = mod(attrs.CON?.base_value ?? 10);
+    const template = findClassByArchetype(archetype);
+    // Hit-dice leveling: take the class hit die average (rounded up) + CON.
+    // Unknown classes fall back to the legacy flat gain.
+    const hpGain = template
+      ? Math.max(1, Math.floor(template.hit_die / 2) + 1 + conBonus)
+      : Math.max(1, conBonus + 5);
     setLevel(newLevel);
     setMaxHp(maxHp + hpGain);
     setHp(hp + hpGain);
@@ -258,7 +274,14 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
           <input type="number" min={1} value={level} onChange={(e) => setLevel(Number(e.currentTarget.value))} />
         </label>
         <div className="attr level-up-group">
-          <button onClick={levelUp} title={`Gain a level: +HP (5 + CON mod)`}>
+          <button
+            onClick={levelUp}
+            title={`Gain a level: +HP (${(() => {
+              const tpl = findClassByArchetype(archetype);
+              const conBonus = mod(attrs.CON?.base_value ?? 10);
+              return tpl ? `d${tpl.hit_die} avg + ${conBonus} CON` : `5 + ${conBonus} CON`;
+            })()})`}
+          >
             ⬆ Level Up
           </button>
         </div>
@@ -275,6 +298,31 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
           <input value={background} onChange={(e) => setBackground(e.currentTarget.value)} placeholder="e.g. Knight" />
         </label>
       </div>
+
+      {(() => {
+        const template = findClassByArchetype(archetype);
+        if (!template) return null;
+        const unlocked = template.features_by_level.filter((f) => f.level <= level);
+        return (
+          <>
+            <h3>
+              {template.name} Features <span className="muted">(d{template.hit_die} hit die)</span>
+            </h3>
+            {unlocked.length === 0 ? (
+              <p className="muted">Features unlock as you gain levels.</p>
+            ) : (
+              <ul className="class-features">
+                {unlocked.map((f) => (
+                  <li key={f.name}>
+                    <strong>{f.name}</strong> <span className="badge">Lv {f.level}</span>
+                    <p className="muted">{f.description}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        );
+      })()}
 
       <h3>Attributes</h3>
       <div className="attr-grid">

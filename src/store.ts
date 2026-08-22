@@ -3,6 +3,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { backend } from "./backend";
 import { isInMultiplayerSession, useMultiplayerStore } from "./multiplayer";
+import { CLASS_ACTIONS, PRESET_CLASSES, applyClassTemplate } from "./presets/classes";
 import type {
   ActionDefinition,
   CampaignGenerationResult,
@@ -89,7 +90,7 @@ export interface AutoDmState {
   bootstrap: () => Promise<void>;
   setError: (msg: string | null) => void;
 
-  createCharacter: (name: string) => Promise<void>;
+  createCharacter: (name: string, classId?: string) => Promise<void>;
   saveCharacter: (profile: CharacterProfile) => Promise<void>;
   deleteCharacter: (id: string) => Promise<void>;
   dropItemToScene: (characterId: string, item: import("./types").InventoryItem) => Promise<void>;
@@ -525,8 +526,23 @@ export const useStore = create<AutoDmState>()(
     s.showToast(`Dropped ${item.quantity}× ${item.name} on the ground`);
   },
 
-  createCharacter: async (name) => {
-    const profile = newCharacter(name || "Unnamed Adventurer");
+  createCharacter: async (name, classId) => {
+    let profile = newCharacter(name || "Unnamed Adventurer");
+    if (classId) {
+      const template = PRESET_CLASSES.find((c) => c.id === classId);
+      if (template) {
+        // Install any class-granted actions missing from the vault so
+        // attacks resolve locally and via campaign export.
+        const existingIds = new Set(get().actions.map((a) => a.id));
+        for (const abilityId of template.starting_abilities) {
+          if (existingIds.has(abilityId)) continue;
+          const def = CLASS_ACTIONS.find((a) => a.id === abilityId);
+          if (def) await backend.saveAction(def);
+        }
+        set({ actions: await backend.listActions() });
+        profile = applyClassTemplate(profile, template);
+      }
+    }
     await backend.saveCharacter(profile);
     const characters = await backend.listCharacters();
     set({ characters });

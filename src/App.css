@@ -707,6 +707,11 @@ button.muted:hover, button.secondary:hover {
 .defense-group { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.6rem; }
 .defense-group > span:first-child { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
 
+/* Class feature list (character sheet) */
+.class-features { list-style: none; padding: 0; margin: 0 0 0.75rem 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.class-features li { border-left: 2px solid var(--border); padding-left: 0.6rem; }
+.class-features li p { margin: 0.15rem 0 0 0; font-size: 0.8rem; }
+
 /* HP Bar */
 .hp-bar {
   height: 10px; background: var(--bg);
