@@ -5,7 +5,7 @@ import { backend } from "./backend";
 import { isInMultiplayerSession, useMultiplayerStore } from "./multiplayer";
 import { PRESET_CLASSES, applyClassTemplate } from "./presets/classes";
 import { findPresetAction } from "./presets/actions";
-import { playDiceSound } from "./sound";
+import { playDiceSound, playCombatSfx, sfxForOutcome } from "./sound";
 import type {
   ActionDefinition,
   CampaignGenerationResult,
@@ -823,6 +823,7 @@ export const useStore = create<AutoDmState>()(
         get().combatantConditions[target.id] ?? [],
       );
     }
+    playCombatSfx(sfxForOutcome(outcome));
     set((s) => ({
       lastCombat: outcome,
       lastHpChange: { entityId: target.id, previousHp: prevHp, newHp: outcome.target_hp_remaining },

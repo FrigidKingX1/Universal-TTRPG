@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStore } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { playCombatSfx } from "../sound";
 import type { CharacterProfile, EncounterStatBlock, EngineOutcome } from "../types";
 
 const CONDITIONS = ["Poisoned", "Prone", "Stunned", "Frightened", "Blinded", "Charmed", "Invisible", "Exhaustion", "Concentrating"];
@@ -184,6 +185,7 @@ export function Combat() {
     const entity = resolve(customHpTarget);
     if (!entity) return;
     const isChar = "identity" in entity;
+    playCombatSfx(customHpAmount > 0 ? "heal" : "hit");
     quickHpAdjust(entity, isChar, customHpAmount);
     setCustomHpAmount(0);
   };

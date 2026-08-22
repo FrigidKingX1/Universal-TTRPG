@@ -26,7 +26,11 @@ public/
   assets/
     monsters/             # e.g. public/assets/monsters/goblin.png
     icons/                # UI / item icons
-    audio/dice_roll.wav   # bundled dice-roll clatter (generated)
+    audio/
+      dice_roll.wav       # dice clatter (scripts/gen_dice_sound.mjs)
+      attack_hit.wav      # impact thud (scripts/gen_sfx.mjs)
+      attack_miss.wav     # airy whoosh
+      heal_chime.wav      # ascending C5→G5 chime
 ```
 
 In code/UI always reference them **without** the `public/` prefix:
@@ -121,6 +125,10 @@ credit required (just don't sell the font file alone).
   `/assets/audio/dice_roll.wav` on every user roll: Dice Roller, ability
   checks, `/roll` + `/check` commands, death saves. Swap the file to change
   the sound; missing files fail silently.
+- **Combat stings** — `playCombatSfx()` fires automatically from `runAttack`
+  and the manual HP adjust: hit → impact thud, miss/blocked → whoosh,
+  heal (action *or* button) → chime. Regenerate/tweak via
+  `node scripts/gen_sfx.mjs`.
 - **Fonts** — Cinzel & IM Fell English are already under `public/fonts/`.
 - Keep a `CREDITS.md` at repo root listing every CC-BY / attribution asset you
   ship (Game-Icons.net, DriveThruRPG stock art, etc.).
