@@ -140,6 +140,8 @@ export interface EncounterStatBlock {
   multiattack?: string | null;
   reactions?: MonsterTrait[];
   description?: string | null;
+  /** Optional portrait/art asset reference (URL or local path). */
+  portrait?: string | null;
 }
 
 export interface Scene {

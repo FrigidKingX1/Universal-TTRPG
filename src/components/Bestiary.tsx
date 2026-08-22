@@ -187,6 +187,16 @@ export function Bestiary() {
         {statBlocks.map((b) => (
           <li key={b.id} className="card">
             <div className="card-row">
+              {b.portrait ? (
+                <img
+                  src={b.portrait}
+                  alt={b.name}
+                  width={40}
+                  height={40}
+                  style={{ objectFit: "cover", borderRadius: 4, marginRight: 8 }}
+                  onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+                />
+              ) : null}
               <strong>{b.name}</strong>
               <span className="muted">
                 {b.size ?? "Medium"} {b.type ?? "creature"}
@@ -275,6 +285,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
   const [reactions, setReactions] = useState<MonsterTrait[]>(block.reactions ?? []);
   const [multiattack, setMultiattack] = useState(block.multiattack ?? "");
   const [description, setDescription] = useState(block.description ?? "");
+  const [portrait, setPortrait] = useState(block.portrait ?? "");
 
   const save = () => {
     void saveStatBlock({
@@ -304,6 +315,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
       reactions,
       multiattack: multiattack.trim() || null,
       description: description.trim() || null,
+      portrait: portrait.trim() || null,
     });
   };
 
@@ -452,6 +464,14 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
         onChange={(e) => setDescription(e.currentTarget.value)}
         placeholder="Flavor text and lore…"
         rows={3}
+        style={{ width: "100%" }}
+      />
+
+      <h3>Portrait</h3>
+      <input
+        value={portrait}
+        onChange={(e) => setPortrait(e.currentTarget.value)}
+        placeholder="Image URL or local asset path (e.g. assets/monsters/goblin.png)"
         style={{ width: "100%" }}
       />
 

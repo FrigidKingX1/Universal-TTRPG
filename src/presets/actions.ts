@@ -43,6 +43,7 @@ export const WEAPON_ACTIONS: ActionDefinition[] = [
   mk("act_longsword", "Longsword", "1d8 + @attributes.STR.derived_modifier", "slashing", "STR"),
   mk("act_shortsword", "Shortsword", "1d6 + @attributes.DEX.derived_modifier", "piercing", "DEX"),
   mk("act_greatsword", "Greatsword", "2d6 + @attributes.STR.derived_modifier", "slashing", "STR"),
+  mk("act_javelin", "Javelin", "1d6 + @attributes.STR.derived_modifier", "piercing", "STR", 30),
   mk("act_battleaxe", "Battleaxe", "1d8 + @attributes.STR.derived_modifier", "slashing", "STR"),
   mk("act_warhammer", "Warhammer", "1d8 + @attributes.STR.derived_modifier", "bludgeoning", "STR"),
   mk("act_spear", "Spear", "1d6 + @attributes.STR.derived_modifier", "piercing", "STR"),
@@ -73,6 +74,15 @@ export const SPELL_ACTIONS: ActionDefinition[] = [
   mk("act_shocking_grasp", "Shocking Grasp", "2d8", "lightning", "INT"),
   mk("act_ray_of_sickness", "Ray of Sickness", "2d8", "poison", "INT", 60, "Poisoned"),
   mk("act_cone_of_cold", "Cone of Cold", "8d8", "cold", "INT", 30, undefined, { type: "cone", sizeFeet: 30 }),
+  mk("act_thorn_whip", "Thorn Whip", "1d6", "piercing", "WIS", 30),
+  mk("act_scorching_ray", "Scorching Ray", "2d6 + 2d6 + 2d6", "fire", "INT", 120),
+  mk("act_fireball", "Fireball", "8d6", "fire", "INT", 150, undefined, { type: "sphere", sizeFeet: 20 }),
+  mk("act_lightning_bolt", "Lightning Bolt", "8d6", "lightning", "INT", 100, undefined, { type: "line", sizeFeet: 100 }),
+  mk("act_ice_storm", "Ice Storm", "2d8 + 2d8", "bludgeoning", "INT", 300),
+  mk("act_chain_lightning", "Chain Lightning", "10d8", "lightning", "INT", 150),
+  mk("act_flame_strike", "Flame Strike", "4d6 + 4d6", "fire", "WIS", 60),
+  mk("act_meteor_swarm", "Meteor Swarm", "20d6", "fire", "INT", 1000),
+  mk("act_spiritual_weapon", "Spiritual Weapon", "1d8", "force", "WIS"),
 ];
 
 /** Monster-specific attacks shared across creatures. */
@@ -108,6 +118,22 @@ export const MONSTER_ATTACK_ACTIONS: ActionDefinition[] = [
   mk("act_poison_breath", "Poison Breath", "12d6", "poison", "CON", 30, undefined, { type: "cone", sizeFeet: 30 }),
   mk("act_cold_breath", "Cold Breath", "10d8", "cold", "CON", 30, undefined, { type: "cone", sizeFeet: 30 }),
   mk("act_acid_breath_line", "Acid Breath", "12d6", "acid", "CON", 60, undefined, { type: "line", sizeFeet: 60 }),
+
+  // Extra monster attacks / auras.
+  mk("act_tail_sweep", "Tail Sweep", "2d6 + @attributes.STR.derived_modifier", "bludgeoning", "STR", 5, "Prone"),
+  mk("act_horn", "Horn", "2d10 + @attributes.STR.derived_modifier", "piercing", "STR"),
+  mk("act_wing_buffet", "Wing Buffet", "1d6 + @attributes.STR.derived_modifier", "bludgeoning", "STR", 5, "Prone"),
+  mk("act_eye_ray", "Eye Ray", "2d8", "force", "INT", 60),
+  mk("act_mind_blast", "Mind Blast", "4d8", "psychic", "INT", 60),
+  mk("act_pseudopod", "Pseudopod", "2d6 + @attributes.STR.derived_modifier", "bludgeoning", "STR", 5, "Restrained"),
+  mk("act_ochre_slam", "Slam", "2d6 + @attributes.STR.derived_modifier", "bludgeoning", "STR"),
+  mk("act_constrict", "Constrict", "2d8 + @attributes.STR.derived_modifier", "bludgeoning", "STR", 5, "Restrained"),
+  mk("act_breath_lightning", "Lightning Breath", "8d10", "lightning", "CON", 60, undefined, { type: "line", sizeFeet: 60 }),
+  mk("act_breath_acid_brass", "Fire Breath", "10d8", "fire", "CON", 30, undefined, { type: "line", sizeFeet: 60 }),
+  mk("act_breath_poison_bronze", "Lightning Breath", "11d8", "lightning", "CON", 30, undefined, { type: "line", sizeFeet: 30 }),
+  mk("act_breath_cold_white", "Cold Breath", "8d8", "cold", "CON", 30, undefined, { type: "cone", sizeFeet: 30 }),
+  mk("act_breath_fire_black", "Acid Breath", "10d8", "acid", "CON", 30, undefined, { type: "line", sizeFeet: 60 }),
+  mk("act_breath_fire_blue", "Lightning Breath", "12d10", "lightning", "CON", 30, undefined, { type: "line", sizeFeet: 30 }),
 ];
 
 /** Every preset action in one registry — used by all installers. Deduped by id. */

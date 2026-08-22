@@ -282,6 +282,7 @@ export function newStatBlock(name: string): EncounterStatBlock {
     multiattack: null,
     reactions: [],
     description: null,
+    portrait: null,
   };
 }
 
