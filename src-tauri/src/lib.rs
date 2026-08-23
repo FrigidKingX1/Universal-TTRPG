@@ -187,6 +187,38 @@ pub fn run() {
                     .flatten()
                     .unwrap_or_else(|| "llama3.2".to_string())
             });
+
+            // Resolve against what's ACTUALLY pulled so a fresh install with
+            // any model works instead of 404-looping on an absent default.
+            let effective_model = tauri::async_runtime::block_on(async {
+                match auto_dm_core::ollama::list_models_at(auto_dm_core::ollama::DEFAULT_URL).await {
+                    Ok(installed) => {
+                        if installed.is_empty() {
+                            log::warn!("Ollama reachable but no models are pulled");
+                        }
+                        let chosen = auto_dm_core::ollama::resolve_effective_model(
+                            &persisted_model,
+                            &installed,
+                        );
+                        match &chosen {
+                            Some(m) => {
+                                log::warn!(
+                                    "Configured model '{persisted_model}' is not pulled; \
+                                     falling back to '{m}' (installed: {installed:?})"
+                                );
+                                let _ =
+                                    repo.set_setting("ollama_model", m).await;
+                            }
+                            None => log::info!("Ollama model '{persisted_model}' available"),
+                        }
+                        chosen.unwrap_or(persisted_model)
+                    }
+                    Err(e) => {
+                        log::warn!("Could not list Ollama models ({e}); keeping '{persisted_model}'");
+                        persisted_model
+                    }
+                }
+            });
             let persisted_num_predict = tauri::async_runtime::block_on(async {
                 repo.get_setting("ollama_num_predict")
                     .await
@@ -200,11 +232,11 @@ pub fn run() {
             app.manage(GameState {
                 repo,
                 dm: tokio::sync::Mutex::new(Some(Arc::new(DmPipeline::new(
-                    choose_dm_backend_with(Some(persisted_model.clone())),
+                    choose_dm_backend_with(Some(effective_model.clone())),
                 )))),
                 memory: Mutex::new(memory),
                 ollama_child: Mutex::new(ollama_child),
-                current_model: Mutex::new(persisted_model),
+                current_model: Mutex::new(effective_model),
                 current_num_predict: Mutex::new(persisted_num_predict),
             });
 

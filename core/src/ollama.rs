@@ -6,7 +6,20 @@ use std::time::Duration;
 use super::llm::{LlmBackend, LlmError};
 
 const DEFAULT_MODEL: &str = "llama3.2";
-const DEFAULT_URL: &str = "http://localhost:11434";
+pub const DEFAULT_URL: &str = "http://localhost:11434";
+
+/// Choose the model the DM should actually use at startup.
+/// - configured present in `installed` -> None (keep it)
+/// - configured missing but others exist -> Some(first installed)
+/// - nothing installed -> None (keep configured so the clear 404 error
+///   tells the user exactly what to pull)
+pub fn resolve_effective_model(configured: &str, installed: &[String]) -> Option<String> {
+    if installed.iter().any(|m| m == configured) || installed.is_empty() {
+        None
+    } else {
+        Some(installed[0].clone())
+    }
+}
 
 /// Turn a failed Ollama HTTP response into an actionable error message.
 /// The body is where Ollama explains itself (e.g. `model "x" not found`),
@@ -229,3 +242,23 @@ mod tests {
         assert!(msg.contains("boom"), "{msg}");
     }
 }
+
+    #[test]
+    fn resolve_keeps_configured_when_installed() {
+        let installed = vec!["llama3.2".into(), "qwen2.5:7b".into()];
+        assert!(resolve_effective_model("llama3.2", &installed).is_none());
+    }
+
+    #[test]
+    fn resolve_falls_back_to_first_installed() {
+        let installed = vec!["qwen2.5:7b".into()];
+        assert_eq!(
+            resolve_effective_model("llama3.2", &installed).as_deref(),
+            Some("qwen2.5:7b")
+        );
+    }
+
+    #[test]
+    fn resolve_keeps_configured_when_nothing_installed() {
+        assert!(resolve_effective_model("llama3.2", &[]).is_none());
+    }
