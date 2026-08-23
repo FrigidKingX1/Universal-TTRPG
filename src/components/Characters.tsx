@@ -116,7 +116,9 @@ export function CharacterList() {
             <div className="card-row">
               <strong>{c.identity.name}</strong>
               <span className="muted">
-                {c.identity.archetype ?? c.identity.ancestry ?? "Adventurer"} Lv {c.identity.level_or_rank}
+                {c.identity.archetype ?? c.identity.ancestry ?? "Adventurer"}
+                {c.identity.archetype_secondary ? ` / ${c.identity.archetype_secondary}` : ""}
+                {` Lv ${c.identity.level_or_rank}`}
               </span>
               <span className="muted">
                 HP {c.resource_pools.hp?.current ?? 0}/{c.resource_pools.hp?.maximum ?? 0}

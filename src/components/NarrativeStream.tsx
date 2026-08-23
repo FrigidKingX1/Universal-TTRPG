@@ -4,6 +4,7 @@ import { ScrollText, RefreshCw, Send, ArrowDown } from "lucide-react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 import { playDiceSound } from "../sound";
+import { runSlashCommand } from "../commands";
 import type { StoryLogEntry } from "../types";
 import "../App.css";
 
@@ -88,89 +89,16 @@ export function NarrativeStream() {
     useStore.getState().addStoryEntry({ speaker, role, content });
   }, []);
 
-  /** Omnibar slash commands: /roll, /r, /check, /ask, /help */
+  /** Omnibar slash commands — logic lives in src/commands.ts (unit-tested). */
   const handleSlashCommand = useCallback(async (input: string): Promise<boolean> => {
-    if (!input.startsWith("/")) return false;
-    const spaceIdx = input.indexOf(" ");
-    const cmd = (spaceIdx === -1 ? input : input.slice(0, spaceIdx)).toLowerCase();
-    const args = spaceIdx === -1 ? "" : input.slice(spaceIdx + 1).trim();
-
-    switch (cmd) {
-      case "/roll":
-      case "/r": {
-        if (!args) {
-          addLocalEntry("System", "system", "Usage: /roll 1d20+5 [damage type] — e.g. /roll 2d6+3 fire");
-          return true;
-        }
-        try {
-          playDiceSound();
-          const r = await backend.rollDice(args);
-          addLocalEntry("Dice", "combat", `${args} → ${r.total} (${r.detail})`);
-        } catch (e) {
-          addLocalEntry("System", "system", `Roll failed: ${String(e)}`);
-        }
-        return true;
-      }
-      case "/check": {
-        const char = useStore.getState().activeCharacter;
-        if (!args) {
-          addLocalEntry("System", "system", "Usage: /check STR|DEX|CON|INT|WIS|CHA — rolls 1d20 + modifier for the active character");
-          return true;
-        }
-        const attrKey = args.toUpperCase();
-        const attr = char?.attributes[attrKey];
-        if (!char || !attr) {
-          addLocalEntry("System", "system", `No active character or unknown attribute "${args}". Select a character first.`);
-          return true;
-        }
-        const mod = attr.derived_modifier ?? Math.floor((attr.base_value - 10) / 2);
-        try {
-          playDiceSound();
-          const r = await backend.rollDice(`1d20+${mod}`);
-          const success = r.total >= 10;
-          addLocalEntry(
-            "Check",
-            "combat",
-            `${char.identity.name} ${attrKey} check: ${r.total} vs DC 10 — ${success ? "SUCCESS" : "FAILURE"} (${r.detail})`,
-          );
-        } catch (e) {
-          addLocalEntry("System", "system", `Check failed: ${String(e)}`);
-        }
-        return true;
-      }
-      case "/ask": {
-        if (!args) {
-          addLocalEntry("System", "system", 'Usage: /ask "Is the door locked?" — consults the Oracle');
-          return true;
-        }
-        try {
-          const f = await backend.fateCheck("fifty_fifty", activeScene?.chaos_factor ?? 5);
-          addLocalEntry("Oracle", "narrator", `"${args}" — ${f.interpretation} (rolled ${f.roll} vs ${f.target})`);
-        } catch (e) {
-          addLocalEntry("System", "system", `Oracle failed: ${String(e)}`);
-        }
-        return true;
-      }
-      case "/help": {
-        addLocalEntry(
-          "System",
-          "system",
-          [
-            "Omnibar commands:",
-            "  /roll <expr>   — roll dice, e.g. /roll 2d6+3 fire",
-            "  /check <ATTR>  — ability check for the active character",
-            '  /ask <question>— yes/no Oracle consultation',
-            "  /help          — show this list",
-            "Anything without a slash goes to the Dungeon Master.",
-          ].join("\n"),
-        );
-        return true;
-      }
-      default:
-        // Unknown slash command — treat as DM intent but hint at /help.
-        addLocalEntry("System", "system", `Unknown command "${cmd}". Try /help.`);
-        return true;
-    }
+    return runSlashCommand(input, {
+      say: addLocalEntry,
+      rollDice: backend.rollDice,
+      fateCheck: backend.fateCheck,
+      playDiceSound,
+      getActiveCharacter: () => useStore.getState().activeCharacter,
+      getChaosFactor: () => activeScene?.chaos_factor ?? 5,
+    });
   }, [activeScene, addLocalEntry]);
 
   const handleSubmit = useCallback(async () => {
