@@ -20,6 +20,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npx tsc --noEmit
       - run: npm test
       - run: npx vite build
@@ -36,7 +37,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Clippy (workspace, deny warnings)
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: Core tests
-        run: cargo test -p auto-dm-core
-      - name: Tauri app tests
-        run: cargo test -p auto-dm
+      - name: Workspace tests (core, engine, tauri app, hosted server seed)
+        run: cargo test --workspace

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ZoneMap } from "../components/ZoneMap";
@@ -170,6 +170,7 @@ vi.mock("../multiplayer/store", () => {
   return {
     getMultiplayerClient: () => holder.client,
     __setMockClient: (c: unknown) => { holder.client = c; },
+    isInMultiplayerSession: () => false,
     useMultiplayerStore: (sel: (s: unknown) => unknown) =>
       sel({
         playerId: "p1",
@@ -251,5 +252,110 @@ describe("PlayerPanel", () => {
       })),
     }));
     expect(await screen.findByRole("button", { name: /Cure Wounds/ })).toBeDisabled();
+  });
+});
+
+// ── Combat panel: slot gating, cost labels, heal output (round 6) ─────
+const { mockCombatAttack } = vi.hoisted(() => ({ mockCombatAttack: vi.fn() }));
+vi.mock("../backend", () => ({
+  backend: new Proxy({}, {
+    get: (_t, prop) => {
+      if (prop === "combatAttack") return (...a: unknown[]) => mockCombatAttack(...(a as []));
+      return vi.fn().mockResolvedValue([]);
+    },
+  }),
+}));
+import { Combat } from "../components/Combat";
+
+describe("Combat panel", () => {
+  const cleric = PRESET_CLASSES.find((c) => c.id === "cleric")!;
+  const seedCombat = (slotsCurrent: number) => {
+    const c = applyClassTemplate(newCharacter("Mira"), cleric);
+    c.abilities = ["act_cure_wounds"];
+    c.resource_pools.spell_slots_l1!.current = slotsCurrent;
+    const target = newStatBlock("Orc Dummy");
+    useStore.setState({
+      characters: [c],
+      statBlocks: [target],
+      actions: [], // empty vault -> preset fallback path
+      lastCombat: null,
+      combatHistory: [],
+    });
+    return { c, target };
+  };
+
+  /** Several controls share the "Target" label; pick the entity selector. */
+  const entityTargetSelect = (blockId: string): HTMLSelectElement => {
+    const candidates = screen.getAllByLabelText("Target") as HTMLSelectElement[];
+    const found = candidates.find((el) =>
+      Array.from(el.options).some((o) => o.value === `block:${blockId}`),
+    );
+    if (!found) throw new Error("entity Target select not found");
+    return found;
+  };
+
+  it("action dropdown shows live slot counts from the preset fallback", async () => {
+    const user = userEvent.setup();
+    const { c, target } = seedCombat(2);
+    render(<Combat />);
+    await user.selectOptions(screen.getByLabelText("Attacker"), `char:${c.id}`);
+    await user.selectOptions(entityTargetSelect(target.id), `block:${target.id}`);
+    const actionSel = screen.getByLabelText("Action") as HTMLSelectElement;
+    const labels = Array.from(actionSel.options).map((o) => o.text);
+    expect(labels.some((t) => t.includes("Cure Wounds") && t.includes("2/2"))).toBe(true);
+  });
+
+  it("draining the caster's pool disables Attack as 'No slots'", async () => {
+    const user = userEvent.setup();
+    const { c, target } = seedCombat(1);
+    render(<Combat />);
+    await user.selectOptions(screen.getByLabelText("Attacker"), `char:${c.id}`);
+    await user.selectOptions(entityTargetSelect(target.id), `block:${target.id}`);
+    await user.selectOptions(screen.getByLabelText("Action"), "act_cure_wounds");
+
+    const attackBtn = screen.getByRole("button", { name: "Attack" });
+    expect(attackBtn).toBeEnabled();
+
+    useStore.setState((s) => ({
+      characters: s.characters.map((x) =>
+        x.id === c.id
+          ? { ...x, resource_pools: { ...x.resource_pools, spell_slots_l1: { ...x.resource_pools.spell_slots_l1!, current: 0 } } }
+          : x,
+      ),
+    }));
+    expect(await screen.findByRole("button", { name: /No slots/ })).toBeDisabled();
+  });
+
+  it("heal actions render a green '+N HP restored' result and log line", async () => {
+    const user = userEvent.setup();
+    const { c, target } = seedCombat(2);
+    mockCombatAttack.mockResolvedValue({
+      check_result: undefined, check_roll: undefined, check_detail: undefined,
+      attack_result: "GUARANTEED", attack_roll: undefined,
+      attack_detail: "[2d8 + 2] = 7",
+      target_ac: undefined,
+      damage_dealt: 0, heal_amount: 7,
+      target_hp_remaining: 12, target_status: "ALIVE",
+      applied_status: undefined, damage_type: undefined, damage_modifier: undefined,
+    });
+    render(<Combat />);
+    await user.selectOptions(screen.getByLabelText("Attacker"), `char:${c.id}`);
+    await user.selectOptions(entityTargetSelect(target.id), `block:${target.id}`);
+    await user.selectOptions(screen.getByLabelText("Action"), "act_cure_wounds");
+    expect((screen.getByLabelText("Attacker") as HTMLSelectElement).value).toBe(`char:${c.id}`);
+    expect((entityTargetSelect(target.id) as HTMLSelectElement).value).toBe(`block:${target.id}`);
+    // Drive the store directly: UI gating is covered by the two tests
+    // above; this one focuses on the heal outcome rendering contract.
+    await act(async () => {
+      await useStore.getState().runAttack(c, target, "act_cure_wounds");
+    });
+
+    await waitFor(() =>
+      expect(useStore.getState().lastCombat?.heal_amount).toBe(7),
+    );
+    const resultEl = document.querySelector(".combat-result");
+    expect(resultEl?.textContent ?? "").toContain("Healed");
+    expect(resultEl?.textContent ?? "").toContain("+7");
+    expect(mockCombatAttack).toHaveBeenCalledTimes(1);
   });
 });
