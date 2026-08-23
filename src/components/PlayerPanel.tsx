@@ -109,6 +109,8 @@ export function PlayerPanel() {
         .filter((a): a is NonNullable<typeof a> => Boolean(a))
     : [];
   const targets = [
+    // Self first — clerics deserve to heal themselves.
+    ...(character ? [{ key: `char:${character.id}`, name: `${character.identity.name} (you)` }] : []),
     ...characters
       .filter((c) => c.id !== character?.id)
       .map((c) => ({ key: `char:${c.id}`, name: c.identity.name })),

@@ -87,6 +87,12 @@ describe("Preset actions", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("display names are unique (dropdown/log clarity)", () => {
+    const names = ALL_PRESET_ACTIONS.map((a) => a.name);
+    const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+    expect([...new Set(dupes)], "duplicate action labels").toEqual([]);
+  });
+
   it("contains a broad action library", () => {
     expect(WEAPON_ACTIONS.length + SPELL_ACTIONS.length + MONSTER_ATTACK_ACTIONS.length).toBeGreaterThanOrEqual(35);
     expect(ALL_PRESET_ACTIONS.length).toBeGreaterThanOrEqual(45);

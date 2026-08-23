@@ -930,6 +930,30 @@ export function findClassByArchetype(archetype?: string | null): ClassTemplate |
 }
 
 /**
+ * Level-up pool progression: every existing pool gains +1 max use, and any
+ * unlock whose level is reached grants its new pool (primary first, then a
+ * dual class's own unlocks).
+ */
+export function growPoolsOnLevelUp(
+  pools: Record<string, import("../types").ResourcePool>,
+  newLevel: number,
+  primary: ClassTemplate | undefined,
+  secondary?: ClassTemplate,
+): Record<string, import("../types").ResourcePool> {
+  const next = Object.fromEntries(
+    Object.entries(pools).map(([k, p]) => [k, { ...p, maximum: p.maximum + 1 }]),
+  );
+  for (const template of [primary, secondary]) {
+    for (const u of template?.pool_unlocks ?? []) {
+      if (u.level === newLevel && !next[u.pool]) {
+        next[u.pool] = { current: u.amount, maximum: u.amount, temporary: 0, reset_condition: "long_rest" };
+      }
+    }
+  }
+  return next;
+}
+
+/**
  * Dual-classing: layer a secondary class onto an already-applied primary.
  * Clean-room rules:
  *   - abilities: union of both classes' granted actions

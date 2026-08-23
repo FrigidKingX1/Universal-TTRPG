@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { backend } from "../backend";
 import { useStore } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
-import { PRESET_CLASSES, findClassByArchetype } from "../presets/classes";
+import { PRESET_CLASSES, findClassByArchetype, growPoolsOnLevelUp } from "../presets/classes";
 import { EQUIPMENT_CATALOG, findEquipment } from "../presets/equipment";
 import { playDiceSound } from "../sound";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
@@ -285,18 +285,10 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
     setMaxHp(maxHp + hpGain);
     setHp(hp + hpGain);
     // Caster progression: existing pools grow by one use, and class
-    // unlocks grant new tiers (e.g. spell_slots_l2 at level 3).
-    setExtraPools((pools) => {
-      const next = Object.fromEntries(
-        Object.entries(pools).map(([k, p]) => [k, { ...p, maximum: p.maximum + 1 }]),
-      );
-      for (const u of template?.pool_unlocks ?? []) {
-        if (u.level === newLevel && !next[u.pool]) {
-          next[u.pool] = { current: u.amount, maximum: u.amount, temporary: 0, reset_condition: "long_rest" };
-        }
-      }
-      return next;
-    });
+    // unlocks grant new tiers (primary and dual templates both count).
+    setExtraPools((pools) =>
+      growPoolsOnLevelUp(pools, newLevel, template, findClassByArchetype(profile.identity.archetype_secondary)),
+    );
   };
 
   const addAbility = () => {

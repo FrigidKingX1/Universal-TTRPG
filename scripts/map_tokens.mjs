@@ -14,6 +14,7 @@
 import { readdir, copyFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
@@ -21,14 +22,14 @@ const force = args.includes("--force");
 const inputDir = args.find((a) => !a.startsWith("--")) ?? "public/assets/incoming";
 const outDir = "public/assets/monsters";
 
-const IMAGE_RE = /\.(png|jpe?g|webp)$/i;
+export const IMAGE_RE = /\.(png|jpe?g|webp)$/i;
 
-function slugify(s) {
+export function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
 /** Strip common token-pack noise from a basename before matching. */
-function normalizeBasename(basename) {
+export function normalizeBasename(basename) {
   let s = basename.toLowerCase().replace(IMAGE_RE, "");
   s = s.replace(/[_\-\s]*(token|tokens|portrait|mini|miniature|vtt)[_\-\s]*/g, "_");
   s = s.replace(/[_\-\s]*\d+(px|pt)?$/g, ""); // trailing sizes: _40, -40px
@@ -36,10 +37,11 @@ function normalizeBasename(basename) {
   return s;
 }
 
-async function loadMonsters() {
-  const src = await readFile("src/presets/bestiary.ts", "utf8");
+export async function loadMonsters(srcPath = "src/presets/bestiary.ts") {
+  const src = await readFile(srcPath, "utf8");
   const monsters = [];
-  const re = /monster\(\s*"([^"]+)"\s*,\s*"([^"]+)"/g;
+  // Both builders: verbose monster() and one-line qm() entries.
+  const re = /(?:monster|qm)\(\s*"([^"]+)"\s*,\s*"([^"]+)"/g;
   let m;
   while ((m = re.exec(src)) !== null) {
     const [, key, name] = m;
@@ -48,7 +50,7 @@ async function loadMonsters() {
   return monsters;
 }
 
-function matchFile(normalized, monsters) {
+export function matchFile(normalized, monsters) {
   // 1. exact key
   let hit = monsters.find((mo) => mo.key === normalized);
   if (hit) return { monster: hit, how: "exact key" };
@@ -67,6 +69,7 @@ function matchFile(normalized, monsters) {
   return null;
 }
 
+async function main() {
 const monsters = await loadMonsters();
 if (!existsSync(inputDir)) {
   console.error(`Input directory not found: ${inputDir}`);
@@ -113,3 +116,8 @@ if (unmatched.length) {
 }
 const missing = monsters.filter((mo) => !claimed.has(mo.key));
 console.log(`\n${missing.length}/${monsters.length} monsters still without art.`);
+}
+
+// Run main only when executed directly (importing is side-effect free for tests).
+const invoked = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
+if (import.meta.url === invoked) await main();

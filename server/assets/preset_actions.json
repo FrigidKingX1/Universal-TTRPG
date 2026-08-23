@@ -2414,7 +2414,7 @@
  },
  {
   "id": "act_ochre_slam",
-  "name": "Slam",
+  "name": "Slam (Ooze)",
   "action_cost": {
    "type": "action",
    "amount": 1
@@ -2491,7 +2491,7 @@
  },
  {
   "id": "act_breath_acid_brass",
-  "name": "Fire Breath",
+  "name": "Fire Breath (Brass)",
   "action_cost": {
    "type": "action",
    "amount": 1
@@ -2517,7 +2517,7 @@
  },
  {
   "id": "act_breath_poison_bronze",
-  "name": "Lightning Breath",
+  "name": "Lightning Breath (Bronze)",
   "action_cost": {
    "type": "action",
    "amount": 1
@@ -2543,7 +2543,7 @@
  },
  {
   "id": "act_breath_cold_white",
-  "name": "Cold Breath",
+  "name": "Frost Breath",
   "action_cost": {
    "type": "action",
    "amount": 1
@@ -2569,7 +2569,7 @@
  },
  {
   "id": "act_breath_fire_black",
-  "name": "Acid Breath",
+  "name": "Acid Breath (Black)",
   "action_cost": {
    "type": "action",
    "amount": 1
@@ -2595,7 +2595,7 @@
  },
  {
   "id": "act_breath_fire_blue",
-  "name": "Lightning Breath",
+  "name": "Lightning Breath (Blue)",
   "action_cost": {
    "type": "action",
    "amount": 1
@@ -2621,7 +2621,7 @@
  },
  {
   "id": "act_bite_lg",
-  "name": "Bite (Large)",
+  "name": "Bite (Huge)",
   "action_cost": {
    "type": "action",
    "amount": 1

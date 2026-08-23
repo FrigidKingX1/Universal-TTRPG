@@ -84,11 +84,33 @@ const TYPE_IMMUNITIES: Record<string, string[]> = {
 };
 
 /** Default coin hoard scaled by challenge rating for compact monsters. */
-function crLoot(cr: number): LootTableEntry[] {
+function crLoot(cr: number, type?: string): LootTableEntry[] {
   const formula =
     cr < 1 ? "1d6" : cr < 3 ? "2d6" : cr < 6 ? "4d6" : cr < 11 ? "6d6+10" : "8d6+20";
-  return [{ name: "Gold Coins", quantity_formula: formula, chance: Math.min(85, Math.round(30 + cr * 5)) }];
+  const trinket = TYPE_TRINKETS[type ?? ""] ?? "Creature Trophy";
+  return [
+    { name: "Gold Coins", quantity_formula: formula, chance: Math.min(85, Math.round(30 + cr * 5)) },
+    { name: trinket, quantity_formula: "1", chance: Math.min(60, Math.round(15 + cr * 4)) },
+  ];
 }
+
+/** Themed secondary drop per creature type. */
+const TYPE_TRINKETS: Record<string, string> = {
+  undead: "Grave Moss Clump",
+  fiend: "Hellfire Ember",
+  dragon: "Dragon Scale",
+  aberration: "Alien Ichor Vial",
+  construct: "Spare Clockwork Cog",
+  elemental: "Elemental Essence Shard",
+  fey: "Glittering Dewdrop",
+  giant: "Giant-Tooth Button",
+  monstrosity: "Chitin Plate",
+  plant: "Living Sapling Cutting",
+  swarm: "Insect Husk Pouch",
+  celestial: "Celestial Feather",
+  beast: "Thick Hide Scrap",
+  humanoid: "Tattooed Token",
+};
 
 /** Average of a dice formula like "5d8+10" or "2d6" (rounded down, min 1). */
 function avgHp(formula: string): number {
@@ -125,7 +147,7 @@ const qm = (
     hit_points: { current: avgHp(hpFormula), maximum: avgHp(hpFormula), formula: hpFormula },
     attributes: { STR, DEX, CON, INT, WIS, CHA },
     actions,
-    loot_table: opts.loot_table ?? crLoot(cr),
+    loot_table: opts.loot_table ?? crLoot(cr, type),
     description,
     ...(DARKSIGHT_TYPES.has(type) ? { senses: ["darkvision 60 ft.", "passive Perception 10"] } : {}),
     ...(TYPE_IMMUNITIES[type] ? { condition_immunities: TYPE_IMMUNITIES[type] } : {}),
