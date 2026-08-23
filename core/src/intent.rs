@@ -353,10 +353,24 @@ pub fn repair_campaign_json(input: &str) -> String {
     let sliced = extract_first_json_object(fenced).unwrap_or(fenced);
     let mut v: Value = match serde_json::from_str(sliced) {
         Ok(v) => v,
-        Err(_) => return input.to_string(),
+        // Truncated output (EOF mid-string/mid-object): close what the
+        // model left open and re-parse.
+        Err(_) => match salvage_truncated(sliced) {
+            Some(repaired) => serde_json::from_str(&repaired).unwrap_or(Value::Null),
+            None => Value::Null,
+        },
     };
     if !v.is_object() {
         return input.to_string();
+    }
+    // Some models wrap everything in an intent-style {"type","payload"}
+    // envelope; descend into payload when it dominates the object.
+    if let Some(inner) = v.get("payload") {
+        if inner.is_object()
+            && v.as_object().unwrap().iter().all(|(k, _)| k == "payload" || k == "type")
+        {
+            v = inner.clone();
+        }
     }
     let obj = v.as_object_mut().unwrap();
 
@@ -494,5 +508,187 @@ mod repair_campaign_json_tests {
     fn non_json_input_passes_through_unchanged() {
         let raw = "the model rambled about dragons instead";
         assert_eq!(repair_campaign_json(raw), raw);
+    }
+}
+
+/// Attempt to recover a parseable JSON object from truncated LLM output:
+/// remember every position just past a completed value, then try closing
+/// all open containers from the latest safe cut backwards. A dangling
+/// string gets a synthetic closing quote.
+fn salvage_truncated(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut in_string = false;
+    let mut escaped = false;
+    let mut candidates: Vec<(usize, bool)> = Vec::new(); // (cut, needs quote)
+
+    for (i, &b) in bytes.iter().enumerate() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if b == b'\\' {
+                escaped = true;
+            } else if b == b'"' {
+                in_string = false;
+                candidates.push((i + 1, false));
+            }
+            continue;
+        }
+        match b {
+            b'"' => in_string = true,
+            b'}' | b']' => candidates.push((i + 1, false)),
+            _ => {}
+        }
+    }
+
+    // Truncated *inside* a string value: trim trailing whitespace/control
+    // chars first; a synthetic closing quote may be all that's needed.
+    if in_string {
+        let mut cut = bytes.len();
+        while cut > 0 && (bytes[cut - 1] as char).is_whitespace() {
+            cut -= 1;
+        }
+        candidates.push((cut, true));
+    }
+
+    for &(end, needs_quote) in candidates.iter().rev().take(500) {
+        let mut candidate = s[..end].to_string();
+        while matches!(candidate.chars().last(), Some(',') | Some(' ') | Some('\n') | Some('\r')) {
+            candidate.pop();
+        }
+        if needs_quote {
+            candidate.push('"');
+        }
+
+        // Close whatever containers are still open.
+        let mut stack: Vec<u8> = Vec::new();
+        let mut s2_in = false;
+        let mut s2_esc = false;
+        for &b in candidate.as_bytes() {
+            if s2_in {
+                if s2_esc {
+                    s2_esc = false;
+                } else if b == b'\\' {
+                    s2_esc = true;
+                } else if b == b'"' {
+                    s2_in = false;
+                }
+                continue;
+            }
+            match b {
+                b'"' => s2_in = true,
+                b'{' | b'[' => stack.push(b),
+                b'}' | b']' => { stack.pop(); }
+                _ => {}
+            }
+        }
+        let mut closers = String::new();
+        while let Some(open) = stack.pop() {
+            closers.push(if open == b'{' { '}' } else { ']' });
+        }
+        candidate.push_str(&closers);
+
+        if serde_json::from_str::<serde_json::Value>(&candidate).is_ok() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+/// JSON Schema constraining Ollama structured output to the exact shape
+/// CampaignGenerationResult deserializes from. Using the generic intent
+/// schema here caused models to wrap campaigns inside {"payload": ...}.
+pub fn campaign_json_schema() -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "campaign_title":   { "type": "string" },
+            "campaign_theme":   { "type": "string" },
+            "campaign_summary": { "type": "string" },
+            "scenes": { "type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "title": { "type": "string" },
+                    "chaos_factor": { "type": "integer" },
+                    "summary": { "type": "string" },
+                    "hook": { "type": "string" }
+                },
+                "required": ["title"]
+            }},
+            "npcs": { "type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "disposition": { "type": "string" },
+                    "notes": { "type": "string" }
+                },
+                "required": ["name"]
+            }},
+            "doom_clocks": { "type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "label": { "type": "string" },
+                    "tick_max": { "type": "integer" },
+                    "consequence": { "type": "string" }
+                },
+                "required": ["label"]
+            }},
+            "plot_threads": { "type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "description": { "type": "string" },
+                    "status": { "type": "string" }
+                },
+                "required": ["description"]
+            }},
+            "lines": { "type": "array", "items": { "type": "string" } },
+            "veils": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": [
+            "campaign_title","campaign_theme","campaign_summary",
+            "scenes","npcs","doom_clocks","plot_threads","lines","veils"
+        ]
+    })
+}
+
+#[cfg(test)]
+mod llm_json_hardening_tests {
+    use super::{repair_campaign_json, campaign_json_schema};
+
+    #[test]
+    fn unwraps_intent_style_payload_envelope() {
+        let inner = r#"{"campaign_title":"Chip","campaign_theme":"spy","campaign_summary":"s",
+            "scenes":[{"title":"Bar"}],"npcs":[],"doom_clocks":[],"plot_threads":[],"lines":[],"veils":[]}"#;
+        let raw = format!(r#"{{"type":"narration","payload":{inner}}}"#);
+        let v: serde_json::Value = serde_json::from_str(&repair_campaign_json(&raw)).unwrap();
+        assert_eq!(v["campaign_title"], "Chip");
+    }
+
+    #[test]
+    fn salvages_truncation_cut_mid_array() {
+        let mut raw = String::from(
+            r#"{"campaign_title":"Wastes","campaign_theme":"dust","campaign_summary":"s","scenes":["#,
+        );
+        raw.push_str(r#"{"title":"One","chaos_factor":5,"summary":"x","hook":"y"},"#);
+        raw.push_str(r#"{"title":"Two","chaos_factor":4,"summary":"y","hook":"z"}"#);
+        raw.push(',');
+        raw.push_str(r#"{"title":"Three","summary":"unfinis"#);
+        let v: serde_json::Value = serde_json::from_str(&repair_campaign_json(&raw)).unwrap();
+        assert_eq!(v["campaign_title"], "Wastes");
+        assert!(v["scenes"].as_array().unwrap().len() >= 2);
+    }
+
+    #[test]
+    fn salvages_truncation_inside_a_string_value() {
+        let raw = r#"{"campaign_title":"Broken Str"#;
+        let v: serde_json::Value = serde_json::from_str(&repair_campaign_json(raw)).unwrap();
+        assert_eq!(v["campaign_title"], "Broken Str");
+    }
+
+    #[test]
+    fn campaign_schema_requires_campaign_title_and_has_no_payload() {
+        let schema = campaign_json_schema();
+        assert!(schema["required"].as_array().unwrap().iter().any(|r| r == "campaign_title"));
+        assert!(schema["properties"]["payload"].is_null());
     }
 }

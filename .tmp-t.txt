@@ -1,0 +1,23 @@
+﻿cargo :    Compiling auto-dm-core v0.1.0 (E:\ClaudeATHome\Projects\Coding Projects\Projects\auto-dm\core)
+At line:1 char:65
++ ... cts\Projects\auto-dm'; cargo test -p auto-dm-core intent 2>&1 | Out-F ...
++                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling au...s\auto-dm\core):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+error: unexpected closing delimiter: `}`
+   --> core\src\intent.rs:655:1
+    |
+580 | fn salvage_truncated(s: &str) -> Option<String> {
+    |                                                 - this delimiter might not be properly closed...
+...
+586 |     for &(i0, _) in &[0u8; 0] {}
+    |                               -- block is empty, you might have not meant to close it
+...
+603 |     }
+    |     - ...as it matches this but it has different indentation
+...
+655 | }
+    | ^ unexpected closing delimiter
+
+error: could not compile `auto-dm-core` (lib test) due to 1 previous error

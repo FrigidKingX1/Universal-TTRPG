@@ -1107,7 +1107,7 @@ pub async fn generate_campaign(
         };
         pipeline
             .backend()
-            .complete(CAMPAIGN_GENERATION_PROMPT, &seed, Some(4096))
+            .complete(CAMPAIGN_GENERATION_PROMPT, &seed, Some(8192))
             .await
             .map_err(|e| e.to_string())?
     };

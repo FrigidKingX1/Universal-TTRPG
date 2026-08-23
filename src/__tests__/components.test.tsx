@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, render, screen, waitFor } from "@testing-library/react";import userEvent from "@testing-library/user-event";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ZoneMap } from "../components/ZoneMap";
 import { newCharacter, newStatBlock, useStore } from "../store";
