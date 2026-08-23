@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Auto-DM",
+  "productName": "Universal TTRPG",
   "version": "0.1.0",
-  "identifier": "com.autodm.app",
+  "identifier": "com.frigidkingx.universalttrpg",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Auto-DM",
+        "title": "Universal TTRPG",
         "width": 1280,
         "height": 800,
         "decorations": false,
@@ -21,14 +21,6 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; img-src 'self' data: asset:"
-    }
-  },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IGF1dG8tZG0gcHVibGljIGtleQ==",
-      "endpoints": [
-        "https://releases.auto-dm.com/update/{{target}}/{{current_version}}"
-      ]
     }
   },
   "bundle": {

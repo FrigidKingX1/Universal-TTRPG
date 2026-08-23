@@ -8,6 +8,22 @@ use super::llm::{LlmBackend, LlmError};
 const DEFAULT_MODEL: &str = "llama3.2";
 const DEFAULT_URL: &str = "http://localhost:11434";
 
+/// Turn a failed Ollama HTTP response into an actionable error message.
+/// The body is where Ollama explains itself (e.g. `model "x" not found`),
+/// so surface it instead of a bare status code.
+fn describe_http_failure(status: u16, body: &str, model: &str) -> String {
+    let snippet: String = body.chars().take(200).collect();
+    match status {
+        404 if body.contains(model) && body.contains("not found") => format!(
+            "ollama 404: model \"{model}\" is not pulled — run: ollama pull {model}"
+        ),
+        404 => format!(
+            "ollama 404 Not Found on /api/generate for model \"{model}\". Is Ollama up to date? Body: {snippet}"
+        ),
+        _ => format!("ollama returned status {status}: {snippet}"),
+    }
+}
+
 pub struct OllamaLlmBackend {
     client: Client,
     model: String,
@@ -114,7 +130,13 @@ impl LlmBackend for OllamaLlmBackend {
             .map_err(|e| LlmError::Backend(format!("ollama generate failed: {e}")))?;
 
         if !response.status().is_success() {
-            return Err(LlmError::Backend(format!("ollama returned status {}", response.status())));
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(LlmError::Backend(describe_http_failure(
+                status.as_u16(),
+                &body,
+                &self.model,
+            )));
         }
 
         // Ollama streams NDJSON chunks: one JSON object per line with a
@@ -178,4 +200,32 @@ pub async fn list_models_at(url: &str) -> Result<Vec<String>, LlmError> {
         .await
         .map_err(|e| LlmError::Backend(format!("ollama tags parse failed: {e}")))?;
     Ok(resp.models.into_iter().map(|m| m.name).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::describe_http_failure;
+
+    #[test]
+    fn model_not_found_404_suggests_pull() {
+        let body = r#"{"error":"model \"llama3.2\" not found, try pulling it first"}"#;
+        let msg = describe_http_failure(404, body, "llama3.2");
+        assert!(msg.contains("not pulled"), "{msg}");
+        assert!(msg.contains("ollama pull llama3.2"), "{msg}");
+    }
+
+    #[test]
+    fn other_model_in_body_does_not_trigger_pull_hint() {
+        let body = r#"{"error":"model \"other\" not found"}"#;
+        let msg = describe_http_failure(404, body, "llama3.2");
+        assert!(!msg.contains("ollama pull"), "{msg}");
+        assert!(msg.contains("/api/generate"), "{msg}");
+    }
+
+    #[test]
+    fn server_errors_include_body_snippet() {
+        let msg = describe_http_failure(500, "{\"error\":\"boom\"}", "llama3.2");
+        assert!(msg.contains("status 500"), "{msg}");
+        assert!(msg.contains("boom"), "{msg}");
+    }
 }
