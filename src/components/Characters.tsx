@@ -7,7 +7,7 @@ import { EQUIPMENT_CATALOG, findEquipment } from "../presets/equipment";
 import { playDiceSound } from "../sound";
 import type { ActionDefinition, CharacterProfile, InventoryItem } from "../types";
 
-function NewCharacterForm() {
+export function NewCharacterForm() {
   const createCharacter = useStore((s) => s.createCharacter);
   const [name, setName] = useState("");
   const [classId, setClassId] = useState("");
@@ -169,7 +169,7 @@ export function CharacterList() {
   );
 }
 
-function CharacterSheet({ profile }: { profile: CharacterProfile }) {
+export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const saveCharacter = useStore((s) => s.saveCharacter);
   const dropItemToScene = useStore((s) => s.dropItemToScene);
   const [name, setName] = useState(profile.identity.name);

@@ -1652,7 +1652,7 @@ export const useStore = create<AutoDmState>()(
     try {
       const result = await backend.advanceDoomClock(id, ticks);
       if (result) {
-        const [current, _max] = result;
+        const [current] = result;
         set((s) => ({
           doomClocks: s.doomClocks.map((c) => c.id === id ? { ...c, current } : c),
         }));

@@ -3,8 +3,11 @@ import { useEffect, useRef, useCallback } from "react";
 export function useFocusTrap(enabled: boolean, onClose?: () => void) {
   const containerRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  // Ref so the handler sees the latest closure without re-subscribing.
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

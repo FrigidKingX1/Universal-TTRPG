@@ -310,6 +310,7 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Origin Story", description: "Choose a sorcerous origin: Draconic Bloodline, Wild Magic, Storm..." },
       { level: 3, name: "Metamagic", description: "Spend sorcery points to twin, quicken, or extend your spells." },
       { level: 5, name: "Font of Magic", description: "Convert sorcery points into spell slots and back, fueling longer adventuring days." },
+      { level: 9, name: "Sorcerous Restoration", description: "Regain sorcery points on a short rest equal to half your level." },
     ],
   },
   {
@@ -358,6 +359,7 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Jack of All Trades", description: "Add half your proficiency to every ability check you aren't already good at." },
       { level: 3, name: "College", description: "Join a College (Lore, Valor, Glamour) for specialized Cutting Words or combat arts." },
       { level: 5, name: "Font of Inspiration", description: "Refresh Bardic Inspiration on a short rest instead of a long one." },
+      { level: 9, name: "Song of Triumph", description: "Allies inspired by you deal bonus damage equal to your CHA modifier." },
     ],
   },
   {
@@ -384,6 +386,7 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Wild Shape", description: "Spend wild shape uses to assume beast forms twice per short rest." },
       { level: 2, name: "Circle of the Land / Moon", description: "Deepen your terrain bond or perfect your beast-shifting at higher levels." },
       { level: 5, name: "Second-Level Spells", description: "Call lightning, entangle battlefields, and moonfire the unworthy." },
+      { level: 9, name: "Nature's Ward", description: "Immune to poison and disease; elementals and fey treat you as a friend." },
     ],
   },
   {
@@ -405,7 +408,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Tactical Assessment", description: "Read a battlefield as an action to mark the greatest threat for your allies." },
       { level: 3, name: "On My Mark", description: "Coordinate a simultaneous strike; allies act on your signal without surprise." },
       { level: 5, name: "Rallying Cry", description: "Spend presence to heal allies in a burst when they drop below half HP." },
-    ],
+    
+      { level: 9, name: "Grand Strategy", description: "Once per long rest, redraw initiative so your allies strike first." },],
   },
   {
     id: "swashbuckler",
@@ -426,7 +430,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Panache", description: "Taunt a foe into focusing on you alone; spend panache to fuel flourishes." },
       { level: 3, name: "Riposte", description: "When missed in melee, answer immediately with a counterattack roll." },
       { level: 5, name: "Elegant Maneuver", description: "Advantage on Acrobatics and against opportunity attacks while unarmored." },
-    ],
+    
+      { level: 9, name: "Swagger", description: "While below half HP, dropping a foe grants temporary HP." },],
   },
   {
     id: "runecarver",
@@ -447,7 +452,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Runic Burst", description: "Spend rune charges to unleash stored elemental energy on impact." },
       { level: 3, name: "Ward of the Forge", description: "Etch a protective rune granting resistance to one damage type." },
       { level: 5, name: "Master's Word", description: "Rune effects no longer require charges once per short rest." },
-    ],
+    
+      { level: 9, name: "Living Runes", description: "Your skin bears etchings: resistance to two elemental damage types." },],
   },
   {
     id: "necromancer",
@@ -472,7 +478,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Necrotic Affinity", description: "Your necrotic spells ignore resistance the first time each turn." },
       { level: 3, name: "Raise Thrall", description: "Spend corpse harvest to animate a temporary skeleton servant." },
       { level: 5, name: "Death Ward Self", description: "Once per long rest, refuse death and stand at 1 HP instead." },
-    ],
+    
+      { level: 9, name: "Undying Covenant", description: "Your first death each day animates your corpse as a loyal thrall." },],
   },
   {
     id: "shaman",
@@ -496,7 +503,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Ancestral Favor", description: "Spend spirit favor to ask an ancestor for guidance or aid." },
       { level: 3, name: "Totemic Wrath", description: "Channel a beast-spirit: bear's hide, wolf's speed, or eagle's sight." },
       { level: 5, name: "Storm Voice", description: "Call thunder to scatter foes; spirits guard your sleeping camp." },
-    ],
+    
+      { level: 9, name: "Spirit Guide", description: "An ancestor accompanies you permanently, scouting unseen ahead." },],
   },
   {
     id: "psion",
@@ -517,7 +525,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Psi Points", description: "Fuel disciplines — telekinesis, mind blast, thought shield — with psi points." },
       { level: 3, name: "Telekinetic Grip", description: "Hurl objects and grapple foes at range with pure will." },
       { level: 5, name: "Thought Form", description: "Once per day, become incorporeal mist for one minute." },
-    ],
+    
+      { level: 9, name: "Mind Fortress", description: "Immune to psychic damage while concentrating on a discipline." },],
   },
   {
     id: "alchemist",
@@ -538,7 +547,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Throw Anything", description: "Add INT modifier to thrown-flask attack rolls and damage." },
       { level: 3, name: "Healing Draught", description: "Distill healing potions from monster parts mid-adventure." },
       { level: 5, name: "Greater Volatiles", description: "Bombs gain splash radius and elemental infusions." },
-    ],
+    
+      { level: 9, name: "Philosopher's Draft", description: "Brew a panacea curing any poison, disease, or curse at dawn." },],
   },
   {
     id: "tinkerer",
@@ -559,7 +569,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Jury Rig", description: "Repair constructs and disable mechanisms with improvised parts." },
       { level: 3, name: "Companion Automaton", description: "Assemble a loyal clockwork pet that fights and fetches." },
       { level: 5, name: "Overcharge", description: "Double a gadget's effect at the risk of spectacular malfunction." },
-    ],
+    
+      { level: 9, name: "Masterworks", description: "Overcharge misfires no longer destroy the gadget on a roll of 1." },],
   },
   {
     id: "reaver",
@@ -580,7 +591,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Reckless Assault", description: "Trade defense for devastating advantage on every swing." },
       { level: 3, name: "Crimson Vigor", description: "Regain HP equal to your CON modifier when bloodlust peaks." },
       { level: 5, name: "Terrifying Visage", description: "Foes that watch you kill must save or flee your reach." },
-    ],
+    
+      { level: 9, name: "Blood Titan", description: "At peak bloodlust your reach extends and foes falter before you." },],
   },
   {
     id: "brawler",
@@ -601,7 +613,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Iron Jaw", description: "Resist being knocked prone or stunned by brute force." },
       { level: 3, name: "Haymaker", description: "Charge up a single devastating punch that ignores resistance." },
       { level: 5, name: "Crowd Favorite", description: "Improvise weapons from surroundings without losing effectiveness." },
-    ],
+    
+      { level: 9, name: "Unbreakable Hold", description: "Grappled enemies cannot teleport or slip free with assistance." },],
   },
   {
     id: "wildspeaker",
@@ -622,7 +635,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Kin Bond", description: "Attract an animal companion that levels alongside you." },
       { level: 3, name: "Shared Senses", description: "See through your companion's eyes regardless of distance." },
       { level: 5, name: "Call the Pack", description: "Spend kinship to summon temporary beast allies to your side." },
-    ],
+    
+      { level: 9, name: "Alpha Voice", description: "Command whole packs as an action; your companion gains Extra Attack." },],
   },
   {
     id: "shadowblade",
@@ -643,7 +657,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Killing Edge", description: "Bonus damage to creatures that haven't acted yet this combat." },
       { level: 3, name: "Smoke Shroud", description: "Spend shadow weave to fill your square with blinding darkness you see through." },
       { level: 5, name: "Deathmark", description: "Marked targets never hear you coming; first strike auto-crits." },
-    ],
+    
+      { level: 9, name: "Umbral Twin", description: "A shadow duplicate flanks alongside you, feinting on your cue." },],
   },
   {
     id: "stormcaller",
@@ -667,7 +682,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Tempest Fury", description: "Spend fury to maximize lightning or thunder damage dice." },
       { level: 3, name: "Static Aura", description: "Attackers within 5 feet spark for retaliation damage." },
       { level: 5, name: "Eye of the Storm", description: "Walk unbothered through high winds, rain, and falling debris." },
-    ],
+    
+      { level: 9, name: "Eye of the Maelstrom", description: "Weather within a mile bends toward your emotional forecast." },],
   },
   {
     id: "witch",
@@ -692,7 +708,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Familiar Bond", description: "Your familiar scouts, spies, and delivers touch-spells for you." },
       { level: 3, name: "Cauldron Brew", description: "Cook potent charms and poultions from foraged ingredients." },
       { level: 5, name: "Grand Hex", description: "One target per day simply has the worst day of its life." },
-    ],
+    
+      { level: 9, name: "Coven Bond", description: "Coven-cast hexes pierce even curse-immunity with combined will." },],
   },
   {
     id: "summoner",
@@ -716,7 +733,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Stable Gate", description: "Your summons resist banishment and linger longer than they should." },
       { level: 3, name: "Battle Conjuration", description: "Summon a bonded combat-beast that shares your initiative." },
       { level: 5, name: "Planar Favor", description: "Negotiate with summoned entities for extra services at a price." },
-    ],
+    
+      { level: 9, name: "Gate Adept", description: "Summons arrive at maximum HP with doubled durations." },],
   },
   {
     id: "gunslinger",
@@ -737,7 +755,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Trick Shots", description: "Disarm, trip, or nail limbs to walls with style points." },
       { level: 3, name: "Quick Reload", description: "Fire as bonus action after a kill; misfires clear instantly." },
       { level: 5, name: "Bullet Time", description: "Once per short rest, resolve your attack before anyone else acts." },
-    ],
+    
+      { level: 9, name: "Never Miss Twice", description: "After missing a marked target, your next shot crits on 19-20." },],
   },
   {
     id: "dragoon",
@@ -758,7 +777,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Wyrm Slayer Arts", description: "Bonus damage and saves vs dragon breath and fear." },
       { level: 3, name: "Impaling Descent", description: "Skyfall onto a Large-or-bigger creature pins it prone." },
       { level: 5, name: "Dragoon's Resolve", description: "Immunity to frightful presence; breath weapons scorch you half." },
-    ],
+    
+      { level: 9, name: "Wyrmfall", description: "Skyfall height doubles; landing shock stuns Large creatures." },],
   },
   {
     id: "blackguard",
@@ -782,7 +802,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Sin Eater", description: "Convert suffering around you into dark healing or smites." },
       { level: 3, name: "Hell Knight", description: "Summon a nightmare steed that fears neither fire nor death." },
       { level: 5, name: "Withering Smite", description: "Your strikes scar the soul; healed wounds ache forever." },
-    ],
+    
+      { level: 9, name: "Dread Lord", description: "Enemies who see you open combat are frightened until round's end." },],
   },
   {
     id: "banisher",
@@ -803,7 +824,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Warding Rites", description: "Draw protective circles that bar possession and planar breach." },
       { level: 3, name: "Consecrated Strikes", description: "Your weapons count as silvered and blessed against outsiders." },
       { level: 5, name: "Expel the Guest", description: "Force a possessing or summoned entity back through the veil." },
-    ],
+    
+      { level: 9, name: "Seal Warden", description: "Wards persist overnight and repel planar incursions automatically." },],
   },
   {
     id: "jester",
@@ -824,7 +846,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Slapstick", description: "Comic timing grants advantage when performing for a crowd." },
       { level: 3, name: "Pratfall", description: "Turn a stumble into a trip that drops two enemies instead." },
       { level: 5, name: "Killer Punchline", description: "Deliver a setup earlier in combat; the payoff stuns." },
-    ],
+    
+      { level: 9, name: "Standing Ovation", description: "Performing grants allies your proficiency bonus to saves." },],
   },
   {
     id: "spellblade",
@@ -848,7 +871,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Battle Casting", description: "Cast without provoking and keep components gripped in off-hand." },
       { level: 3, name: "Counterswing", description: "Destroy a spell effect by striking its caster mid-incantation." },
       { level: 5, name: "Spellstorm", description: "Channel a slot through your blade for an area arcane slash." },
-    ],
+    
+      { level: 9, name: "Spellsword Mastery", description: "Opportunity attacks may instead cast a known damaging cantrip." },],
   },
   {
     id: "chirurgeon",
@@ -872,7 +896,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Anatomical Insight", description: "Know a creature's weak points: your attacks crit on natural 19s." },
       { level: 3, name: "Transfusion", description: "Move HP between willing creatures with a touch and a prayer." },
       { level: 5, name: "Adrenal Surge", description: "A treated ally gains temp HP and shakes off paralysis or poison." },
-    ],
+    
+      { level: 9, name: "Miracle Worker", description: "Once per day, revive an ally slain this round at half HP." },],
   },
   {
     id: "elementalist",
@@ -897,7 +922,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Attunement Perks", description: "Each element grants passive boons: warmth, buoyancy, speed, stability." },
       { level: 3, name: "Overload", description: "Spend attunement to empower matching-element spells massively." },
       { level: 5, name: "Primal Conduit", description: "Once per short rest, cast a known spell without expending a slot." },
-    ],
+    
+      { level: 9, name: "Avatar of Elements", description: "Assume your attuned element's form for one minute of power." },],
   },
   {
     id: "cavalier",
@@ -918,7 +944,8 @@ export const PRESET_CLASSES: ClassTemplate[] = [
       { level: 1, name: "Hold the Line", description: "Spend defensive line to intercept attacks aimed at allies." },
       { level: 3, name: "Charging Lance", description: "Mounted charges double STR modifier and knock foes flat." },
       { level: 5, name: "Unstoppable Advance", description: "While mounted, you and your steed shrug off forced movement." },
-    ],
+    
+      { level: 9, name: "Legendary Steed", description: "Your mount gains intelligence, HP scaling, and independent attacks." },],
   },
 ];
 

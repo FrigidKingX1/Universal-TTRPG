@@ -221,6 +221,7 @@ describe("Class templates", () => {
 
   it("features are level-gated sensibly", () => {
     for (const c of PRESET_CLASSES) {
+      expect(c.features_by_level.length, `${c.name} feature count`).toBeGreaterThanOrEqual(5);
       for (const f of c.features_by_level) {
         expect(f.level, `${c.name}: ${f.name}`).toBeGreaterThanOrEqual(1);
         expect(f.level, `${c.name}: ${f.name}`).toBeLessThanOrEqual(20);

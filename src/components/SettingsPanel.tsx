@@ -297,7 +297,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
               <button
                 className="btn btn-secondary btn-small"
                 onClick={() => {
-                  try { localStorage.removeItem("autodm.theme"); } catch {}
+                  try { localStorage.removeItem("autodm.theme"); } catch { /* best-effort cleanup */ }
                   updateTheme({ accent: "#c9a86a", fontSize: 14, density: "comfortable" });
                   showToast("Appearance reset to defaults", "success");
                 }}
@@ -307,7 +307,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
               <button
                 className="btn btn-secondary btn-small"
                 onClick={() => {
-                  try { localStorage.removeItem("autodm-onboarding-complete"); } catch {}
+                  try { localStorage.removeItem("autodm-onboarding-complete"); } catch { /* best-effort cleanup */ }
                   showToast("Tutorial will show on next restart — or close Settings and reload (Ctrl+R)", "info", 6000);
                   setTestResult("The Game Master's Handbook will reappear after an app restart.");
                 }}

@@ -106,3 +106,57 @@ describe("ZoneMap", () => {
     expect(map).toBeInTheDocument();
   });
 });
+
+// ── Character creation & dual-class sheet (round 3 coverage) ──────────
+import { NewCharacterForm, CharacterSheet } from "../components/Characters";
+import { PRESET_CLASSES, applyClassTemplate, mergeSecondaryClass } from "../presets/classes";
+import { newCharacter } from "../store";
+
+describe("NewCharacterForm", () => {
+  it("offers all 36 classes plus a no-class option", () => {
+    render(<NewCharacterForm />);
+    const classSelect = screen.getByLabelText("Class") as HTMLSelectElement;
+    expect(classSelect.options.length).toBe(PRESET_CLASSES.length + 1);
+  });
+
+  it("has an optional dual-class dropdown defaulting to none", () => {
+    render(<NewCharacterForm />);
+    const dual = screen.getByLabelText("Dual class (optional)") as HTMLSelectElement;
+    expect(dual.value).toBe("");
+    expect(dual.options[0].text).toBe("No dual class");
+  });
+
+  it("excludes the chosen primary from the dual-class list", async () => {
+    const user = userEvent.setup();
+    render(<NewCharacterForm />);
+    const classSelect = screen.getByLabelText("Class") as HTMLSelectElement;
+    await user.selectOptions(classSelect, "paladin");
+    const dual = screen.getByLabelText("Dual class (optional)") as HTMLSelectElement;
+    const values = Array.from(dual.options).map((o) => o.value);
+    expect(values).not.toContain("paladin");
+    expect(values).toContain("wizard");
+  });
+});
+
+describe("CharacterSheet dual-class rendering", () => {
+  const fighter = PRESET_CLASSES.find((c) => c.id === "fighter")!;
+  const wizard = PRESET_CLASSES.find((c) => c.id === "wizard")!;
+  const base = applyClassTemplate(newCharacter("Gish"), fighter);
+  const dualProfile = mergeSecondaryClass(base, wizard);
+
+  it("shows the secondary badge and both feature sections", () => {
+    render(<CharacterSheet profile={dualProfile} />);
+    expect(screen.getAllByText(/Wizard/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Fighter Features/)).toBeInTheDocument();
+    expect(screen.getByText(/Wizard Features/)).toBeInTheDocument();
+    // Wizard level-1 features visible under the dual heading.
+    expect(screen.getByText("Arcane Recovery")).toBeInTheDocument();
+  });
+
+  it("single-class profiles show no secondary badge", () => {
+    const solo = applyClassTemplate(newCharacter("Solo"), wizard);
+    render(<CharacterSheet profile={solo} />);
+    expect(screen.queryByText(/\/ Wizard/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Wizard Features/)).toBeInTheDocument();
+  });
+});

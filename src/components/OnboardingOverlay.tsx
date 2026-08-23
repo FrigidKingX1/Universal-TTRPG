@@ -112,7 +112,9 @@ export function OnboardingOverlay() {
 
   // Ref so the focus trap's Escape handler can reach the latest closure.
   const completeOnboardingRef = useRef<() => void>(null);
-  completeOnboardingRef.current = completeOnboarding;
+  useEffect(() => {
+    completeOnboardingRef.current = completeOnboarding;
+  }, [completeOnboarding]);
 
   const handleNext = useCallback(() => {
     if (currentStep < STEPS.length - 1) {

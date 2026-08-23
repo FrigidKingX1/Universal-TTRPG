@@ -301,7 +301,9 @@ export function PlayerPanel() {
               const pct = pool.maximum > 0 ? (pool.current / pool.maximum) * 100 : 0;
               return (
                 <div key={name} className="resource-cell">
-                  <span className="resource-name">{name.toUpperCase()}</span>
+                  <span className="resource-name">
+                    {name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </span>
                   <div className="resource-track">
                     <div
                       className="resource-fill"

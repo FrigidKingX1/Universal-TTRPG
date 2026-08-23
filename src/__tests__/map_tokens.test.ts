@@ -1,4 +1,3 @@
-/// <reference path="../../scripts/map_tokens.d.ts" />
 import { describe, it, expect } from "vitest";
 import {
   slugify,
