@@ -20,8 +20,9 @@ frontend, content library in `src/presets/`.
 | Production build | `npm run build` |
 | Dev server | `npm run dev` (port 1420, Tauri-tailored) |
 
-**PATH note:** `cargo test/clippy --workspace` needs the Windows SDK
-tools on PATH first:
+**PATH note:** `cargo test/clippy --workspace` **and** `npm run tauri
+build` need the WinSDK tools on PATH first (`tauri-winres` requires
+RC.EXE when compiling the release binary):
 
 ```powershell
 $env:PATH = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64;" + $env:PATH
