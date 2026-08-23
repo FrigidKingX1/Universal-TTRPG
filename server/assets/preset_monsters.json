@@ -8877,6 +8877,12 @@
    }
   ],
   "description": "Scarred matriarch who leads the hunt by strength alone.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "size": "medium",
   "key": "gnoll_pack_lord",
   "id": "preset_gnoll_pack_lord"
@@ -8917,6 +8923,12 @@
    }
   ],
   "description": "Hyena-headed tyrant whose laughter means the pack feeds tonight.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "key": "gnoll_chieftain",
   "id": "preset_gnoll_chieftain"
  },
@@ -8956,6 +8968,12 @@
    }
   ],
   "description": "One-eyed war-priest reading omens in spilled blood.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "key": "orc_eye",
   "id": "preset_orc_eye"
  },
@@ -8995,6 +9013,12 @@
    }
   ],
   "description": "Underdark-bred orc elite, disciplined where its kin are not.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "senses": [
    "darkvision 60 ft."
   ],
@@ -9037,6 +9061,12 @@
    }
   ],
   "description": "Legion officer drilling soldiers into a single killing machine.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "hobgoblin_captain",
   "id": "preset_hobgoblin_captain"
  },
@@ -9076,6 +9106,12 @@
    }
   ],
   "description": "Battle-caster weaving fire between shield walls.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "hobgoblin_warmage",
   "id": "preset_hobgoblin_warmage"
  },
@@ -9115,6 +9151,12 @@
    }
   ],
   "description": "Bully with a bodyguard complex and a redirect-the-blame talent.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "goblin_boss",
   "id": "preset_goblin_boss"
  },
@@ -9154,6 +9196,12 @@
    }
   ],
   "description": "Lash-wielding shaman cursing foes with spite and spite's cousins.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "key": "goblin_hexer",
   "id": "preset_goblin_hexer"
  },
@@ -9193,6 +9241,12 @@
    }
   ],
   "description": "Wyrmpriest humming dragon-syllables that mostly work.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "kobold_sorcerer",
   "id": "preset_kobold_sorcerer"
  },
@@ -9232,6 +9286,12 @@
    }
   ],
   "description": "Carries six badly-labeled flasks and no fear of consequences.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "kobold_inventor",
   "id": "preset_kobold_inventor"
  },
@@ -9271,6 +9331,12 @@
    }
   ],
   "description": "Cold-blooded king judging warmth as a character flaw.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "size": "large",
   "key": "lizardfolk_monarch",
   "id": "preset_lizardfolk_monarch"
@@ -9311,6 +9377,12 @@
    }
   ],
   "description": "Marsh mystic trading swamp-secrets for fresh offerings.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "lizardfolk_shaman",
   "id": "preset_lizardfolk_shaman"
  },
@@ -9350,6 +9422,12 @@
    }
   ],
   "description": "Cave reptile whose stench arrives one round before it does.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "senses": [
    "darkvision 60 ft."
   ],
@@ -9391,6 +9469,12 @@
    }
   ],
   "description": "Blind troglodyte cousin hunting by echo in lightless halls.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "senses": [
    "blindsight 30 ft."
   ],
@@ -9433,6 +9517,12 @@
    }
   ],
   "description": "Fish-bellied ogre of the reefs, all hunger and anchor-chain.",
+  "traits": [
+   {
+    "name": "Mountain Stride",
+    "description": "Sure-footed on cliffs, scree, and rubble."
+   }
+  ],
   "size": "large",
   "speed_feet": 10,
   "key": "merrow",
@@ -9474,6 +9564,12 @@
    }
   ],
   "description": "White-furred bruiser of high passes; hugs first, asks never.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "size": "large",
   "key": "cave_ape",
   "id": "preset_cave_ape"
@@ -9513,6 +9609,12 @@
    }
   ],
   "description": "Bubble-mouthed worshipper of what sleeps below the tide line.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "key": "fishfolk_zealot",
   "id": "preset_fishfolk_zealot"
  },
@@ -9551,6 +9653,12 @@
    }
   ],
   "description": "Reed-skiff outrider mapping coastlines for the deep choirs.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "fishfolk_scout",
   "id": "preset_fishfolk_scout"
  },
@@ -9589,6 +9697,12 @@
    }
   ],
   "description": "Ashen dwarf smith-enforcer; grudges measured in centuries.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "senses": [
    "darkvision 120 ft."
   ],
@@ -9631,6 +9745,12 @@
    }
   ],
   "description": "Deep-king claiming every tunnel his shadow touches.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "senses": [
    "darkvision 120 ft."
   ],
@@ -9673,6 +9793,12 @@
    }
   ],
   "description": "Spider-sworn surface raider; poison on the blade, poisons in the words.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "senses": [
    "darkvision 120 ft."
   ],
@@ -9716,6 +9842,12 @@
    }
   ],
   "description": "Matron's voice in the underdark, spider-god's will made silk.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "senses": [
    "darkvision 120 ft."
   ],
@@ -9757,6 +9889,12 @@
    }
   ],
   "description": "Stone-grey gnome prospector who heard you coming an hour ago.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "senses": [
    "darkvision 120 ft."
   ],
@@ -9799,6 +9937,12 @@
    }
   ],
   "description": "Silver-armored reaver riding thought-ships between worlds.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "astral_raider",
   "id": "preset_astral_raider"
  },
@@ -9838,6 +9982,12 @@
    }
   ],
   "description": "Pleistocene bulk with a temper preserved perfectly.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "size": "large",
   "key": "cave_bear",
   "id": "preset_cave_bear"
@@ -9878,6 +10028,12 @@
    }
   ],
   "description": "Leap, puncture, done — prehistory's neatest solution.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "large",
   "key": "sabertooth",
   "id": "preset_sabertooth"
@@ -9918,6 +10074,12 @@
    }
   ],
   "description": "Maned giant stalking mammoth-steppe shadows.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "size": "large",
   "key": "cave_lion",
   "id": "preset_cave_lion"
@@ -9958,6 +10120,12 @@
    }
   ],
   "description": "Two-ton snowplow with a very pointed opinion.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "huge",
   "key": "woolly_rhino",
   "id": "preset_woolly_rhino"
@@ -9999,6 +10167,12 @@
    }
   ],
   "description": "Tusked hill that remembers every slight since the ice age.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "huge",
   "key": "mastodon",
   "id": "preset_mastodon"
@@ -10039,6 +10213,12 @@
    }
   ],
   "description": "Ancestor of cattle, twice the size and ten times the grudge.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "large",
   "key": "aurochs",
   "id": "preset_aurochs"
@@ -10078,6 +10258,12 @@
    }
   ],
   "description": "Autumn bugle echoing across frost meadows.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "key": "elk",
   "id": "preset_elk"
  },
@@ -10116,6 +10302,12 @@
    }
   ],
   "description": "Giggling scavenger patient enough to be dangerous in numbers.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "key": "hyena",
   "id": "preset_hyena"
  },
@@ -10154,6 +10346,12 @@
    }
   ],
   "description": "Armor-trained destrier; tramples on command.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "large",
   "key": "warhorse",
   "id": "preset_warhorse"
@@ -10193,6 +10391,12 @@
    }
   ],
   "description": "Gentle colossus hauling what four men cannot.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "large",
   "key": "draft_horse",
   "id": "preset_draft_horse"
@@ -10232,6 +10436,12 @@
    }
   ],
   "description": "Desert ship storing water, spite, and dramatic sighs.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "key": "camel",
   "id": "preset_camel"
  },
@@ -10270,6 +10480,12 @@
    }
   ],
   "description": "Carries everything; moves when philosophically ready.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "key": "mule",
   "id": "preset_mule"
  },
@@ -10308,6 +10524,12 @@
    }
   ],
   "description": "Flocks scent one drop and become a red cloud.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "size": "tiny",
   "key": "blood_hawk",
   "id": "preset_blood_hawk"
@@ -10347,6 +10569,12 @@
    }
   ],
   "description": "Six-foot terror-bird shearing grasslands at a sprint.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "size": "large",
   "key": "axe_beak",
   "id": "preset_axe_beak"
@@ -10386,6 +10614,12 @@
    }
   ],
   "description": "Bristleback orchard-raider; charges first, thinks never.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "key": "boar",
   "id": "preset_boar"
  },
@@ -10425,6 +10659,12 @@
    }
   ],
   "description": "Tomb-architect spider spinning alarm-threads across treasure.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "large",
   "senses": [
    "darkvision 60 ft.",
@@ -10468,6 +10708,12 @@
    }
   ],
   "description": "Algae-backed boulder with trap-jaw patience.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "size": "large",
   "key": "snapping_turtle",
   "id": "preset_snapping_turtle"
@@ -10507,6 +10753,12 @@
    }
   ],
   "description": "Silver flash over coral, then the water goes quiet.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "speed_feet": 0,
   "key": "reef_shark",
   "id": "preset_reef_shark"
@@ -10546,6 +10798,12 @@
    }
   ],
   "description": "River torpedo ambushing from the lily shallows.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "speed_feet": 0,
   "key": "giant_pike",
   "id": "preset_giant_pike"
@@ -10586,6 +10844,12 @@
    }
   ],
   "description": "Marsh ribbon that answers touch with lightning.",
+  "traits": [
+   {
+    "name": "Wild Instinct",
+    "description": "Reads predator intent; rarely caught truly unaware."
+   }
+  ],
   "speed_feet": 0,
   "key": "electric_eel",
   "id": "preset_electric_eel"
@@ -10626,6 +10890,12 @@
    }
   ],
   "description": "Ghost of the white ridges, seen only as falling snow shifting.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "key": "snow_leopard",
   "id": "preset_snow_leopard"
  },
@@ -10664,6 +10934,12 @@
    }
   ],
   "description": "Defies gravity, ledges, and your patience with equal ease.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "key": "mountain_goat",
   "id": "preset_mountain_goat"
  },
@@ -10702,6 +10978,12 @@
    }
   ],
   "description": "Striped fury defending a hole in the ground.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "key": "badger",
   "id": "preset_badger"
  },
@@ -10741,6 +11023,12 @@
    }
   ],
   "description": "Digging machine with a bad attitude and bigger claws.",
+  "traits": [
+   {
+    "name": "Keen Senses",
+    "description": "Notices prey by scent or sound long before sight."
+   }
+  ],
   "key": "giant_badger",
   "id": "preset_giant_badger"
  },
@@ -10788,6 +11076,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Grave-Bound",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
+  ],
   "key": "revenant",
   "id": "preset_revenant"
  },
@@ -10834,6 +11128,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Grave-Bound",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
   ],
   "size": "small",
   "speed_feet": 0,
@@ -10891,6 +11191,12 @@
    "restrained",
    "stunned"
   ],
+  "traits": [
+   {
+    "name": "Chill Presence",
+    "description": "The air drops noticeably colder within a few feet."
+   }
+  ],
   "key": "bone_swarm",
   "id": "preset_bone_swarm"
  },
@@ -10937,6 +11243,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Relentless Hunger",
+    "description": "Drawn irresistibly toward the living."
+   }
   ],
   "key": "plague_zombie",
   "id": "preset_plague_zombie"
@@ -10985,6 +11297,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Grave-Bound",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
+  ],
   "key": "skeleton_champion",
   "id": "preset_skeleton_champion"
  },
@@ -11032,6 +11350,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Relentless Hunger",
+    "description": "Drawn irresistibly toward the living."
+   }
+  ],
   "key": "bone_archer",
   "id": "preset_bone_archer"
  },
@@ -11077,6 +11401,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Relentless Hunger",
+    "description": "Drawn irresistibly toward the living."
+   }
   ],
   "key": "gravehound",
   "id": "preset_gravehound"
@@ -11124,6 +11454,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Grave-Bound",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
   ],
   "speed_feet": 20,
   "key": "drowned_dead",
@@ -11174,6 +11510,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Relentless Hunger",
+    "description": "Drawn irresistibly toward the living."
+   }
+  ],
   "size": "large",
   "key": "spirit_naga",
   "id": "preset_spirit_naga"
@@ -11222,6 +11564,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Chill Presence",
+    "description": "The air drops noticeably colder within a few feet."
+   }
   ],
   "size": "large",
   "key": "death_knight",
@@ -11272,6 +11620,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Relentless Hunger",
+    "description": "Drawn irresistibly toward the living."
+   }
+  ],
   "key": "lich",
   "id": "preset_lich"
  },
@@ -11319,6 +11673,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Relentless Hunger",
+    "description": "Drawn irresistibly toward the living."
+   }
+  ],
   "key": "ghast_queen",
   "id": "preset_ghast_queen"
  },
@@ -11365,6 +11725,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Grave-Bound",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
   ],
   "key": "zombie_lord",
   "id": "preset_zombie_lord"
@@ -11419,6 +11785,12 @@
    "restrained",
    "stunned"
   ],
+  "traits": [
+   {
+    "name": "Relentless Hunger",
+    "description": "Drawn irresistibly toward the living."
+   }
+  ],
   "key": "grave_beetle_swarm",
   "id": "preset_grave_beetle_swarm"
  },
@@ -11464,6 +11836,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Chill Presence",
+    "description": "The air drops noticeably colder within a few feet."
+   }
   ],
   "key": "phantom_warrior",
   "id": "preset_phantom_warrior"
@@ -11512,6 +11890,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Grave-Bound",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
+  ],
   "key": "grave_warden",
   "id": "preset_grave_warden"
  },
@@ -11558,6 +11942,12 @@
   "condition_immunities": [
    "poisoned",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Chill Presence",
+    "description": "The air drops noticeably colder within a few feet."
+   }
   ],
   "size": "huge",
   "key": "rotting_titan",
@@ -11607,6 +11997,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Chill Presence",
+    "description": "The air drops noticeably colder within a few feet."
+   }
+  ],
   "size": "huge",
   "key": "bone_colossus",
   "id": "preset_bone_colossus"
@@ -11655,6 +12051,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Grave-Bound",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
+  ],
   "size": "large",
   "key": "skeletal_wyvern",
   "id": "preset_skeletal_wyvern"
@@ -11702,6 +12104,12 @@
    "poisoned",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Chill Presence",
+    "description": "The air drops noticeably colder within a few feet."
+   }
+  ],
   "size": "tiny",
   "key": "vampire_familiar",
   "id": "preset_vampire_familiar"
@@ -11745,6 +12153,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
   ],
   "size": "gargantuan",
   "speed_feet": 20,
@@ -11791,6 +12205,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
+  ],
   "size": "large",
   "key": "fire_drake",
   "id": "preset_fire_drake"
@@ -11834,6 +12254,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
   ],
   "size": "large",
   "key": "frost_drake",
@@ -11879,6 +12305,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
+  ],
   "size": "large",
   "key": "storm_drake",
   "id": "preset_storm_drake"
@@ -11922,6 +12354,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
   ],
   "size": "large",
   "key": "venom_drake",
@@ -11967,6 +12405,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
+  ],
   "size": "large",
   "key": "rock_drake",
   "id": "preset_rock_drake"
@@ -12010,6 +12454,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
+  ],
   "size": "tiny",
   "key": "faerie_dragon",
   "id": "preset_faerie_dragon"
@@ -12052,6 +12502,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
   ],
   "size": "tiny",
   "key": "pseudodragon",
@@ -12097,6 +12553,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
+  ],
   "size": "large",
   "key": "guard_drake",
   "id": "preset_guard_drake"
@@ -12141,6 +12603,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
+  ],
   "key": "gold_wyrmling",
   "id": "preset_gold_wyrmling"
  },
@@ -12184,6 +12652,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
+  ],
   "key": "silver_wyrmling",
   "id": "preset_silver_wyrmling"
  },
@@ -12226,6 +12700,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
   ],
   "key": "bronze_wyrmling",
   "id": "preset_bronze_wyrmling"
@@ -12271,6 +12751,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
+  ],
   "key": "adult_bronze_dragon",
   "id": "preset_adult_bronze_dragon"
  },
@@ -12313,6 +12799,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
   ],
   "key": "adult_copper_dragon",
   "id": "preset_adult_copper_dragon"
@@ -12358,6 +12850,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Draconic Pride",
+    "description": "Rarely flees; remembers every slight against its hoard."
+   }
+  ],
   "size": "gargantuan",
   "key": "ancient_gold_dragon",
   "id": "preset_ancient_gold_dragon"
@@ -12398,6 +12896,12 @@
    }
   ],
   "description": "Living flood that drowns rooms and drags rivers uphill.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "size": "large",
   "speed_feet": 30,
   "key": "water_elemental",
@@ -12439,6 +12943,12 @@
    }
   ],
   "description": "Quarry given legs; patience of strata, fists of landslides.",
+  "traits": [
+   {
+    "name": "Dissolution",
+    "description": "Slain elementals break apart into their base substance."
+   }
+  ],
   "size": "large",
   "speed_feet": 30,
   "key": "earth_elemental",
@@ -12480,6 +12990,12 @@
    }
   ],
   "description": "Air genie-tasked to hunt; unseen until it is a conclusion.",
+  "traits": [
+   {
+    "name": "Dissolution",
+    "description": "Slain elementals break apart into their base substance."
+   }
+  ],
   "key": "invisible_stalker",
   "id": "preset_invisible_stalker"
  },
@@ -12518,6 +13034,12 @@
    }
   ],
   "description": "Bronze-skinned forge-dwarf hammering order into chaos.",
+  "traits": [
+   {
+    "name": "Dissolution",
+    "description": "Slain elementals break apart into their base substance."
+   }
+  ],
   "size": "medium",
   "speed_feet": 30,
   "key": "azer",
@@ -12559,6 +13081,12 @@
    }
   ],
   "description": "Boulder-elder herding stones like sheepdogs.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "size": "large",
   "speed_feet": 30,
   "key": "galeb_duhr",
@@ -12600,6 +13128,12 @@
    }
   ],
   "description": "Ember-serpent slithering through coals and kindling alike.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "key": "fire_snake",
   "id": "preset_fire_snake"
  },
@@ -12638,6 +13172,12 @@
    }
   ],
   "description": "Three-eyed gem-eater browsing veins of ore like fruit.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "key": "xorn",
   "id": "preset_xorn"
  },
@@ -12676,6 +13216,12 @@
    }
   ],
   "description": "Molten imp igniting whatever it hugs, including hugs.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "size": "small",
   "key": "magmin",
   "id": "preset_magmin"
@@ -12716,6 +13262,12 @@
    }
   ],
   "description": "Frost sprite giggling blizzards and freezing opinions.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "size": "small",
   "key": "ice_mephit",
   "id": "preset_ice_mephit"
@@ -12756,6 +13308,12 @@
    }
   ],
   "description": "Slag-sprite spitting burning globs and worse puns.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "size": "small",
   "key": "magma_mephit",
   "id": "preset_magma_mephit"
@@ -12796,6 +13354,12 @@
    }
   ],
   "description": "Brass-brined wish-tyrant ruling a furnace court.",
+  "traits": [
+   {
+    "name": "Dissolution",
+    "description": "Slain elementals break apart into their base substance."
+   }
+  ],
   "size": "large",
   "key": "efreeti",
   "id": "preset_efreeti"
@@ -12836,6 +13400,12 @@
    }
   ],
   "description": "Sky-palace noble granting boons with bureaucratic delight.",
+  "traits": [
+   {
+    "name": "Dissolution",
+    "description": "Slain elementals break apart into their base substance."
+   }
+  ],
   "size": "large",
   "key": "djinni",
   "id": "preset_djinni"
@@ -12877,6 +13447,12 @@
    }
   ],
   "description": "Serpent-smith forging weapons in its own coils of flame.",
+  "traits": [
+   {
+    "name": "Dissolution",
+    "description": "Slain elementals break apart into their base substance."
+   }
+  ],
   "size": "large",
   "key": "salamander",
   "id": "preset_salamander"
@@ -12917,6 +13493,12 @@
    }
   ],
   "description": "Storm-front eagle whose wingbeats are the front.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "size": "huge",
   "key": "thunderbird",
   "id": "preset_thunderbird"
@@ -12959,6 +13541,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
   ],
   "size": "small",
   "key": "cockatrice",
@@ -13004,6 +13592,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "large",
   "key": "gorgon",
   "id": "preset_gorgon"
@@ -13046,6 +13640,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
   ],
   "size": "huge",
   "key": "bulette",
@@ -13091,6 +13691,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "large",
   "key": "ankheg",
   "id": "preset_ankheg"
@@ -13135,6 +13741,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "large",
   "key": "grick",
   "id": "preset_grick"
@@ -13177,6 +13789,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
   ],
   "size": "small",
   "key": "darkmantle",
@@ -13221,6 +13839,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "small",
   "key": "piercer",
   "id": "preset_piercer"
@@ -13264,6 +13888,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
+  ],
   "key": "rust_monster",
   "id": "preset_rust_monster"
  },
@@ -13306,6 +13936,12 @@
   "senses": [
    "darkvision 120 ft."
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "large",
   "key": "phase_panther",
   "id": "preset_phase_panther"
@@ -13345,6 +13981,12 @@
    }
   ],
   "description": "Silver hunger stripping a swimmer to a story.",
+  "traits": [
+   {
+    "name": "Swarm Cohesion",
+    "description": "Individual losses do not slow the whole."
+   }
+  ],
   "speed_feet": 0,
   "condition_immunities": [
    "charmed",
@@ -13399,6 +14041,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "large",
   "key": "winter_wolf",
   "id": "preset_winter_wolf"
@@ -13444,6 +14092,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
+  ],
   "size": "large",
   "key": "chimera",
   "id": "preset_chimera"
@@ -13486,6 +14140,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
   ],
   "size": "huge",
   "key": "hydra",
@@ -13532,6 +14192,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "gargantuan",
   "speed_feet": 20,
   "key": "kraken",
@@ -13577,6 +14243,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "gargantuan",
   "key": "roc",
   "id": "preset_roc"
@@ -13621,6 +14293,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "large",
   "key": "sphinx",
   "id": "preset_sphinx"
@@ -13661,6 +14339,12 @@
    }
   ],
   "description": "Rainbow-feathered serpent guarding oaths and prophecies.",
+  "traits": [
+   {
+    "name": "Oathbound",
+    "description": "Cannot knowingly break a sworn promise."
+   }
+  ],
   "size": "large",
   "key": "couatl",
   "id": "preset_couatl"
@@ -13705,6 +14389,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Infernal Nature",
+    "description": "Banishment returns it to its home hell rather than slaying it."
+   }
+  ],
   "size": "large",
   "key": "nightmare",
   "id": "preset_nightmare"
@@ -13745,6 +14435,12 @@
    }
   ],
   "description": "Snake-blooded courtier smiling with too many teeth.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "key": "yuan_ti_pureblood",
   "id": "preset_yuan_ti_pureblood"
  },
@@ -13785,6 +14481,12 @@
    }
   ],
   "description": "Coils under the robe; cold calculation above it.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "key": "yuan_ti_malison",
   "id": "preset_yuan_ti_malison"
  },
@@ -13827,6 +14529,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
   ],
   "size": "large",
   "key": "death_dog",
@@ -13872,6 +14580,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "huge",
   "key": "frost_worm",
   "id": "preset_frost_worm"
@@ -13915,6 +14629,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "key": "jaculi",
   "id": "preset_jaculi"
  },
@@ -13957,6 +14677,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
   ],
   "size": "large",
   "key": "cave_fisher",
@@ -14003,6 +14729,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
+  ],
   "size": "huge",
   "speed_feet": 0,
   "key": "sea_serpent",
@@ -14044,6 +14776,12 @@
    }
   ],
   "description": "Ancient forest walking to war against the axe.",
+  "traits": [
+   {
+    "name": "Rooted Memories",
+    "description": "Senses vibrations through soil contact."
+   }
+  ],
   "size": "huge",
   "key": "treant",
   "id": "preset_treant"
@@ -14083,6 +14821,12 @@
    }
   ],
   "description": "Druid's ally grown ambitious about doorways.",
+  "traits": [
+   {
+    "name": "Photosynthetic",
+    "description": "Grows listless and slow away from sunlight."
+   }
+  ],
   "size": "huge",
   "key": "awakened_tree",
   "id": "preset_awakened_tree"
@@ -14122,6 +14866,12 @@
    }
   ],
   "description": "Opinionated topiary with newfound mobility.",
+  "traits": [
+   {
+    "name": "Photosynthetic",
+    "description": "Grows listless and slow away from sunlight."
+   }
+  ],
   "size": "small",
   "key": "awakened_shrub",
   "id": "preset_awakened_shrub"
@@ -14161,6 +14911,12 @@
    }
   ],
   "description": "Thicket-thug flinging barbed darts from hedgerows.",
+  "traits": [
+   {
+    "name": "Rooted Memories",
+    "description": "Senses vibrations through soil contact."
+   }
+  ],
   "key": "needle_blight",
   "id": "preset_needle_blight"
  },
@@ -14199,6 +14955,12 @@
    }
   ],
   "description": "Kindling-sized ambush that comes in bundles.",
+  "traits": [
+   {
+    "name": "Rooted Memories",
+    "description": "Senses vibrations through soil contact."
+   }
+  ],
   "size": "small",
   "key": "twig_blight",
   "id": "preset_twig_blight"
@@ -14238,6 +15000,12 @@
    }
   ],
   "description": "Wall of ivy reaching for ankles and throats equally.",
+  "traits": [
+   {
+    "name": "Photosynthetic",
+    "description": "Grows listless and slow away from sunlight."
+   }
+  ],
   "size": "medium",
   "key": "vine_blight",
   "id": "preset_vine_blight"
@@ -14277,6 +15045,12 @@
    }
   ],
   "description": "Floating mimic of an eye tyrant; pops catastrophically.",
+  "traits": [
+   {
+    "name": "Photosynthetic",
+    "description": "Grows listless and slow away from sunlight."
+   }
+  ],
   "size": "large",
   "speed_feet": 5,
   "key": "gas_spore",
@@ -14318,6 +15092,12 @@
    }
   ],
   "description": "Grove guardian grown armor rings and a grudge.",
+  "traits": [
+   {
+    "name": "Rooted Memories",
+    "description": "Senses vibrations through soil contact."
+   }
+  ],
   "size": "large",
   "key": "bark_warden",
   "id": "preset_bark_warden"
@@ -14357,6 +15137,12 @@
    }
   ],
   "description": "Eight thousand eyes and one appetite.",
+  "traits": [
+   {
+    "name": "Swarm Cohesion",
+    "description": "Individual losses do not slow the whole."
+   }
+  ],
   "size": "medium",
   "condition_immunities": [
    "charmed",
@@ -14406,6 +15192,12 @@
    }
   ],
   "description": "Floor becomes legs becomes regret.",
+  "traits": [
+   {
+    "name": "Swarm Cohesion",
+    "description": "Individual losses do not slow the whole."
+   }
+  ],
   "size": "medium",
   "condition_immunities": [
    "charmed",
@@ -14455,6 +15247,12 @@
    }
   ],
   "description": "Angry weather with stripes.",
+  "traits": [
+   {
+    "name": "Swarm Cohesion",
+    "description": "Individual losses do not slow the whole."
+   }
+  ],
   "size": "medium",
   "condition_immunities": [
    "charmed",
@@ -14504,6 +15302,12 @@
    }
   ],
   "description": "Winged steed choosing riders by the weight of their honor.",
+  "traits": [
+   {
+    "name": "Oathbound",
+    "description": "Cannot knowingly break a sworn promise."
+   }
+  ],
   "size": "large",
   "key": "pegasus",
   "id": "preset_pegasus"
@@ -14544,6 +15348,12 @@
    }
   ],
   "description": "Forest saint healing the worthy and goring the rest.",
+  "traits": [
+   {
+    "name": "Oathbound",
+    "description": "Cannot knowingly break a sworn promise."
+   }
+  ],
   "size": "large",
   "key": "unicorn",
   "id": "preset_unicorn"
@@ -14584,6 +15394,12 @@
    }
   ],
   "description": "Wardens of gateways between mortal planes and brighter ones.",
+  "traits": [
+   {
+    "name": "Oathbound",
+    "description": "Cannot knowingly break a sworn promise."
+   }
+  ],
   "size": "large",
   "key": "angelic_sentinel",
   "id": "preset_angelic_sentinel"
@@ -14625,6 +15441,12 @@
    }
   ],
   "description": "Battle-angel whose sword is a verdict.",
+  "traits": [
+   {
+    "name": "Radiant Mantle",
+    "description": "Sheds soft light in darkness unless it wills otherwise."
+   }
+  ],
   "size": "large",
   "key": "planetar",
   "id": "preset_planetar"
@@ -14666,6 +15488,12 @@
    }
   ],
   "description": "Last authority most tyrants ever hear.",
+  "traits": [
+   {
+    "name": "Radiant Mantle",
+    "description": "Sheds soft light in darkness unless it wills otherwise."
+   }
+  ],
   "size": "large",
   "key": "solar",
   "id": "preset_solar"
@@ -14707,6 +15535,12 @@
    }
   ],
   "description": "Divine titan whose mood decides kingdoms' weather.",
+  "traits": [
+   {
+    "name": "Radiant Mantle",
+    "description": "Sheds soft light in darkness unless it wills otherwise."
+   }
+  ],
   "size": "huge",
   "key": "empyrean",
   "id": "preset_empyrean"
@@ -14747,6 +15581,12 @@
    }
   ],
   "description": "Court champion dueling mortals for amusement and tithes.",
+  "traits": [
+   {
+    "name": "True Name Wariness",
+    "description": "Guarded about giving its true name to mortals."
+   }
+  ],
   "key": "fey_knight",
   "id": "preset_fey_knight"
  },
@@ -14785,6 +15625,12 @@
    }
   ],
   "description": "Household spirit gone sour, souring everything back.",
+  "traits": [
+   {
+    "name": "True Name Wariness",
+    "description": "Guarded about giving its true name to mortals."
+   }
+  ],
   "size": "small",
   "key": "boggart",
   "id": "preset_boggart"
@@ -14824,6 +15670,12 @@
    }
   ],
   "description": "Petty gnome-cousin swelling to giant size when cheated.",
+  "traits": [
+   {
+    "name": "Fey Passage",
+    "description": "Vanishes along moonbeams and shadowed thresholds."
+   }
+  ],
   "key": "spriggan",
   "id": "preset_spriggan"
  },
@@ -14864,6 +15716,12 @@
    }
   ],
   "description": "Season-crown sovereign whose grove obeys like a body.",
+  "traits": [
+   {
+    "name": "Fey Passage",
+    "description": "Vanishes along moonbeams and shadowed thresholds."
+   }
+  ],
   "key": "dryad_queen",
   "id": "preset_dryad_queen"
  },
@@ -14902,6 +15760,12 @@
    }
   ],
   "description": "Omen-pup whose howl is someone's funeral notice.",
+  "traits": [
+   {
+    "name": "True Name Wariness",
+    "description": "Guarded about giving its true name to mortals."
+   }
+  ],
   "size": "large",
   "key": "doom_hound",
   "id": "preset_doom_hound"
@@ -14945,6 +15809,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Infernal Nature",
+    "description": "Banishment returns it to its home hell rather than slaying it."
+   }
   ],
   "size": "large",
   "key": "bone_devil",
@@ -14991,6 +15861,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Infernal Nature",
+    "description": "Banishment returns it to its home hell rather than slaying it."
+   }
+  ],
   "size": "huge",
   "key": "nalfeshnee",
   "id": "preset_nalfeshnee"
@@ -15035,6 +15911,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Silver Aversion",
+    "description": "Hesitates when silver touches its skin."
+   }
+  ],
   "size": "huge",
   "key": "demon_behemoth",
   "id": "preset_demon_behemoth"
@@ -15078,6 +15960,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Silver Aversion",
+    "description": "Hesitates when silver touches its skin."
+   }
   ],
   "size": "large",
   "key": "ice_devil",
@@ -15124,6 +16012,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Infernal Nature",
+    "description": "Banishment returns it to its home hell rather than slaying it."
+   }
+  ],
   "key": "hellfire_priest",
   "id": "preset_hellfire_priest"
  },
@@ -15167,6 +16061,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Infernal Nature",
+    "description": "Banishment returns it to its home hell rather than slaying it."
+   }
+  ],
   "key": "cambion",
   "id": "preset_cambion"
  },
@@ -15209,6 +16109,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Silver Aversion",
+    "description": "Hesitates when silver touches its skin."
+   }
   ],
   "condition_immunities": [
    "grappled",
@@ -15258,6 +16164,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Silver Aversion",
+    "description": "Hesitates when silver touches its skin."
+   }
+  ],
   "key": "rakshasa",
   "id": "preset_rakshasa"
  },
@@ -15299,6 +16211,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Infernal Nature",
+    "description": "Banishment returns it to its home hell rather than slaying it."
+   }
   ],
   "size": "huge",
   "key": "fiendish_tyrannosaur",
@@ -15346,6 +16264,12 @@
    "frightened",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Constructed Nature",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
+  ],
   "size": "huge",
   "key": "adamantine_golem",
   "id": "preset_adamantine_golem"
@@ -15386,6 +16310,12 @@
    }
   ],
   "description": "Wind-up bloodhound tracking contracts to the letter.",
+  "traits": [
+   {
+    "name": "Steadfast Orders",
+    "description": "Ignores persuasion; only its maker's commands matter."
+   }
+  ],
   "key": "clockwork_hunter",
   "id": "preset_clockwork_hunter"
  },
@@ -15425,6 +16355,12 @@
    }
   ],
   "description": "Mass-produced legionnaire; warranty void vs fire.",
+  "traits": [
+   {
+    "name": "Steadfast Orders",
+    "description": "Ignores persuasion; only its maker's commands matter."
+   }
+  ],
   "key": "clockwork_soldier",
   "id": "preset_clockwork_soldier"
  },
@@ -15468,6 +16404,12 @@
    "charmed",
    "frightened",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Steadfast Orders",
+    "description": "Ignores persuasion; only its maker's commands matter."
+   }
   ],
   "key": "living_statue",
   "id": "preset_living_statue"
@@ -15513,6 +16455,12 @@
    "frightened",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Constructed Nature",
+    "description": "Does not breathe, eat, drink, or sleep."
+   }
+  ],
   "size": "small",
   "key": "stone_defender",
   "id": "preset_stone_defender"
@@ -15557,6 +16505,12 @@
    "charmed",
    "frightened",
    "exhaustion"
+  ],
+  "traits": [
+   {
+    "name": "Steadfast Orders",
+    "description": "Ignores persuasion; only its maker's commands matter."
+   }
   ],
   "size": "medium",
   "key": "serpent_automaton",
@@ -15604,6 +16558,12 @@
    "frightened",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Steadfast Orders",
+    "description": "Ignores persuasion; only its maker's commands matter."
+   }
+  ],
   "size": "large",
   "key": "rune_guardian",
   "id": "preset_rune_guardian"
@@ -15650,6 +16610,12 @@
    "frightened",
    "exhaustion"
   ],
+  "traits": [
+   {
+    "name": "Steadfast Orders",
+    "description": "Ignores persuasion; only its maker's commands matter."
+   }
+  ],
   "size": "large",
   "key": "tomb_construct",
   "id": "preset_tomb_construct"
@@ -15690,6 +16656,12 @@
    }
   ],
   "description": "Regenerating horror that heals faster than heroes agree.",
+  "traits": [
+   {
+    "name": "Mountain Stride",
+    "description": "Sure-footed on cliffs, scree, and rubble."
+   }
+  ],
   "size": "huge",
   "key": "dire_troll",
   "id": "preset_dire_troll"
@@ -15730,6 +16702,12 @@
    }
   ],
   "description": "Forge-tyrant marching behind a tower of black iron.",
+  "traits": [
+   {
+    "name": "Mountain Stride",
+    "description": "Sure-footed on cliffs, scree, and rubble."
+   }
+  ],
   "size": "huge",
   "key": "fire_giant_dreadnought",
   "id": "preset_fire_giant_dreadnought"
@@ -15771,6 +16749,12 @@
    }
   ],
   "description": "Throne-of-clouds ruler deciding droughts and dynasties.",
+  "traits": [
+   {
+    "name": "Mountain Stride",
+    "description": "Sure-footed on cliffs, scree, and rubble."
+   }
+  ],
   "size": "huge",
   "key": "storm_giant_sovereign",
   "id": "preset_storm_giant_sovereign"
@@ -15811,6 +16795,12 @@
    }
   ],
   "description": "Biggest belly wins the tribe; the tribe wins nothing else.",
+  "traits": [
+   {
+    "name": "Oversized Grasp",
+    "description": "Wields boulders and doors as readily as weapons."
+   }
+  ],
   "size": "huge",
   "key": "hill_giant_chief",
   "id": "preset_hill_giant_chief"
@@ -15851,6 +16841,12 @@
    }
   ],
   "description": "One eye on this world, one dream on the next.",
+  "traits": [
+   {
+    "name": "Mountain Stride",
+    "description": "Sure-footed on cliffs, scree, and rubble."
+   }
+  ],
   "size": "huge",
   "key": "cyclops_shaman",
   "id": "preset_cyclops_shaman"
@@ -15891,6 +16887,12 @@
    }
   ],
   "description": "Promoted by surviving every superior it ate.",
+  "traits": [
+   {
+    "name": "Oversized Grasp",
+    "description": "Wields boulders and doors as readily as weapons."
+   }
+  ],
   "key": "ogre_warlord",
   "id": "preset_ogre_warlord"
  },
@@ -15930,6 +16932,12 @@
    }
   ],
   "description": "Crowned in scar tissue; the realm regenerates around him.",
+  "traits": [
+   {
+    "name": "Oversized Grasp",
+    "description": "Wields boulders and doors as readily as weapons."
+   }
+  ],
   "size": "large",
   "key": "troll_king",
   "id": "preset_troll_king"
@@ -15971,6 +16979,12 @@
    }
   ],
   "description": "Under-earth emperor whose gaze warps what it favors.",
+  "traits": [
+   {
+    "name": "Mountain Stride",
+    "description": "Sure-footed on cliffs, scree, and rubble."
+   }
+  ],
   "size": "huge",
   "key": "fomorian_tyrant",
   "id": "preset_fomorian_tyrant"
@@ -16011,6 +17025,12 @@
    }
   ],
   "description": "Shark-tattooed raiders surfacing only to take.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "speed_feet": 30,
   "key": "sahuagin",
   "id": "preset_sahuagin"
@@ -16051,6 +17071,12 @@
    }
   ],
   "description": "Blood-tide acolyte feeding the reef gods properly.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "speed_feet": 30,
   "key": "sahuagin_priestess",
   "id": "preset_sahuagin_priestess"
@@ -16090,6 +17116,12 @@
    }
   ],
   "description": "Coral-court citizens; traders, guides, occasional sirens.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "speed_feet": 5,
   "key": "merfolk",
   "id": "preset_merfolk"
@@ -16133,6 +17165,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Alien Mind",
+    "description": "Immune to effects that read surface thoughts."
+   }
   ],
   "size": "large",
   "speed_feet": 10,
@@ -16179,6 +17217,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Alien Mind",
+    "description": "Immune to effects that read surface thoughts."
+   }
+  ],
   "size": "large",
   "key": "chuul",
   "id": "preset_chuul"
@@ -16218,6 +17262,12 @@
    }
   ],
   "description": "Scaled league-folk defending reef trade routes.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "speed_feet": 5,
   "key": "locathah",
   "id": "preset_locathah"
@@ -16257,6 +17307,12 @@
    }
   ],
   "description": "Well-dweller drowning the curious in polite silence.",
+  "traits": [
+   {
+    "name": "Elemental Nature",
+    "description": "Doesn't require air, food, drink, or sleep."
+   }
+  ],
   "speed_feet": 30,
   "key": "water_weird",
   "id": "preset_water_weird"
@@ -16298,6 +17354,12 @@
    }
   ],
   "description": "Primal sea-storm given a destination and a grudge.",
+  "traits": [
+   {
+    "name": "Dissolution",
+    "description": "Slain elementals break apart into their base substance."
+   }
+  ],
   "size": "gargantuan",
   "speed_feet": 0,
   "key": "leviathan",
@@ -16343,6 +17405,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
+  ],
   "key": "storm_siren",
   "id": "preset_storm_siren"
  },
@@ -16384,6 +17452,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
   ],
   "key": "harpy",
   "id": "preset_harpy"
@@ -16428,6 +17502,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Predatory Instinct",
+    "description": "Advantage on initiative when hunting unalerted prey."
+   }
+  ],
   "key": "medusa",
   "id": "preset_medusa"
  },
@@ -16470,6 +17550,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
   ],
   "size": "large",
   "key": "centaur",
@@ -16515,6 +17601,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Territorial",
+    "description": "Attacks anything entering its marked range."
+   }
+  ],
   "size": "large",
   "key": "lamia",
   "id": "preset_lamia"
@@ -16555,6 +17647,12 @@
    }
   ],
   "description": "Reclusive warden whose curse is also a career.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "size": "large",
   "key": "werebear",
   "id": "preset_werebear"
@@ -16595,6 +17693,12 @@
    }
   ],
   "description": "Jungle duelists honoring challenges with extra claws.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "size": "large",
   "key": "weretiger",
   "id": "preset_weretiger"
@@ -16635,6 +17739,12 @@
    }
   ],
   "description": "Crossroad bully infecting taverns and travelers alike.",
+  "traits": [
+   {
+    "name": "Indomitable Spirit",
+    "description": "Courage (or stubbornness) outlasting good sense."
+   }
+  ],
   "size": "large",
   "key": "wereboar",
   "id": "preset_wereboar"
@@ -16674,6 +17784,12 @@
    }
   ],
   "description": "Cave-roost screecher draining rumor from the sleeping.",
+  "traits": [
+   {
+    "name": "Seasoned Traveler",
+    "description": "Reads weather, roads, and strangers with equal wariness."
+   }
+  ],
   "size": "medium",
   "key": "werebat",
   "id": "preset_werebat"
@@ -16719,6 +17835,12 @@
    "darkvision 60 ft.",
    "passive Perception 10"
   ],
+  "traits": [
+   {
+    "name": "Scaled Hide",
+    "description": "Natural armor plating turns aside glancing blows."
+   }
+  ],
   "size": "gargantuan",
   "key": "ancient_silver_dragon",
   "id": "preset_ancient_silver_dragon"
@@ -16762,6 +17884,12 @@
   "senses": [
    "darkvision 60 ft.",
    "passive Perception 10"
+  ],
+  "traits": [
+   {
+    "name": "Alien Mind",
+    "description": "Immune to effects that read surface thoughts."
+   }
   ],
   "key": "nothic",
   "id": "preset_nothic"

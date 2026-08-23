@@ -39,6 +39,20 @@ describe("Bestiary presets", () => {
     expect(crs[crs.length - 1]).toBeGreaterThanOrEqual(10); // bosses exist
   });
 
+  it("QA audit: compact monsters carry type-nature traits", () => {
+    let withTraits = 0;
+    for (const m of PRESET_MONSTERS) {
+      for (const t of m.traits ?? []) {
+        expect(t.name.length, `${m.name} trait name`).toBeGreaterThan(0);
+        expect(t.description.length, `${m.name}: ${t.name}`).toBeGreaterThan(0);
+      }
+      if ((m.traits?.length ?? 0) > 0) withTraits++;
+    }
+    // Original batches had traits on most entries; the compact builder adds
+    // one per creature. Only a handful (shrieker, gas spore...) stay bare.
+    expect(withTraits, "monsters with at least one trait").toBeGreaterThanOrEqual(340);
+  });
+
   it("QA audit: loot tables are well-formed and broadly populated", () => {
     const standard = new Set(["slashing", "piercing", "bludgeoning", "fire", "cold", "lightning", "poison", "psychic", "necrotic", "radiant", "force", "thunder", "acid"]);
     void standard;

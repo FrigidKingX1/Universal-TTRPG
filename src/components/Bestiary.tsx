@@ -92,6 +92,22 @@ export function Bestiary() {
   const { confirm, dialog } = useConfirmDialog();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [presetKey, setPresetKey] = useState<string>("");
+  const [query, setQuery] = useState("");
+
+  // Filtered + capped card list: 376 entries render fine but a wall of
+  // cards is useless to scan — search narrows, and the cap keeps the DOM
+  // light until the user refines.
+  const RENDER_CAP = 60;
+  const visible = statBlocks.filter((b) => {
+    if (!query.trim()) return true;
+    const q = query.trim().toLowerCase();
+    return (
+      b.name.toLowerCase().includes(q) ||
+      (b.type ?? "").toLowerCase().includes(q) ||
+      String(b.challenge_rating) === q
+    );
+  });
+  const shown = visible.slice(0, RENDER_CAP);
 
   const create = () => {
     const block = newStatBlock(`Monster ${statBlocks.length + 1}`);
@@ -185,7 +201,26 @@ export function Bestiary() {
         )}
       </div>
       <ul className="card-list">
-        {statBlocks.map((b) => (
+        {statBlocks.length > 12 && (
+          <div className="row">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.currentTarget.value)}
+              placeholder="Search name, type, or CR (e.g. dragon, undead, 5)…"
+              aria-label="Search bestiary"
+              style={{ flex: 1 }}
+            />
+            <span className="muted" style={{ alignSelf: "center" }}>
+              {visible.length === statBlocks.length
+                ? `${statBlocks.length} entries`
+                : `${shown.length} of ${visible.length} shown`}
+            </span>
+          </div>
+        )}
+        {visible.length > RENDER_CAP && (
+          <p className="muted">Showing first {RENDER_CAP} — refine the search to narrow further.</p>
+        )}
+        {shown.map((b) => (
           <li key={b.id} className="card">
             <div className="card-row">
               {resolvePortrait(b) ? (
@@ -240,6 +275,11 @@ export function Bestiary() {
           </li>
         ))}
       </ul>
+      {statBlocks.length > 0 && visible.length === 0 && (
+        <p className="muted" role="status">
+          No monsters match "{query}". Try a name, type, or CR.
+        </p>
+      )}
       {statBlocks.length === 0 && (
         <div className="fantasy-empty" role="status">
           <span className="fantasy-empty-icon" aria-hidden="true">🐉</span>

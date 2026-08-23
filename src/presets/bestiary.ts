@@ -112,6 +112,79 @@ const TYPE_TRINKETS: Record<string, string> = {
   humanoid: "Tattooed Token",
 };
 
+/**
+ * One flavor trait per compact monster, varied within its type by key hash.
+ * Purely descriptive — the engine does not consume traits.
+ */
+const TYPE_NATURE_TRAITS: Record<string, Array<{ name: string; description: string }>> = {
+  undead: [
+    { name: "Grave-Bound", description: "Does not breathe, eat, drink, or sleep." },
+    { name: "Chill Presence", description: "The air drops noticeably colder within a few feet." },
+    { name: "Relentless Hunger", description: "Drawn irresistibly toward the living." },
+  ],
+  fiend: [
+    { name: "Infernal Nature", description: "Banishment returns it to its home hell rather than slaying it." },
+    { name: "Silver Aversion", description: "Hesitates when silver touches its skin." },
+  ],
+  dragon: [
+    { name: "Draconic Pride", description: "Rarely flees; remembers every slight against its hoard." },
+    { name: "Scaled Hide", description: "Natural armor plating turns aside glancing blows." },
+  ],
+  aberration: [
+    { name: "Alien Mind", description: "Immune to effects that read surface thoughts." },
+    { name: "Wrong Angles", description: "Its movements unsettle; onlookers feel vertigo." },
+  ],
+  construct: [
+    { name: "Constructed Nature", description: "Does not breathe, eat, drink, or sleep." },
+    { name: "Steadfast Orders", description: "Ignores persuasion; only its maker's commands matter." },
+  ],
+  elemental: [
+    { name: "Elemental Nature", description: "Doesn't require air, food, drink, or sleep." },
+    { name: "Dissolution", description: "Slain elementals break apart into their base substance." },
+  ],
+  fey: [
+    { name: "Fey Passage", description: "Vanishes along moonbeams and shadowed thresholds." },
+    { name: "True Name Wariness", description: "Guarded about giving its true name to mortals." },
+  ],
+  giant: [
+    { name: "Oversized Grasp", description: "Wields boulders and doors as readily as weapons." },
+    { name: "Mountain Stride", description: "Sure-footed on cliffs, scree, and rubble." },
+  ],
+  monstrosity: [
+    { name: "Predatory Instinct", description: "Advantage on initiative when hunting unalerted prey." },
+    { name: "Territorial", description: "Attacks anything entering its marked range." },
+  ],
+  plant: [
+    { name: "Photosynthetic", description: "Grows listless and slow away from sunlight." },
+    { name: "Rooted Memories", description: "Senses vibrations through soil contact." },
+  ],
+  swarm: [
+    { name: "Swarm Cohesion", description: "Individual losses do not slow the whole." },
+  ],
+  celestial: [
+    { name: "Radiant Mantle", description: "Sheds soft light in darkness unless it wills otherwise." },
+    { name: "Oathbound", description: "Cannot knowingly break a sworn promise." },
+  ],
+  beast: [
+    { name: "Keen Senses", description: "Notices prey by scent or sound long before sight." },
+    { name: "Wild Instinct", description: "Reads predator intent; rarely caught truly unaware." },
+  ],
+  humanoid: [
+    { name: "Indomitable Spirit" , description: "Courage (or stubbornness) outlasting good sense." },
+    { name: "Seasoned Traveler", description: "Reads weather, roads, and strangers with equal wariness." },
+  ],
+};
+
+function pickNatureTrait(key: string, type: string): { name: string; description: string } {
+  const options = TYPE_NATURE_TRAITS[type] ?? [];
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return options[(h >>> 0) % options.length];
+}
+
 /** Average of a dice formula like "5d8+10" or "2d6" (rounded down, min 1). */
 function avgHp(formula: string): number {
   const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(formula.replace(/\s/g, ""));
@@ -151,6 +224,7 @@ const qm = (
     description,
     ...(DARKSIGHT_TYPES.has(type) ? { senses: ["darkvision 60 ft.", "passive Perception 10"] } : {}),
     ...(TYPE_IMMUNITIES[type] ? { condition_immunities: TYPE_IMMUNITIES[type] } : {}),
+    ...(opts.traits || !TYPE_NATURE_TRAITS[type] ? {} : { traits: [pickNatureTrait(key, type)] }),
     ...opts,
     key,
   };

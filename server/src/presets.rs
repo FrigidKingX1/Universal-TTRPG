@@ -98,6 +98,44 @@ mod tests {
         assert!(missing.is_empty(), "unresolved action refs: {missing:?}");
     }
 
+    #[test]
+    fn seed_loot_and_traits_are_well_formed() {
+        let monsters = preset_stat_blocks();
+        let mut populated = 0usize;
+        let mut with_traits = 0usize;
+        for m in &monsters {
+            for l in &m.loot_table {
+                assert!(!l.name.is_empty(), "{} loot name", m.name);
+                assert!(
+                    l.quantity_formula
+                        .chars()
+                        .all(|c| c.is_ascii_digit() || c == 'd' || c == '+' || c == '-' || c == ' '),
+                    "{} bad formula {}",
+                    m.name,
+                    l.quantity_formula
+                );
+                assert!(
+                    (0..=100).contains(&l.chance),
+                    "{} chance {} out of range",
+                    m.name,
+                    l.chance
+                );
+            }
+            for t in &m.traits {
+                assert!(!t.name.is_empty(), "{} trait name", m.name);
+                assert!(!t.description.is_empty(), "{} trait {}", m.name, t.name);
+            }
+            if !m.loot_table.is_empty() {
+                populated += 1;
+            }
+            if !m.traits.is_empty() {
+                with_traits += 1;
+            }
+        }
+        assert!(populated >= 340, "loot-populated {populated}");
+        assert!(with_traits >= 340, "trait-bearing {with_traits}");
+    }
+
     #[tokio::test]
     async fn seeding_is_idempotent_and_respects_imported_names() {
         let dir = std::env::temp_dir().join(format!("auto-dm-seed-test-{}", uuid::Uuid::new_v4()));

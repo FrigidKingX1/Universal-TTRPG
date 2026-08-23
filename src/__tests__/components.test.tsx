@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ZoneMap } from "../components/ZoneMap";
+import { newCharacter, newStatBlock, useStore } from "../store";
 
 describe("ConfirmDialog", () => {
   const noop = () => {};
@@ -110,7 +111,6 @@ describe("ZoneMap", () => {
 // ── Character creation & dual-class sheet (round 3 coverage) ──────────
 import { NewCharacterForm, CharacterSheet } from "../components/Characters";
 import { PRESET_CLASSES, applyClassTemplate, mergeSecondaryClass } from "../presets/classes";
-import { newCharacter } from "../store";
 
 describe("NewCharacterForm", () => {
   it("offers all 36 classes plus a no-class option", () => {
@@ -158,5 +158,98 @@ describe("CharacterSheet dual-class rendering", () => {
     render(<CharacterSheet profile={solo} />);
     expect(screen.queryByText(/\/ Wizard/)).not.toBeInTheDocument();
     expect(screen.getByText(/Wizard Features/)).toBeInTheDocument();
+  });
+});
+
+// ── PlayerPanel (multiplayer-mocked, round 5 coverage) ────────────────
+import * as multiplayerModule from "../multiplayer/store";
+import { PlayerPanel } from "../components/PlayerPanel";
+
+vi.mock("../multiplayer/store", () => {
+  const holder: { client: unknown } = { client: null };
+  return {
+    getMultiplayerClient: () => holder.client,
+    __setMockClient: (c: unknown) => { holder.client = c; },
+    useMultiplayerStore: (sel: (s: unknown) => unknown) =>
+      sel({
+        playerId: "p1",
+        players: [{ id: "p1", name: "Host", connected: true, character_id: "char_1" }],
+      }),
+  };
+});
+
+describe("PlayerPanel", () => {
+  const fighter = PRESET_CLASSES.find((c) => c.id === "fighter")!;
+  const wizard = PRESET_CLASSES.find((c) => c.id === "wizard")!;
+  const seed = () => {
+    const base = applyClassTemplate(newCharacter("Gish"), fighter);
+    base.id = "char_1";
+    const profile = mergeSecondaryClass(base, wizard);
+    const goblin = newStatBlock("Punching Bag");
+    useStore.setState({ characters: [profile], statBlocks: [goblin], actions: [] });
+    return profile;
+  };
+
+  afterEach(() => {
+    (multiplayerModule as unknown as { __setMockClient: (c: unknown) => void })
+      .__setMockClient(null);
+  });
+
+  it("renders nothing when there is no multiplayer client", () => {
+    seed();
+    const { container } = render(<PlayerPanel />);
+    expect(container.textContent).toBe("");
+  });
+
+  it("shows vitals, class crest, and the Fighter / Wizard meta line", () => {
+    (multiplayerModule as unknown as { __setMockClient: (c: unknown) => void })
+      .__setMockClient({});
+    const profile = seed();
+    render(<PlayerPanel />);
+    expect(screen.getByText("Gish")).toBeInTheDocument();
+    expect(screen.getByText(/Fighter/)).toBeInTheDocument();
+    expect(screen.getByText(/\/ Wizard/)).toBeInTheDocument();
+    const crest = screen.getByAltText("") as HTMLImageElement;
+    expect(crest.src).toContain(`class_${fighter.id}.png`);
+    void profile;
+  });
+
+  it("ability rows resolve via preset fallback, offer self-target, and gate on slots", async () => {
+    const user = userEvent.setup();
+    (multiplayerModule as unknown as { __setMockClient: (c: unknown) => void })
+      .__setMockClient({});
+    const profile = seed();
+    // Give an explicitly slot-costed heal ability to exercise gating.
+    profile.abilities = ["act_cure_wounds"];
+    useStore.setState({ characters: [profile] });
+
+    render(<PlayerPanel />);
+    // Empty local vault -> preset fallback still surfaces the action.
+    const row = screen.getByRole("button", { name: /Cure Wounds/ });
+    expect(row).toBeInTheDocument();
+
+    const target = screen.getByLabelText("Ability target") as HTMLSelectElement;
+    const options = Array.from(target.options).map((o) => o.text);
+    expect(options.some((t) => t.includes("(you)"))).toBe(true);
+
+    // No target chosen yet -> rows stay disabled even with slots available.
+    expect(row).toBeDisabled();
+
+    // Pick self as target -> funded pool enables the cast.
+    const youValue = Array.from(target.options).find((o) => o.text.includes("(you)"))!.value;
+    await user.selectOptions(target, youValue);
+    expect(await screen.findByRole("button", { name: /Cure Wounds/ })).toBeEnabled();
+
+    // Drain the pool -> gated again.
+    useStore.setState((s) => ({
+      characters: s.characters.map((c) => ({
+        ...c,
+        resource_pools: {
+          ...c.resource_pools,
+          spell_slots_l1: { ...c.resource_pools.spell_slots_l1!, current: 0 },
+        },
+      })),
+    }));
+    expect(await screen.findByRole("button", { name: /Cure Wounds/ })).toBeDisabled();
   });
 });
