@@ -306,3 +306,193 @@ mod tests {
         assert_eq!(g, GameIntent::Narration { text: "The goblin lunges!".to_string() });
     }
 }
+
+/// Normalize an LLM's near-miss campaign JSON into the strict shape
+/// `CampaignGenerationResult` deserializes from. Small models routinely
+/// rename keys ("title" for "campaign_title"), omit optional-ish fields,
+/// or emit strings where numbers belong; this pass repairs all of that.
+/// Input that is not JSON at all is returned unchanged (the caller's
+/// strict parse then produces the authoritative error).
+/// Slice the first balanced `{ ... }` block out of `s`, ignoring braces
+/// inside string literals. Returns None when no complete object exists.
+fn extract_first_json_object(s: &str) -> Option<&str> {
+    let start = s.find('{')?;
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escaped = false;
+    for (idx, ch) in s[start..].char_indices() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(&s[start..=start + idx]);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+pub fn repair_campaign_json(input: &str) -> String {
+    let fenced = stripped_json(input.trim()).unwrap_or(input.trim());
+    // Models love appending commentary ("Hope this helps!") after the JSON;
+    // slice out the first balanced { ... } block, string-aware.
+    let sliced = extract_first_json_object(fenced).unwrap_or(fenced);
+    let mut v: Value = match serde_json::from_str(sliced) {
+        Ok(v) => v,
+        Err(_) => return input.to_string(),
+    };
+    if !v.is_object() {
+        return input.to_string();
+    }
+    let obj = v.as_object_mut().unwrap();
+
+    // -- top-level identity -------------------------------------------------
+    if !obj.contains_key("campaign_title") {
+        let alias = ["title", "name", "campaign"]
+            .iter()
+            .find_map(|k| obj.get(*k).and_then(|x| x.as_str()).map(String::from));
+        obj.insert(
+            "campaign_title".into(),
+            Value::String(alias.unwrap_or_else(|| "Untitled Campaign".into())),
+        );
+    }
+    if !obj.contains_key("campaign_theme") {
+        let t = obj.get("theme").and_then(|x| x.as_str()).map(String::from);
+        obj.insert("campaign_theme".into(), Value::String(t.unwrap_or_default()));
+    }
+    if !obj.contains_key("campaign_summary") {
+        let s = ["summary", "overview", "description"]
+            .iter()
+            .find_map(|k| obj.get(*k).and_then(|x| x.as_str()).map(String::from));
+        obj.insert("campaign_summary".into(), Value::String(s.unwrap_or_default()));
+    }
+
+    // -- scenes -------------------------------------------------------------
+    let scenes = obj.entry("scenes").or_insert_with(|| Value::Array(vec![]));
+    if let Some(arr) = scenes.as_array_mut() {
+        for (i, s) in arr.iter_mut().enumerate() {
+            if let Some(o) = s.as_object_mut() {
+                if !o.contains_key("title") {
+                    let alias = ["name", "scene_title", "scene_name"]
+                        .iter()
+                        .find_map(|k| o.get(*k).and_then(|x| x.as_str()).map(String::from));
+                    o.insert("title".into(), Value::String(alias.unwrap_or_else(|| format!("Scene {}", i + 1))));
+                }
+                if !o.contains_key("chaos_factor") {
+                    let cf = o.get("chaos").and_then(|x| x.as_i64()).unwrap_or(5);
+                    o.insert("chaos_factor".into(), Value::from(cf as i32));
+                }
+                for k in ["summary", "hook"] {
+                    o.entry(k).or_insert(Value::String(String::new()));
+                }
+            }
+        }
+    }
+
+    // -- npcs ---------------------------------------------------------------
+    let npcs = obj.entry("npcs").or_insert_with(|| Value::Array(vec![]));
+    if let Some(arr) = npcs.as_array_mut() {
+        for n in arr.iter_mut() {
+            if let Some(o) = n.as_object_mut() {
+                o.entry("name").or_insert(Value::String("Unnamed NPC".into()));
+                o.entry("disposition").or_insert(Value::String("neutral".into()));
+                o.entry("notes").or_insert(Value::String(String::new()));
+            }
+        }
+    }
+
+    // -- doom clocks --------------------------------------------------------
+    let clocks = obj.entry("doom_clocks").or_insert_with(|| Value::Array(vec![]));
+    if let Some(arr) = clocks.as_array_mut() {
+        for (i, c) in arr.iter_mut().enumerate() {
+            if let Some(o) = c.as_object_mut() {
+                o.entry("id").or_insert(Value::String(format!("clocks:{}", i + 1)));
+                o.entry("label").or_insert(Value::String(format!("Doom Clock {}", i + 1)));
+                let ticks = o.get("tick_max").and_then(|x| x.as_u64()).unwrap_or(4).max(1);
+                o.insert("tick_max".into(), Value::from(ticks));
+                o.entry("consequence").or_insert(Value::String(String::new()));
+            }
+        }
+    }
+
+    // -- plot threads, lines, veils -----------------------------------------
+    let threads = obj.entry("plot_threads").or_insert_with(|| Value::Array(vec![]));
+    if let Some(arr) = threads.as_array_mut() {
+        for t in arr.iter_mut() {
+            if let Some(o) = t.as_object_mut() {
+                o.entry("description").or_insert(Value::String(String::new()));
+                o.entry("status").or_insert(Value::String("open".into()));
+            }
+        }
+    }
+    for key in ["lines", "veils"] {
+        obj.entry(key).or_insert_with(|| Value::Array(vec![]));
+    }
+
+    serde_json::to_string(&v).unwrap_or_else(|_| input.to_string())
+}
+
+#[cfg(test)]
+mod repair_campaign_json_tests {
+    use super::repair_campaign_json;
+
+    #[test]
+    fn repairs_missing_campaign_title_from_title_alias() {
+        let raw = r#"{"title":"The Sunken Crown","campaign_theme":"nautical","campaign_summary":"s","scenes":[],"npcs":[],"doom_clocks":[],"plot_threads":[],"lines":[],"veils":[]}"#;
+        let fixed = repair_campaign_json(raw);
+        let v: serde_json::Value = serde_json::from_str(&fixed).unwrap();
+        assert_eq!(v["campaign_title"], "The Sunken Crown");
+    }
+
+    #[test]
+    fn synthesizes_title_when_no_alias_exists() {
+        let raw = r#"{"scenes":[]}"#;
+        let v: serde_json::Value = serde_json::from_str(&repair_campaign_json(raw)).unwrap();
+        assert_eq!(v["campaign_title"], "Untitled Campaign");
+        assert_eq!(v["lines"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn aliases_scene_names_and_defaults_chaos_factor() {
+        let raw = r#"{"campaign_title":"C","campaign_theme":"t","campaign_summary":"s","scenes":[{"name":"Docks at Dusk"}],"npcs":[],"doom_clocks":[],"plot_threads":[],"lines":[],"veils":[]}"#;
+        let v: serde_json::Value = serde_json::from_str(&repair_campaign_json(raw)).unwrap();
+        assert_eq!(v["scenes"][0]["title"], "Docks at Dusk");
+        assert_eq!(v["scenes"][0]["chaos_factor"], 5);
+        assert_eq!(v["scenes"][0]["hook"], "");
+    }
+
+    #[test]
+    fn fills_npc_disposition_and_notes() {
+        let raw = r#"{"campaign_title":"C","campaign_theme":"t","campaign_summary":"s","scenes":[{"title":"S","chaos_factor":3,"summary":"x","hook":"y"}],"npcs":[{"name":"Vex"}],"doom_clocks":[],"plot_threads":[],"lines":[],"veils":[]}"#;
+        let v: serde_json::Value = serde_json::from_str(&repair_campaign_json(raw)).unwrap();
+        assert_eq!(v["npcs"][0]["disposition"], "neutral");
+        assert_eq!(v["npcs"][0]["notes"], "");
+    }
+
+    #[test]
+    fn strips_fences_and_trailing_prose_before_repair() {
+        let raw = "```json\n{\"title\":\"Fenced\"}\n```\nThe end.";
+        let v: serde_json::Value = serde_json::from_str(&repair_campaign_json(raw)).unwrap();
+        assert_eq!(v["campaign_title"], "Fenced");
+    }
+
+    #[test]
+    fn non_json_input_passes_through_unchanged() {
+        let raw = "the model rambled about dragons instead";
+        assert_eq!(repair_campaign_json(raw), raw);
+    }
+}

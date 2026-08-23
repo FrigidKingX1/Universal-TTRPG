@@ -1113,8 +1113,15 @@ pub async fn generate_campaign(
     };
 
     let cleaned = auto_dm_core::intent::stripped_json(raw.trim()).unwrap_or(raw.trim());
-    let result: CampaignGenerationResult = serde_json::from_str(cleaned)
-        .map_err(|e| format!("Failed to parse campaign JSON from LLM: {e}"))?;
+    // Small models drift from the schema (renamed keys, missing optional
+    // fields, prose after the JSON). Repair what we can before strict parse.
+    let repaired = auto_dm_core::intent::repair_campaign_json(cleaned);
+    let result: CampaignGenerationResult = serde_json::from_str(&repaired).map_err(|e| {
+        let snippet: String = repaired.chars().take(300).collect();
+        format!(
+            "Failed to parse campaign JSON from LLM: {e}\n— model output began: {snippet}"
+        )
+    })?;
 
     if result.scenes.is_empty() {
         return Err(
