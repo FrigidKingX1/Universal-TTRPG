@@ -25,6 +25,9 @@ fn setup_panic_hook() {
         } else {
             "Box<Any> panic payload".to_string()
         };
+        // GUI-subsystem binaries have no console; without this eprintln the
+        // message vanishes when stderr IS redirected (installer debugging).
+        eprintln!("CRITICAL PANIC at [{location}]: {payload}");
         log::error!("CRITICAL PANIC at [{location}]: {payload}");
     }));
 }
@@ -97,7 +100,9 @@ pub fn run() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_frame::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        // NOTE: tauri-plugin-updater removed - requires a live
+        // plugins.updater config (endpoint + signing key) which we don't
+        // ship yet; registering it without config panics at startup.
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
