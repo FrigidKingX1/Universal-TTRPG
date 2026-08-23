@@ -39,6 +39,30 @@ describe("Bestiary presets", () => {
     expect(crs[crs.length - 1]).toBeGreaterThanOrEqual(10); // bosses exist
   });
 
+  it("QA audit: loot tables are well-formed and broadly populated", () => {
+    const standard = new Set(["slashing", "piercing", "bludgeoning", "fire", "cold", "lightning", "poison", "psychic", "necrotic", "radiant", "force", "thunder", "acid"]);
+    void standard;
+    let populated = 0;
+    for (const m of PRESET_MONSTERS) {
+      for (const l of m.loot_table) {
+        expect(l.name.length, `${m.name} loot name`).toBeGreaterThan(0);
+        expect(l.quantity_formula, `${m.name} formula`).toMatch(/^[\dd+\-\s]+$/);
+        expect(l.chance, `${m.name} chance`).toBeGreaterThanOrEqual(0);
+        expect(l.chance, `${m.name} chance`).toBeLessThanOrEqual(100);
+      }
+      if (m.loot_table.length > 0) populated++;
+    }
+    // Compact builder auto-assigns coin hoards; original batches were
+    // back-filled with thematic drops. ~35 stay intentionally empty
+    // (swarms, incorporeal spirits, banished fiends, oozes, whimsical fey).
+    expect(populated, "monsters with loot").toBeGreaterThanOrEqual(335);
+    // And the canonical no-treasure creatures must remain untouched.
+    for (const key of ["shrieker", "ghost", "swarm_rats", "quasit", "black_pudding"]) {
+      const m = PRESET_MONSTERS.find((x) => x.key === key);
+      expect(m?.loot_table.length ?? 0, `${key} stays empty`).toBe(0);
+    }
+  });
+
   it("includes ally stat blocks", () => {
     const names = PRESET_MONSTERS.map((m) => m.name);
     expect(names).toContain("Town Guard");
@@ -314,5 +338,16 @@ describe("Equipment catalog", () => {
     for (const e of EQUIPMENT_CATALOG) {
       expect(e.weight, e.name).toBeGreaterThanOrEqual(0);
     }
+  });
+
+  it("QA audit: every class starting item exists in the equipment catalog", () => {
+    const catalog = new Set(EQUIPMENT_CATALOG.map((e) => e.name));
+    const missing: string[] = [];
+    for (const c of PRESET_CLASSES) {
+      for (const item of c.starting_items) {
+        if (!catalog.has(item.name)) missing.push(`${c.name}: ${item.name}`);
+      }
+    }
+    expect(missing, "class gear missing from EQUIPMENT_CATALOG").toEqual([]);
   });
 });

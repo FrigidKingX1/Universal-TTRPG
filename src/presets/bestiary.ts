@@ -1,4 +1,4 @@
-import type { ActionDefinition, EncounterStatBlock } from "../types";
+import type { ActionDefinition, EncounterStatBlock, LootTableEntry } from "../types";
 
 const mkAction = (
   id: string,
@@ -83,6 +83,13 @@ const TYPE_IMMUNITIES: Record<string, string[]> = {
   ooze: ["blinded", "charmed", "deafened", "frightened", "prone", "restrained"],
 };
 
+/** Default coin hoard scaled by challenge rating for compact monsters. */
+function crLoot(cr: number): LootTableEntry[] {
+  const formula =
+    cr < 1 ? "1d6" : cr < 3 ? "2d6" : cr < 6 ? "4d6" : cr < 11 ? "6d6+10" : "8d6+20";
+  return [{ name: "Gold Coins", quantity_formula: formula, chance: Math.min(85, Math.round(30 + cr * 5)) }];
+}
+
 /** Average of a dice formula like "5d8+10" or "2d6" (rounded down, min 1). */
 function avgHp(formula: string): number {
   const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(formula.replace(/\s/g, ""));
@@ -118,7 +125,7 @@ const qm = (
     hit_points: { current: avgHp(hpFormula), maximum: avgHp(hpFormula), formula: hpFormula },
     attributes: { STR, DEX, CON, INT, WIS, CHA },
     actions,
-    loot_table: [],
+    loot_table: opts.loot_table ?? crLoot(cr),
     description,
     ...(DARKSIGHT_TYPES.has(type) ? { senses: ["darkvision 60 ft.", "passive Perception 10"] } : {}),
     ...(TYPE_IMMUNITIES[type] ? { condition_immunities: TYPE_IMMUNITIES[type] } : {}),
@@ -314,6 +321,7 @@ export const PRESET_MONSTERS: Preset[] = [
     condition_immunities: ["poisoned", "exhaustion"],
     senses: ["darkvision 60 ft.", "passive Perception 10"],
     languages: ["Common"],
+    loot_table: [{"name":"Ghoul Claw (alchemic)","quantity_formula":"1","chance":25}],
     description:
       "Ghouls haunt graveyards and ruined battlefields, feasting on the corpses of the dead — and when no corpses remain, they make more.",
   }),
@@ -673,6 +681,7 @@ export const PRESET_MONSTERS: Preset[] = [
         description: "Advantage on Perception checks relying on hearing or smell.",
       },
     ],
+    loot_table: [{"name":"Worg Pelt","quantity_formula":"1","chance":25}],
     description:
       "Malicious wolf-kin clever enough to bargain and cruel enough to enjoy the hunt.",
   }),
@@ -694,6 +703,7 @@ export const PRESET_MONSTERS: Preset[] = [
         description: "Advantage on Perception checks relying on sight or hearing.",
       },
     ],
+    loot_table: [{"name":"Travel Rations","quantity_formula":"1d4","chance":45}],
     description:
       "A seasoned pathfinder and dependable ally — first to spot trouble, last to panic.",
   }),
@@ -806,6 +816,7 @@ export const PRESET_MONSTERS: Preset[] = [
         description: "While motionless, the gargoyle is indistinguishable from a statue.",
       },
     ],
+    loot_table: [{"name":"Gem Eyes","quantity_formula":"2","chance":20}],
     description:
       "Grotesque winged sentinels carved from stone — until they peel off the cathedral wall to feed.",
   }),
@@ -882,6 +893,7 @@ export const PRESET_MONSTERS: Preset[] = [
       },
     ],
     condition_immunities: ["prone"],
+    loot_table: [{"name":"Mimic Hoard","quantity_formula":"4d6","chance":70}],
     description:
       "That chest in the corner? It just licked its hinges. Mimics hunger most for adventurers who open doors first and think later.",
   }),
@@ -897,6 +909,7 @@ export const PRESET_MONSTERS: Preset[] = [
     actions: ["act_grasp"],
     senses: ["blindsight 10 ft.", "passive Perception 10"],
     languages: [],
+    loot_table: [{"name":"Snake Skin","quantity_formula":"1","chance":30}],
     description:
       "A muscular serpent that swallows its prey whole, coiling tighter with every breath squeezed out.",
   }),
@@ -950,6 +963,7 @@ export const PRESET_MONSTERS: Preset[] = [
         description: "A humanoid bitten but not killed risks inheriting the curse.",
       },
     ],
+    loot_table: [{"name":"Werewolf Pelt","quantity_formula":"1","chance":30}],
     description:
       "By day a neighbor; by full moon a slavering hunter. Silver is the only language it fears.",
   }),
@@ -1000,6 +1014,7 @@ export const PRESET_MONSTERS: Preset[] = [
         description: "Ranged volley of iron barbs; regrown after a short rest.",
       },
     ],
+    loot_table: [{"name":"Loose Spikes","quantity_formula":"1d4","chance":40}],
     description:
       "Lion's body, bat wings, man's face twisted in mockery — the manticore toys with prey before eating it.",
   }),
@@ -1026,6 +1041,7 @@ export const PRESET_MONSTERS: Preset[] = [
         description: "Exhales a cone of flame from the burning forge of its throat.",
       },
     ],
+    loot_table: [{"name":"Hell Hound Fang","quantity_formula":"1","chance":30}],
     description:
       "Coal-eyed hounds from the lower planes, their barking like hammer-strikes and their breath like bellows.",
   }),
@@ -1049,6 +1065,7 @@ export const PRESET_MONSTERS: Preset[] = [
           "Meet its eyes within 30 feet and risk turning to stone — avert your gaze, and fight blind.",
       },
     ],
+    loot_table: [{"name":"Petrified Eye","quantity_formula":"1","chance":25}],
     description:
       "Around the basilisk's lair stand garden rows of statues, each frozen mid-scream at what they saw.",
   }),
@@ -1149,6 +1166,7 @@ export const PRESET_MONSTERS: Preset[] = [
         description: "Moves through creatures and objects as difficult terrain.",
       },
     ],
+    loot_table: [{"name":"Wailing Hair Locket","quantity_formula":"1","chance":35}],
     description:
       "The grieving echo of an elven woman who died of sorrow, her wail now a weapon that stops hearts.",
   }),
@@ -1801,7 +1819,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 17, DEX: 15, CON: 12, INT: 13, WIS: 12, CHA: 14 },
     actions: ["act_bite_md", "act_constrict"],
     traits: [{ name: "False Appearance", description: "Resembles a hanging cloak at rest." }],
-    loot_table: [],
+    loot_table: [{ name: "Cloaker Hide", quantity_formula: "1", chance: 30 }],
     description: "A winged shadow that folds around its victims in the dark.",
   }),
   monster("umber_hulk", "Umber Hulk", 5, {
@@ -1838,7 +1856,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 20, DEX: 15, CON: 16, INT: 7, WIS: 7, CHA: 9 },
     actions: ["act_claw", "act_bite_sm"],
     traits: [{ name: "Magic Resistance", description: "Advantage on saves vs magic." }, { name: "Regeneration", description: "Regains 10 HP at the start of its turn." }],
-    loot_table: [],
+    loot_table: [{ name: "Slaad Egg", quantity_formula: "1", chance: 20 }],
     description: "A chaotic frog-demon that breeds by infection.",
   }),
   monster("flumph", "Flumph", 0.125, {
@@ -1996,7 +2014,7 @@ export const PRESET_MONSTERS: Preset[] = [
     actions: ["act_golem_slam"],
     condition_immunities: ["charmed", "frightened", "paralyzed", "petrified", "poisoned"],
     traits: [{ name: "Immutable Form", description: "Immune to any effect that would alter its form." }, { name: "Magic Resistance", description: "Advantage on saves vs magic." }, { name: "Acid Absorption", description: "Heals 10 HP when hit by acid." }, { name: "Berserk", description: "May fly into a rage that hampers its control." }],
-    loot_table: [],
+    loot_table: [{"name":"Golem Clay Core","quantity_formula":"1","chance":40}],
     description: "A hulking idol of baked river-clay, slow but unstoppable.",
   }),
   monster("flesh_golem", "Flesh Golem", 5, {
@@ -2006,7 +2024,7 @@ export const PRESET_MONSTERS: Preset[] = [
     actions: ["act_slam_generic", "act_bite_md"],
     condition_immunities: ["charmed", "frightened", "paralyzed", "petrified", "poisoned"],
     traits: [{ name: "Berserk", description: "May become uncontrollable at low HP." }, { name: "Immutable Form", description: "Immune to form-altering effects." }, { name: "Lightning Absorption", description: "Heals 15 HP when hit by lightning." }, { name: "Magic Resistance", description: "Advantage on saves vs magic." }],
-    loot_table: [],
+    loot_table: [{"name":"Lightning-Charged Heart","quantity_formula":"1","chance":40}],
     description: "A patchwork corpse reanimated by storm-born magic.",
   }),
   monster("iron_golem", "Iron Golem", 16, {
@@ -2046,7 +2064,7 @@ export const PRESET_MONSTERS: Preset[] = [
     actions: ["act_slam_generic"],
     condition_immunities: ["charmed", "frightened", "paralyzed", "petrified", "poisoned"],
     traits: [{ name: "Bound", description: "Linked to a master amulet; protects them first." }, { name: "Regeneration", description: "Regains 10 HP at start of turn." }, { name: "Spell Storing", description: "Holds one spell to unleash on command." }],
-    loot_table: [],
+    loot_table: [{"name":"Amulet Shard","quantity_formula":"1","chance":50}],
     description: "A lumbering protector bound to a single ward.",
   }),
   monster("homunculus", "Homunculus", 0, {
@@ -2103,7 +2121,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 18, DEX: 13, CON: 20, INT: 7, WIS: 9, CHA: 7 },
     actions: ["act_claw", "act_bite_md"],
     traits: [{ name: "Regeneration", description: "Regains 10 HP at start of turn unless it took acid or fire since its last turn." }],
-    loot_table: [],
+    loot_table: [{"name":"Frozen Regeneration Gland","quantity_formula":"1","chance":25}],
     description: "A hulking regenerator that fears only fire and acid.",
   }),
   monster("cyclops", "Cyclops", 6, {
@@ -2186,7 +2204,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 15, DEX: 13, CON: 13, INT: 2, WIS: 8, CHA: 3 },
     actions: ["act_bite_md"],
     traits: [{ name: "Amphibious", description: "Can breathe air and water." }, { name: "Swallow", description: "A swallowed foe takes acid damage each turn." }],
-    loot_table: [],
+    loot_table: [{"name":"Stomach Contents","quantity_formula":"1d6","chance":50}],
     description: "A bloated amphibian that gulps its prey whole.",
   }),
   monster("giant_crocodile", "Giant Crocodile", 5, {
@@ -2213,7 +2231,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 14, DEX: 15, CON: 10, INT: 3, WIS: 14, CHA: 7 },
     actions: ["act_claw", "act_bite_sm"],
     traits: [{ name: "Keen Smell", description: "Advantage on smell-based Perception." }, { name: "Pounce", description: "Knocks prone on a charge hit." }, { name: "Stealth", description: "Advantage on Stealth checks." }],
-    loot_table: [],
+    loot_table: [{"name":"Panther Pelt","quantity_formula":"1","chance":20}],
     description: "A silent, spotted killer of the jungle.",
   }),
   monster("lion", "Lion", 1, {
@@ -2222,7 +2240,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 17, DEX: 15, CON: 11, INT: 3, WIS: 12, CHA: 8 },
     actions: ["act_claw", "act_bite_md"],
     traits: [{ name: "Keen Smell", description: "Advantage on smell-based Perception." }, { name: "Pack Tactics", description: "Advantage vs foes near an ally." }, { name: "Pounce", description: "Knocks prone on a charge hit." }, { name: "Run", description: "Can Dash as a bonus action." }],
-    loot_table: [],
+    loot_table: [{"name":"Lion Pelt","quantity_formula":"1","chance":20}],
     description: "The king of the savanna, a coordinated hunter.",
   }),
   monster("tiger", "Tiger", 1, {
@@ -2231,7 +2249,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 17, DEX: 15, CON: 14, INT: 3, WIS: 12, CHA: 8 },
     actions: ["act_claw", "act_bite_md"],
     traits: [{ name: "Keen Smell", description: "Advantage on smell-based Perception." }, { name: "Pounce", description: "Knocks prone on a charge hit." }],
-    loot_table: [],
+    loot_table: [{"name":"Tiger Pelt","quantity_formula":"1","chance":20}],
     description: "A striped solitary hunter of jungle and plain.",
   }),
   monster("ape", "Ape", 0.5, {
@@ -2240,7 +2258,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 16, DEX: 14, CON: 14, INT: 6, WIS: 12, CHA: 7 },
     actions: ["act_claw", "act_bite_sm"],
     traits: [{ name: "Brachiation", description: "Can swing through trees at speed." }],
-    loot_table: [],
+    loot_table: [{"name":"Ape Hide","quantity_formula":"1","chance":20}],
     description: "A strong, clever primate of the deep canopy.",
   }),
   monster("giant_ape", "Giant Ape", 7, {
@@ -2249,7 +2267,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 23, DEX: 14, CON: 20, INT: 7, WIS: 12, CHA: 7 },
     actions: ["act_claw", "act_bite_md", "act_rock_throw"],
     traits: [{ name: "Brawn", description: "Throws boulders and rends armor alike." }],
-    loot_table: [],
+    loot_table: [{"name":"Massive Ape Hide","quantity_formula":"1","chance":30}],
     description: "A mountain of muscle, the ape of legend.",
   }),
   monster("giant_scorpion", "Giant Scorpion", 3, {
@@ -2258,7 +2276,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 15, DEX: 13, CON: 15, INT: 1, WIS: 9, CHA: 3 },
     actions: ["act_claw", "act_wyvern_sting"],
     traits: [{ name: "Desert Dweller", description: "Thrives in arid badlands." }],
-    loot_table: [],
+    loot_table: [{"name":"Venom Sac","quantity_formula":"1","chance":30}],
     description: "A sand-burrowing horror with a deadly sting.",
   }),
   monster("giant_centipede", "Giant Centipede", 0.25, {
@@ -2267,7 +2285,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 5, DEX: 14, CON: 11, INT: 1, WIS: 3, CHA: 2 },
     actions: ["act_bite_sm"],
     traits: [{ name: "Poison", description: "Its bite carries a mild venom (save DC 9)." }],
-    loot_table: [],
+    loot_table: [{"name":"Venom Gland","quantity_formula":"1","chance":20}],
     description: "A writhing carpet of legs and mandibles.",
   }),
   monster("rhinoceros", "Rhinoceros", 2, {
@@ -2276,7 +2294,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 21, DEX: 8, CON: 15, INT: 2, WIS: 12, CHA: 4 },
     actions: ["act_gore"],
     traits: [{ name: "Charge", description: "Charging gore knocks the target prone." }],
-    loot_table: [],
+    loot_table: [{"name":"Rhino Horn","quantity_formula":"1","chance":30}],
     description: "A thick-hided charge of horn and muscle.",
   }),
   monster("elephant", "Elephant", 4, {
@@ -2294,7 +2312,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 17, DEX: 15, CON: 13, INT: 4, WIS: 10, CHA: 3 },
     actions: ["act_constrict", "act_bite_sm"],
     traits: [{ name: "Hold Breath", description: "Can hold its breath for 1 hour." }, { name: "Ink Cloud", description: "Can obscure vision and escape." }],
-    loot_table: [],
+    loot_table: [{"name":"Ink Sac","quantity_formula":"1","chance":40}],
     description: "A clever eight-armed ambush hunter of the deep.",
   }),
   monster("quetzalcoatlus", "Quetzalcoatlus", 2, {
@@ -2303,7 +2321,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 15, DEX: 15, CON: 11, INT: 2, WIS: 10, CHA: 5 },
     actions: ["act_bite_sm", "act_talons"],
     traits: [{ name: "Fly", description: "Flying speed of 80 ft." }],
-    loot_table: [],
+    loot_table: [{"name":"Long Feathers","quantity_formula":"2d4","chance":35}],
     description: "A feathered sky-reptile of monstrous wingspan.",
   }),
   monster("triceratops", "Triceratops", 5, {
@@ -2312,7 +2330,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 22, DEX: 9, CON: 17, INT: 2, WIS: 11, CHA: 5 },
     actions: ["act_gore", "act_tail_sweep"],
     traits: [{ name: "Trampling Charge", description: "Knocks foes prone on a charge." }],
-    loot_table: [],
+    loot_table: [{"name":"Thick Hide Plate","quantity_formula":"1","chance":30}],
     description: "A frilled herbivore that charges like a battering ram.",
   }),
   monster("tyrannosaurus_rex", "Tyrannosaurus Rex", 8, {
@@ -2321,7 +2339,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 25, DEX: 10, CON: 21, INT: 2, WIS: 12, CHA: 9 },
     actions: ["act_bite_md"],
     traits: [{ name: "Swallow", description: "A bitten-small creature may be swallowed whole." }],
-    loot_table: [],
+    loot_table: [{"name":"Colossal Tooth","quantity_formula":"1","chance":35}],
     description: "The apex predator of a lost age, reborn.",
   }),
   monster("killer_whale", "Killer Whale", 3, {
@@ -2330,7 +2348,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 19, DEX: 14, CON: 17, INT: 3, WIS: 12, CHA: 8 },
     actions: ["act_bite_md"],
     traits: [{ name: "Echolocation", description: "Navigates by sound in darkness." }, { name: "Hold Breath", description: "Can hold its breath for 30 minutes." }],
-    loot_table: [],
+    loot_table: [{"name":"Blubber & Baleen","quantity_formula":"1","chance":30}],
     description: "A black-and-white apex hunter of the cold seas.",
   }),
   monster("plesiosaurus", "Plesiosaurus", 2, {
@@ -2339,7 +2357,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 18, DEX: 15, CON: 16, INT: 2, WIS: 12, CHA: 5 },
     actions: ["act_bite_md"],
     traits: [{ name: "Hold Breath", description: "Can hold its breath for 1 hour." }],
-    loot_table: [],
+    loot_table: [{"name":"Sea Reptile Hide","quantity_formula":"1","chance":30}],
     description: "A long-necked sea reptile that strikes from below.",
   }),
   monster("giant_lizard", "Giant Lizard", 0.25, {
@@ -2348,7 +2366,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 15, DEX: 12, CON: 13, INT: 2, WIS: 10, CHA: 5 },
     actions: ["act_bite_md"],
     traits: [{ name: "Spiny", description: "Basks on warm stone and flees larger predators." }],
-    loot_table: [],
+    loot_table: [{"name":"Lizard Hide","quantity_formula":"1","chance":20}],
     description: "A swift, cold-blooded mount or menace.",
   }),
   monster("giant_crab", "Giant Crab", 0.125, {
@@ -2357,7 +2375,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 13, DEX: 15, CON: 11, INT: 1, WIS: 9, CHA: 3 },
     actions: ["act_claw", "act_bite_sm"],
     traits: [{ name: "Amphibious", description: "Can breathe air and water." }],
-    loot_table: [],
+    loot_table: [{"name":"Crab Meat","quantity_formula":"1d4","chance":50}],
     description: "A shelled scuttler of tidepools and shipwrecks.",
   }),
   monster("giant_wasp", "Giant Wasp", 0.5, {
@@ -2366,7 +2384,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 10, DEX: 14, CON: 10, INT: 1, WIS: 10, CHA: 3 },
     actions: ["act_wyvern_sting"],
     traits: [{ name: "Fly", description: "Flying speed of 50 ft." }, { name: "Poison", description: "Its sting is venomous (save DC 10)." }],
-    loot_table: [],
+    loot_table: [{"name":"Wasp Stinger","quantity_formula":"1","chance":25}],
     description: "A buzzing blight that stings its prey senseless.",
   }),
 
@@ -2431,7 +2449,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 16, DEX: 12, CON: 14, INT: 10, WIS: 10, CHA: 10 },
     actions: ["act_claw"],
     traits: [{ name: "Amphibious", description: "Can breathe air and water." }, { name: "Horrific Appearance", description: "Foes that see her may be frightened (save DC 11)." }],
-    loot_table: [],
+    loot_table: [{"name":"Sea Hag Eye","quantity_formula":"1","chance":25}],
     description: "A drowned crone who lures sailors to their doom.",
   }),
   monster("redcap", "Redcap", 3, {
@@ -2479,7 +2497,7 @@ export const PRESET_MONSTERS: Preset[] = [
     actions: ["act_slam_generic", "act_constrict"],
     condition_immunities: ["blinded", "deafened", "frightened"],
     traits: [{ name: "Lightning Absorption", description: "Heals 10 HP when hit by lightning." }],
-    loot_table: [],
+    loot_table: [{"name":"Swallowed Trinket","quantity_formula":"1d6","chance":45}],
     description: "A walking compost heap of vines and vengeance.",
   }),
   monster("black_pudding", "Black Pudding", 4, {
@@ -2625,7 +2643,7 @@ export const PRESET_MONSTERS: Preset[] = [
     attributes: { STR: 17, DEX: 13, CON: 15, INT: 9, WIS: 9, CHA: 9 },
     actions: ["act_greataxe"],
     traits: [{ name: "Reckless", description: "Gains advantage on attacks but is easier to hit." }],
-    loot_table: [],
+    loot_table: [{"name":"Notched Greataxe","quantity_formula":"1","chance":30}],
     description: "A frothing warrior who fights until death.",
   }),
   monster("cult_fanatic", "Cult Fanatic", 2, {
@@ -2677,7 +2695,7 @@ export const PRESET_MONSTERS: Preset[] = [
     armor_class: 10, hit_points: { current: 9, maximum: 9, formula: "2d8" }, speed_feet: 30,
     attributes: { STR: 11, DEX: 10, CON: 11, INT: 10, WIS: 12, CHA: 13 },
     actions: ["act_dagger"],
-    loot_table: [],
+    loot_table: [{"name":"Coin Purse","quantity_formula":"2d4","chance":50}],
     description: "A warm host with ears for every rumor.",
   }),
   monster("healer", "Healer", 0.25, {
@@ -2693,7 +2711,7 @@ export const PRESET_MONSTERS: Preset[] = [
     armor_class: 10, hit_points: { current: 9, maximum: 9, formula: "2d8" }, speed_feet: 30,
     attributes: { STR: 8, DEX: 10, CON: 10, INT: 14, WIS: 12, CHA: 11 },
     actions: ["act_dagger"],
-    loot_table: [],
+    loot_table: [{"name":"Rare Notes","quantity_formula":"1","chance":35}],
     description: "A scholar of lore and lost tongues.",
   }),
   monster("bard", "Bard", 2, {

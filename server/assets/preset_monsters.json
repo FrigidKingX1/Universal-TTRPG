@@ -383,7 +383,13 @@
    "act_bite_md",
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Ghoul Claw (alchemic)",
+    "quantity_formula": "1",
+    "chance": 25
+   }
+  ],
   "size": "medium",
   "type": "undead",
   "alignment": "chaotic evil",
@@ -1128,7 +1134,13 @@
   "actions": [
    "act_bite_trip"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Worg Pelt",
+    "quantity_formula": "1",
+    "chance": 25
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -1172,7 +1184,13 @@
    "act_longbow",
    "act_shortsword"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Travel Rations",
+    "quantity_formula": "1d4",
+    "chance": 45
+   }
+  ],
   "size": "medium",
   "type": "humanoid",
   "alignment": "any",
@@ -1393,7 +1411,13 @@
   "actions": [
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gem Eyes",
+    "quantity_formula": "2",
+    "chance": 20
+   }
+  ],
   "size": "medium",
   "type": "elemental",
   "alignment": "chaotic evil",
@@ -1581,7 +1605,13 @@
    "act_grasp",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Mimic Hoard",
+    "quantity_formula": "4d6",
+    "chance": 70
+   }
+  ],
   "size": "medium",
   "type": "monstrosity",
   "alignment": "neutral",
@@ -1628,7 +1658,13 @@
   "actions": [
    "act_grasp"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Snake Skin",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -1709,7 +1745,13 @@
    "act_spear",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Werewolf Pelt",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "medium",
   "type": "humanoid",
   "alignment": "chaotic evil",
@@ -1835,7 +1877,13 @@
    "act_claw",
    "act_tail_spikes"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Loose Spikes",
+    "quantity_formula": "1d4",
+    "chance": 40
+   }
+  ],
   "size": "large",
   "type": "monstrosity",
   "alignment": "lawful evil",
@@ -1877,7 +1925,13 @@
    "act_bite_md",
    "act_fire_breath_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Hell Hound Fang",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "medium",
   "type": "fiend",
   "alignment": "lawful evil",
@@ -1926,7 +1980,13 @@
   "actions": [
    "act_basilisk_bite"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Petrified Eye",
+    "quantity_formula": "1",
+    "chance": 25
+   }
+  ],
   "size": "medium",
   "type": "monstrosity",
   "alignment": "unaligned",
@@ -2109,7 +2169,13 @@
   "actions": [
    "act_corrupting_touch"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Wailing Hair Locket",
+    "quantity_formula": "1",
+    "chance": 35
+   }
+  ],
   "size": "medium",
   "type": "undead",
   "alignment": "chaotic evil",
@@ -4389,7 +4455,13 @@
    "act_bite_md",
    "act_constrict"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Cloaker Hide",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "large",
   "type": "aberration",
   "alignment": "chaotic neutral",
@@ -4553,7 +4625,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Slaad Egg",
+    "quantity_formula": "1",
+    "chance": 20
+   }
+  ],
   "size": "large",
   "type": "aberration",
   "alignment": "chaotic evil",
@@ -5299,7 +5377,13 @@
   "actions": [
    "act_golem_slam"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Golem Clay Core",
+    "quantity_formula": "1",
+    "chance": 40
+   }
+  ],
   "size": "large",
   "type": "construct",
   "alignment": "unaligned",
@@ -5354,7 +5438,13 @@
    "act_slam_generic",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Lightning-Charged Heart",
+    "quantity_formula": "1",
+    "chance": 40
+   }
+  ],
   "size": "large",
   "type": "construct",
   "alignment": "unaligned",
@@ -5567,7 +5657,13 @@
   "actions": [
    "act_slam_generic"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Amulet Shard",
+    "quantity_formula": "1",
+    "chance": 50
+   }
+  ],
   "size": "large",
   "type": "construct",
   "alignment": "unaligned",
@@ -5830,7 +5926,13 @@
    "act_claw",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Frozen Regeneration Gland",
+    "quantity_formula": "1",
+    "chance": 25
+   }
+  ],
   "size": "large",
   "type": "giant",
   "alignment": "chaotic evil",
@@ -6206,7 +6308,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Stomach Contents",
+    "quantity_formula": "1d6",
+    "chance": 50
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -6330,7 +6438,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Panther Pelt",
+    "quantity_formula": "1",
+    "chance": 20
+   }
+  ],
   "size": "medium",
   "type": "beast",
   "alignment": "unaligned",
@@ -6374,7 +6488,13 @@
    "act_claw",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Lion Pelt",
+    "quantity_formula": "1",
+    "chance": 20
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -6422,7 +6542,13 @@
    "act_claw",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Tiger Pelt",
+    "quantity_formula": "1",
+    "chance": 20
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -6462,7 +6588,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Ape Hide",
+    "quantity_formula": "1",
+    "chance": 20
+   }
+  ],
   "size": "medium",
   "type": "beast",
   "alignment": "unaligned",
@@ -6499,7 +6631,13 @@
    "act_bite_md",
    "act_rock_throw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Massive Ape Hide",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "huge",
   "type": "beast",
   "alignment": "unaligned",
@@ -6535,7 +6673,13 @@
    "act_claw",
    "act_wyvern_sting"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Venom Sac",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -6570,7 +6714,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Venom Gland",
+    "quantity_formula": "1",
+    "chance": 20
+   }
+  ],
   "size": "small",
   "type": "beast",
   "alignment": "unaligned",
@@ -6605,7 +6755,13 @@
   "actions": [
    "act_gore"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Rhino Horn",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -6683,7 +6839,13 @@
    "act_constrict",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Ink Sac",
+    "quantity_formula": "1",
+    "chance": 40
+   }
+  ],
   "size": "medium",
   "type": "beast",
   "alignment": "unaligned",
@@ -6723,7 +6885,13 @@
    "act_bite_sm",
    "act_talons"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Long Feathers",
+    "quantity_formula": "2d4",
+    "chance": 35
+   }
+  ],
   "size": "huge",
   "type": "beast",
   "alignment": "unaligned",
@@ -6759,7 +6927,13 @@
    "act_gore",
    "act_tail_sweep"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Thick Hide Plate",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "huge",
   "type": "beast",
   "alignment": "unaligned",
@@ -6794,7 +6968,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Colossal Tooth",
+    "quantity_formula": "1",
+    "chance": 35
+   }
+  ],
   "size": "huge",
   "type": "beast",
   "alignment": "unaligned",
@@ -6829,7 +7009,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Blubber & Baleen",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "huge",
   "type": "beast",
   "alignment": "unaligned",
@@ -6868,7 +7054,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Sea Reptile Hide",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "large",
   "type": "beast",
   "alignment": "unaligned",
@@ -6903,7 +7095,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Lizard Hide",
+    "quantity_formula": "1",
+    "chance": 20
+   }
+  ],
   "size": "medium",
   "type": "beast",
   "alignment": "unaligned",
@@ -6939,7 +7137,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Crab Meat",
+    "quantity_formula": "1d4",
+    "chance": 50
+   }
+  ],
   "size": "small",
   "type": "beast",
   "alignment": "unaligned",
@@ -6974,7 +7178,13 @@
   "actions": [
    "act_wyvern_sting"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Wasp Stinger",
+    "quantity_formula": "1",
+    "chance": 25
+   }
+  ],
   "size": "medium",
   "type": "beast",
   "alignment": "unaligned",
@@ -7272,7 +7482,13 @@
   "actions": [
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Sea Hag Eye",
+    "quantity_formula": "1",
+    "chance": 25
+   }
+  ],
   "size": "medium",
   "type": "fey",
   "alignment": "chaotic evil",
@@ -7463,7 +7679,13 @@
    "act_slam_generic",
    "act_constrict"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Swallowed Trinket",
+    "quantity_formula": "1d6",
+    "chance": 45
+   }
+  ],
   "size": "large",
   "type": "plant",
   "alignment": "neutral",
@@ -8138,7 +8360,13 @@
   "actions": [
    "act_greataxe"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Notched Greataxe",
+    "quantity_formula": "1",
+    "chance": 30
+   }
+  ],
   "size": "medium",
   "type": "humanoid",
   "alignment": "chaotic neutral",
@@ -8388,7 +8616,13 @@
   "actions": [
    "act_dagger"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Coin Purse",
+    "quantity_formula": "2d4",
+    "chance": 50
+   }
+  ],
   "size": "medium",
   "type": "humanoid",
   "alignment": "any",
@@ -8453,7 +8687,13 @@
   "actions": [
    "act_dagger"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Rare Notes",
+    "quantity_formula": "1",
+    "chance": 35
+   }
+  ],
   "size": "medium",
   "type": "humanoid",
   "alignment": "any",
@@ -8624,7 +8864,13 @@
    "act_greataxe",
    "act_longbow"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Scarred matriarch who leads the hunt by strength alone.",
   "size": "medium",
   "key": "gnoll_pack_lord",
@@ -8653,7 +8899,13 @@
    "act_greataxe",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Hyena-headed tyrant whose laughter means the pack feeds tonight.",
   "key": "gnoll_chieftain",
   "id": "preset_gnoll_chieftain"
@@ -8681,7 +8933,13 @@
    "act_greataxe",
    "act_fire_bolt"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "One-eyed war-priest reading omens in spilled blood.",
   "key": "orc_eye",
   "id": "preset_orc_eye"
@@ -8709,7 +8967,13 @@
    "act_greatsword",
    "act_javelin"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Underdark-bred orc elite, disciplined where its kin are not.",
   "senses": [
    "darkvision 60 ft."
@@ -8740,7 +9004,13 @@
    "act_longsword",
    "act_longbow"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Legion officer drilling soldiers into a single killing machine.",
   "key": "hobgoblin_captain",
   "id": "preset_hobgoblin_captain"
@@ -8768,7 +9038,13 @@
    "act_fireball",
    "act_longsword"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Battle-caster weaving fire between shield walls.",
   "key": "hobgoblin_warmage",
   "id": "preset_hobgoblin_warmage"
@@ -8796,7 +9072,13 @@
    "act_scimitar",
    "act_handaxe"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Bully with a bodyguard complex and a redirect-the-blame talent.",
   "key": "goblin_boss",
   "id": "preset_goblin_boss"
@@ -8824,7 +9106,13 @@
    "act_vicious_mockery",
    "act_poison_spray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Lash-wielding shaman cursing foes with spite and spite's cousins.",
   "key": "goblin_hexer",
   "id": "preset_goblin_hexer"
@@ -8852,7 +9140,13 @@
    "act_ray_of_frost",
    "act_acid_splash"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Wyrmpriest humming dragon-syllables that mostly work.",
   "key": "kobold_sorcerer",
   "id": "preset_kobold_sorcerer"
@@ -8880,7 +9174,13 @@
    "act_sling",
    "act_spit_acid"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Carries six badly-labeled flasks and no fear of consequences.",
   "key": "kobold_inventor",
   "id": "preset_kobold_inventor"
@@ -8908,7 +9208,13 @@
    "act_claw_rend",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Cold-blooded king judging warmth as a character flaw.",
   "size": "large",
   "key": "lizardfolk_monarch",
@@ -8937,7 +9243,13 @@
    "act_thorn_whip",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Marsh mystic trading swamp-secrets for fresh offerings.",
   "key": "lizardfolk_shaman",
   "id": "preset_lizardfolk_shaman"
@@ -8965,7 +9277,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Cave reptile whose stench arrives one round before it does.",
   "senses": [
    "darkvision 60 ft."
@@ -8995,7 +9313,13 @@
   "actions": [
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Blind troglodyte cousin hunting by echo in lightless halls.",
   "senses": [
    "blindsight 30 ft."
@@ -9026,7 +9350,13 @@
    "act_greatclub",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Fish-bellied ogre of the reefs, all hunger and anchor-chain.",
   "size": "large",
   "speed_feet": 10,
@@ -9056,7 +9386,13 @@
    "act_claw_rend",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "White-furred bruiser of high passes; hugs first, asks never.",
   "size": "large",
   "key": "cave_ape",
@@ -9084,7 +9420,13 @@
   "actions": [
    "act_spear"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Bubble-mouthed worshipper of what sleeps below the tide line.",
   "key": "fishfolk_zealot",
   "id": "preset_fishfolk_zealot"
@@ -9111,7 +9453,13 @@
   "actions": [
    "act_dagger"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Reed-skiff outrider mapping coastlines for the deep choirs.",
   "key": "fishfolk_scout",
   "id": "preset_fishfolk_scout"
@@ -9138,7 +9486,13 @@
   "actions": [
    "act_warhammer"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Ashen dwarf smith-enforcer; grudges measured in centuries.",
   "senses": [
    "darkvision 120 ft."
@@ -9169,7 +9523,13 @@
    "act_warhammer",
    "act_javelin"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Deep-king claiming every tunnel his shadow touches.",
   "senses": [
    "darkvision 120 ft."
@@ -9200,7 +9560,13 @@
    "act_shortsword",
    "act_handaxe"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Spider-sworn surface raider; poison on the blade, poisons in the words.",
   "senses": [
    "darkvision 120 ft."
@@ -9232,7 +9598,13 @@
    "act_lightning_bolt",
    "act_cone_of_cold"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 70
+   }
+  ],
   "description": "Matron's voice in the underdark, spider-god's will made silk.",
   "senses": [
    "darkvision 120 ft."
@@ -9262,7 +9634,13 @@
   "actions": [
    "act_warhammer"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Stone-grey gnome prospector who heard you coming an hour ago.",
   "senses": [
    "darkvision 120 ft."
@@ -9293,7 +9671,13 @@
    "act_greatsword",
    "act_longbow"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Silver-armored reaver riding thought-ships between worlds.",
   "key": "astral_raider",
   "id": "preset_astral_raider"
@@ -9321,7 +9705,13 @@
    "act_claw_rend",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Pleistocene bulk with a temper preserved perfectly.",
   "size": "large",
   "key": "cave_bear",
@@ -9350,7 +9740,13 @@
    "act_bite_lg",
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Leap, puncture, done — prehistory's neatest solution.",
   "size": "large",
   "key": "sabertooth",
@@ -9379,7 +9775,13 @@
    "act_claw",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Maned giant stalking mammoth-steppe shadows.",
   "size": "large",
   "key": "cave_lion",
@@ -9408,7 +9810,13 @@
    "act_gore",
    "act_trample"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Two-ton snowplow with a very pointed opinion.",
   "size": "huge",
   "key": "woolly_rhino",
@@ -9438,7 +9846,13 @@
    "act_trample",
    "act_slam_generic"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Tusked hill that remembers every slight since the ice age.",
   "size": "huge",
   "key": "mastodon",
@@ -9467,7 +9881,13 @@
    "act_gore",
    "act_trample"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Ancestor of cattle, twice the size and ten times the grudge.",
   "size": "large",
   "key": "aurochs",
@@ -9495,7 +9915,13 @@
   "actions": [
    "act_slam_generic"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Autumn bugle echoing across frost meadows.",
   "key": "elk",
   "id": "preset_elk"
@@ -9522,7 +9948,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 30
+   }
+  ],
   "description": "Giggling scavenger patient enough to be dangerous in numbers.",
   "key": "hyena",
   "id": "preset_hyena"
@@ -9549,7 +9981,13 @@
   "actions": [
    "act_hooves"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Armor-trained destrier; tramples on command.",
   "size": "large",
   "key": "warhorse",
@@ -9577,7 +10015,13 @@
   "actions": [
    "act_hooves"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Gentle colossus hauling what four men cannot.",
   "size": "large",
   "key": "draft_horse",
@@ -9605,7 +10049,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Desert ship storing water, spite, and dramatic sighs.",
   "key": "camel",
   "id": "preset_camel"
@@ -9632,7 +10082,13 @@
   "actions": [
    "act_hooves"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Carries everything; moves when philosophically ready.",
   "key": "mule",
   "id": "preset_mule"
@@ -9659,7 +10115,13 @@
   "actions": [
    "act_peck"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Flocks scent one drop and become a red cloud.",
   "size": "tiny",
   "key": "blood_hawk",
@@ -9687,7 +10149,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Six-foot terror-bird shearing grasslands at a sprint.",
   "size": "large",
   "key": "axe_beak",
@@ -9715,7 +10183,13 @@
   "actions": [
    "act_gore"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Bristleback orchard-raider; charges first, thinks never.",
   "key": "boar",
   "id": "preset_boar"
@@ -9743,7 +10217,13 @@
    "act_bite_md",
    "act_grasp"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Tomb-architect spider spinning alarm-threads across treasure.",
   "size": "large",
   "senses": [
@@ -9775,7 +10255,13 @@
   "actions": [
    "act_bite_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Algae-backed boulder with trap-jaw patience.",
   "size": "large",
   "key": "snapping_turtle",
@@ -9803,7 +10289,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Silver flash over coral, then the water goes quiet.",
   "speed_feet": 0,
   "key": "reef_shark",
@@ -9831,7 +10323,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "River torpedo ambushing from the lily shallows.",
   "speed_feet": 0,
   "key": "giant_pike",
@@ -9860,7 +10358,13 @@
    "act_shocking_grasp",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Marsh ribbon that answers touch with lightning.",
   "speed_feet": 0,
   "key": "electric_eel",
@@ -9889,7 +10393,13 @@
    "act_claw",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Ghost of the white ridges, seen only as falling snow shifting.",
   "key": "snow_leopard",
   "id": "preset_snow_leopard"
@@ -9916,7 +10426,13 @@
   "actions": [
    "act_slam_generic"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 30
+   }
+  ],
   "description": "Defies gravity, ledges, and your patience with equal ease.",
   "key": "mountain_goat",
   "id": "preset_mountain_goat"
@@ -9943,7 +10459,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 30
+   }
+  ],
   "description": "Striped fury defending a hole in the ground.",
   "key": "badger",
   "id": "preset_badger"
@@ -9971,7 +10493,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Digging machine with a bad attitude and bigger claws.",
   "key": "giant_badger",
   "id": "preset_giant_badger"
@@ -9999,7 +10527,13 @@
    "act_claw_rend",
    "act_constrict"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Murdered soul wearing its own corpse, hunting its killer across any distance.",
   "senses": [
    "darkvision 60 ft.",
@@ -10035,7 +10569,13 @@
    "act_fireball",
    "act_ray_of_frost"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Grinning skull wreathed in green flame; laughs in cackling bursts.",
   "senses": [
    "darkvision 60 ft.",
@@ -10073,7 +10613,13 @@
    "act_claw",
    "act_quills"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "A cyclone of grasping skeletons pretending to be weather.",
   "senses": [
    "darkvision 60 ft.",
@@ -10116,7 +10662,13 @@
    "act_slam_generic",
    "act_poison_bite"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Its rot is contagious; its grip is final.",
   "senses": [
    "darkvision 60 ft.",
@@ -10152,7 +10704,13 @@
    "act_greatsword",
    "act_longbow"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Tournament knight whose oath outlasted the flesh that swore it.",
   "senses": [
    "darkvision 60 ft.",
@@ -10188,7 +10746,13 @@
    "act_longbow",
    "act_dagger"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Ribcage full of arrows and nothing else.",
   "senses": [
    "darkvision 60 ft.",
@@ -10223,7 +10787,13 @@
   "actions": [
    "act_bite_trip"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Churchyard hound that kept guarding past its last heartbeat.",
   "senses": [
    "darkvision 60 ft.",
@@ -10259,7 +10829,13 @@
    "act_claw",
    "act_grasp"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Sailors tangled in weed, still pulling others under.",
   "senses": [
    "darkvision 60 ft.",
@@ -10297,7 +10873,13 @@
    "act_fireball",
    "act_cone_of_cold"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 70
+   }
+  ],
   "description": "Serpent sage refusing death through forbidden syllables.",
   "senses": [
    "darkvision 60 ft.",
@@ -10335,7 +10917,13 @@
    "act_fireball",
    "act_chain_lightning"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Fallen paladin-king commanding legions from a helm of horns.",
   "senses": [
    "darkvision 60 ft.",
@@ -10373,7 +10961,13 @@
    "act_meteor_swarm",
    "act_chain_lightning"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Archmage who traded mortality for eternity and paid in souls.",
   "senses": [
    "darkvision 60 ft.",
@@ -10409,7 +11003,13 @@
    "act_claw_rend",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Corpse-court monarch attended by whispering ghouls.",
   "senses": [
    "darkvision 60 ft.",
@@ -10445,7 +11045,13 @@
    "act_slam_lg",
    "act_life_drain"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Necromancer's mistake that learned command instead of obedience.",
   "senses": [
    "darkvision 60 ft.",
@@ -10480,7 +11086,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Chitin tide stripping grave-goods and gravekeepers alike.",
   "senses": [
    "darkvision 60 ft.",
@@ -10522,7 +11134,13 @@
   "actions": [
    "act_longsword"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Spectral soldier replaying a battle no one won.",
   "senses": [
    "darkvision 60 ft.",
@@ -10558,7 +11176,13 @@
    "act_halberd",
    "act_life_drain"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Tomb sentinel pruning visitors with methodical hate.",
   "senses": [
    "darkvision 60 ft.",
@@ -10594,7 +11218,13 @@
    "act_slam_lg",
    "act_crush"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Colossal corpse stitched from giants and older mistakes.",
   "senses": [
    "darkvision 60 ft.",
@@ -10631,7 +11261,13 @@
    "act_giant_axe",
    "act_crush"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Cathedral skeleton walking; bells toll inside its ribs.",
   "senses": [
    "darkvision 60 ft.",
@@ -10668,7 +11304,13 @@
    "act_bite_md",
    "act_barbed_tail"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Flyless wyrm-bones bound to a rider long dead.",
   "senses": [
    "darkvision 60 ft.",
@@ -10704,7 +11346,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Counts a master's enemies by the taste of their blood.",
   "senses": [
    "darkvision 60 ft.",
@@ -10741,7 +11389,13 @@
    "act_bite_lg",
    "act_breath_fire_blue"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Island-sized leviathan taxing shipping lanes in gold or hulls.",
   "senses": [
    "darkvision 60 ft.",
@@ -10775,7 +11429,13 @@
    "act_bite_md",
    "act_fire_breath_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Wingless lava-lizard dripping molten slag.",
   "senses": [
    "darkvision 60 ft.",
@@ -10808,7 +11468,13 @@
    "act_bite_md",
    "act_breath_cold_white"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Glacier-wyrm frosting valleys with each exhale.",
   "senses": [
    "darkvision 60 ft.",
@@ -10841,7 +11507,13 @@
    "act_bite_md",
    "act_breath_lightning"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Rides thunderheads; strikes before the warning clap.",
   "senses": [
    "darkvision 60 ft.",
@@ -10874,7 +11546,13 @@
    "act_bite_md",
    "act_poison_breath"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Jungle wyrm whose shadow sickens the leaves beneath it.",
   "senses": [
    "darkvision 60 ft.",
@@ -10907,7 +11585,13 @@
    "act_bite_md",
    "act_tail_sweep"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Cliff-camo grazer that turns territorial at dusk.",
   "senses": [
    "darkvision 60 ft.",
@@ -10939,7 +11623,13 @@
   "actions": [
    "act_eldritch_blast"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Butterfly-wing prankster exhaling euphoric mischief.",
   "senses": [
    "darkvision 60 ft.",
@@ -10971,7 +11661,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Cat-sized familiar bargaining in purrs and stings.",
   "senses": [
    "darkvision 60 ft.",
@@ -11004,7 +11700,13 @@
    "act_bite_md",
    "act_tail_sweep"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Kennel-raised dragonkin; loyal as gravity.",
   "senses": [
    "darkvision 60 ft.",
@@ -11037,7 +11739,13 @@
    "act_bite_md",
    "act_fire_breath_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Noble hatchling already practicing its benevolent roar.",
   "senses": [
    "darkvision 60 ft.",
@@ -11069,7 +11777,13 @@
    "act_bite_md",
    "act_breath_cold_white"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Moonlit hatchling adopting lost travelers as projects.",
   "senses": [
    "darkvision 60 ft.",
@@ -11101,7 +11815,13 @@
    "act_bite_md",
    "act_breath_poison_bronze"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Surf-hatchling rescuing swimmers whether they like it or not.",
   "senses": [
    "darkvision 60 ft.",
@@ -11134,7 +11854,13 @@
    "act_breath_poison_bronze",
    "act_tail_sweep"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Coastal sentinel sinking slavers and praising swimmers.",
   "senses": [
    "darkvision 60 ft.",
@@ -11166,7 +11892,13 @@
    "act_dragon_bite",
    "act_acid_breath_line"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Hilltop trickster collecting jokes, riddles, and grudges.",
   "senses": [
    "darkvision 60 ft.",
@@ -11199,7 +11931,13 @@
    "act_fire_breath_lg",
    "act_wyrm_tail"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "The sun given scales; evil kneels or burns.",
   "senses": [
    "darkvision 60 ft.",
@@ -11232,7 +11970,13 @@
    "act_slam_lg",
    "act_engulf"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Living flood that drowns rooms and drags rivers uphill.",
   "size": "large",
   "speed_feet": 30,
@@ -11262,7 +12006,13 @@
    "act_slam_lg",
    "act_crush"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Quarry given legs; patience of strata, fists of landslides.",
   "size": "large",
   "speed_feet": 30,
@@ -11292,7 +12042,13 @@
    "act_wind_slam",
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Air genie-tasked to hunt; unseen until it is a conclusion.",
   "key": "invisible_stalker",
   "id": "preset_invisible_stalker"
@@ -11319,7 +12075,13 @@
   "actions": [
    "act_warhammer"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Bronze-skinned forge-dwarf hammering order into chaos.",
   "size": "medium",
   "speed_feet": 30,
@@ -11349,7 +12111,13 @@
    "act_slam_lg",
    "act_rock_throw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Boulder-elder herding stones like sheepdogs.",
   "size": "large",
   "speed_feet": 30,
@@ -11379,7 +12147,13 @@
    "act_fire_touch",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Ember-serpent slithering through coals and kindling alike.",
   "key": "fire_snake",
   "id": "preset_fire_snake"
@@ -11406,7 +12180,13 @@
   "actions": [
    "act_claw_rend"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Three-eyed gem-eater browsing veins of ore like fruit.",
   "key": "xorn",
   "id": "preset_xorn"
@@ -11433,7 +12213,13 @@
   "actions": [
    "act_fire_touch"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Molten imp igniting whatever it hugs, including hugs.",
   "size": "small",
   "key": "magmin",
@@ -11462,7 +12248,13 @@
    "act_frost_touch",
    "act_ray_of_frost"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Frost sprite giggling blizzards and freezing opinions.",
   "size": "small",
   "key": "ice_mephit",
@@ -11491,7 +12283,13 @@
    "act_fire_touch",
    "act_spit_acid"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Slag-sprite spitting burning globs and worse puns.",
   "size": "small",
   "key": "magma_mephit",
@@ -11520,7 +12318,13 @@
    "act_flame_strike",
    "act_fireball"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Brass-brined wish-tyrant ruling a furnace court.",
   "size": "large",
   "key": "efreeti",
@@ -11549,7 +12353,13 @@
    "act_wind_slam",
    "act_lightning_bolt"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Sky-palace noble granting boons with bureaucratic delight.",
   "size": "large",
   "key": "djinni",
@@ -11579,7 +12389,13 @@
    "act_fire_touch",
    "act_constrict"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Serpent-smith forging weapons in its own coils of flame.",
   "size": "large",
   "key": "salamander",
@@ -11608,7 +12424,13 @@
    "act_talons",
    "act_lightning_bolt"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 75
+   }
+  ],
   "description": "Storm-front eagle whose wingbeats are the front.",
   "size": "huge",
   "key": "thunderbird",
@@ -11636,7 +12458,13 @@
   "actions": [
    "act_peck"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Chicken-basilisk petrifying farmers one peck at a time.",
   "senses": [
    "darkvision 60 ft.",
@@ -11669,7 +12497,13 @@
    "act_gore",
    "act_poison_breath"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Iron-plated bull whose breath turns flesh to statue.",
   "senses": [
    "darkvision 60 ft.",
@@ -11701,7 +12535,13 @@
   "actions": [
    "act_bite_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Land-shark breaching through roads and regret.",
   "senses": [
    "darkvision 60 ft.",
@@ -11734,7 +12574,13 @@
    "act_bite_lg",
    "act_spit_acid"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Orchard-burrowing larva horror with acid reflux.",
   "senses": [
    "darkvision 60 ft.",
@@ -11767,7 +12613,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Rock-mimic worm dragging carrion to its stony lair.",
   "senses": [
    "darkvision 60 ft.",
@@ -11799,7 +12651,13 @@
   "actions": [
    "act_constrict"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Cave-ceiling squid dropping onto torchlit heads.",
   "senses": [
    "darkvision 60 ft.",
@@ -11831,7 +12689,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Stalactite that is not a stalactite, briefly.",
   "senses": [
    "darkvision 60 ft.",
@@ -11863,7 +12727,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Antenna'd scavenger turning heirloom swords into breakfast.",
   "senses": [
    "darkvision 60 ft.",
@@ -11895,7 +12765,13 @@
    "act_claw_rend",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Midnight cat stepping through stone like smoke.",
   "senses": [
    "darkvision 120 ft."
@@ -11926,7 +12802,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Silver hunger stripping a swimmer to a story.",
   "speed_feet": 0,
   "condition_immunities": [
@@ -11965,7 +12847,13 @@
    "act_bite_md",
    "act_breath_cold_white"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Snowpack alpha howling blizzards down the pass.",
   "senses": [
    "darkvision 60 ft.",
@@ -11999,7 +12887,13 @@
    "act_gore",
    "act_fire_breath_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Lion-dragon-goat committee with three bad ideas per turn.",
   "senses": [
    "darkvision 60 ft.",
@@ -12031,7 +12925,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 70
+   }
+  ],
   "description": "Swamp tyrant growing two grudges for every one settled.",
   "senses": [
    "darkvision 60 ft.",
@@ -12065,7 +12965,13 @@
    "act_bite_lg",
    "act_lightning_bolt"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Ocean-floor god crushing fleets for the crime of sailing.",
   "senses": [
    "darkvision 60 ft.",
@@ -12099,7 +13005,13 @@
    "act_talons",
    "act_bite_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Mountain-eagle carrying elephants home to its chicks.",
   "senses": [
    "darkvision 60 ft.",
@@ -12132,7 +13044,13 @@
    "act_claw_rend",
    "act_eye_ray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Riddle-keeper gating tombs behind correct grammar.",
   "senses": [
    "darkvision 60 ft.",
@@ -12165,7 +13083,13 @@
    "act_bite_md",
    "act_sacred_flame"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Rainbow-feathered serpent guarding oaths and prophecies.",
   "size": "large",
   "key": "couatl",
@@ -12194,7 +13118,13 @@
    "act_hooves",
    "act_fire_touch"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Equine nightmare bridled only by the wicked.",
   "senses": [
    "darkvision 60 ft.",
@@ -12227,7 +13157,13 @@
    "act_scimitar",
    "act_poison_spray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Snake-blooded courtier smiling with too many teeth.",
   "key": "yuan_ti_pureblood",
   "id": "preset_yuan_ti_pureblood"
@@ -12256,7 +13192,13 @@
    "act_scimitar",
    "act_constrict"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Coils under the robe; cold calculation above it.",
   "key": "yuan_ti_malison",
   "id": "preset_yuan_ti_malison"
@@ -12284,7 +13226,13 @@
    "act_bite_md",
    "act_bite_trip"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Two heads arguing over which bites first; both are rabid.",
   "senses": [
    "darkvision 60 ft.",
@@ -12317,7 +13265,13 @@
    "act_bite_lg",
    "act_breath_cold_white"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 70
+   }
+  ],
   "description": "Glacier-serpent singing prey onto the ice.",
   "senses": [
    "darkvision 60 ft.",
@@ -12349,7 +13303,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Spring-coiled tree serpent launching like a spear.",
   "senses": [
    "darkvision 60 ft.",
@@ -12381,7 +13341,13 @@
    "act_claw",
    "act_grasp"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Cliff fisherman baiting ledges with glue and patience.",
   "senses": [
    "darkvision 60 ft.",
@@ -12415,7 +13381,13 @@
    "act_constrict",
    "act_tail_sweep"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 80
+   }
+  ],
   "description": "Ship-coiling legend that sailors refuse to name aloud.",
   "senses": [
    "darkvision 60 ft.",
@@ -12449,7 +13421,13 @@
    "act_slam_lg",
    "act_crush"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 75
+   }
+  ],
   "description": "Ancient forest walking to war against the axe.",
   "size": "huge",
   "key": "treant",
@@ -12477,7 +13455,13 @@
   "actions": [
    "act_slam_generic"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Druid's ally grown ambitious about doorways.",
   "size": "huge",
   "key": "awakened_tree",
@@ -12505,7 +13489,13 @@
   "actions": [
    "act_thorn_whip"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 30
+   }
+  ],
   "description": "Opinionated topiary with newfound mobility.",
   "size": "small",
   "key": "awakened_shrub",
@@ -12533,7 +13523,13 @@
   "actions": [
    "act_quills"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Thicket-thug flinging barbed darts from hedgerows.",
   "key": "needle_blight",
   "id": "preset_needle_blight"
@@ -12560,7 +13556,13 @@
   "actions": [
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Kindling-sized ambush that comes in bundles.",
   "size": "small",
   "key": "twig_blight",
@@ -12588,7 +13590,13 @@
   "actions": [
    "act_grasp"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Wall of ivy reaching for ankles and throats equally.",
   "size": "medium",
   "key": "vine_blight",
@@ -12616,7 +13624,13 @@
   "actions": [
    "act_poison_spray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Floating mimic of an eye tyrant; pops catastrophically.",
   "size": "large",
   "speed_feet": 5,
@@ -12646,7 +13660,13 @@
    "act_slam_lg",
    "act_grasp"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Grove guardian grown armor rings and a grudge.",
   "size": "large",
   "key": "bark_warden",
@@ -12674,7 +13694,13 @@
   "actions": [
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Eight thousand eyes and one appetite.",
   "size": "medium",
   "condition_immunities": [
@@ -12712,7 +13738,13 @@
   "actions": [
    "act_poison_bite"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Floor becomes legs becomes regret.",
   "size": "medium",
   "condition_immunities": [
@@ -12750,7 +13782,13 @@
   "actions": [
    "act_wyvern_sting"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Angry weather with stripes.",
   "size": "medium",
   "condition_immunities": [
@@ -12788,7 +13826,13 @@
   "actions": [
    "act_hooves"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Winged steed choosing riders by the weight of their honor.",
   "size": "large",
   "key": "pegasus",
@@ -12817,7 +13861,13 @@
    "act_horn",
    "act_hooves"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Forest saint healing the worthy and goring the rest.",
   "size": "large",
   "key": "unicorn",
@@ -12846,7 +13896,13 @@
    "act_greatsword",
    "act_flame_strike"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 75
+   }
+  ],
   "description": "Wardens of gateways between mortal planes and brighter ones.",
   "size": "large",
   "key": "angelic_sentinel",
@@ -12876,7 +13932,13 @@
    "act_flame_strike",
    "act_meteor_swarm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Battle-angel whose sword is a verdict.",
   "size": "large",
   "key": "planetar",
@@ -12906,7 +13968,13 @@
    "act_flame_strike",
    "act_meteor_swarm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Last authority most tyrants ever hear.",
   "size": "large",
   "key": "solar",
@@ -12936,7 +14004,13 @@
    "act_crush",
    "act_flame_strike"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Divine titan whose mood decides kingdoms' weather.",
   "size": "huge",
   "key": "empyrean",
@@ -12965,7 +14039,13 @@
    "act_longsword",
    "act_longbow"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Court champion dueling mortals for amusement and tithes.",
   "key": "fey_knight",
   "id": "preset_fey_knight"
@@ -12992,7 +14072,13 @@
   "actions": [
    "act_shortsword"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Household spirit gone sour, souring everything back.",
   "size": "small",
   "key": "boggart",
@@ -13020,7 +14106,13 @@
   "actions": [
    "act_greataxe"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Petty gnome-cousin swelling to giant size when cheated.",
   "key": "spriggan",
   "id": "preset_spriggan"
@@ -13049,7 +14141,13 @@
    "act_thorn_whip",
    "act_cone_of_cold"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Season-crown sovereign whose grove obeys like a body.",
   "key": "dryad_queen",
   "id": "preset_dryad_queen"
@@ -13076,7 +14174,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Omen-pup whose howl is someone's funeral notice.",
   "size": "large",
   "key": "doom_hound",
@@ -13105,7 +14209,13 @@
    "act_halberd",
    "act_barbed_tail"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 75
+   }
+  ],
   "description": "Hook-handed interrogator of the third hell.",
   "senses": [
    "darkvision 60 ft.",
@@ -13139,7 +14249,13 @@
    "act_bite_md",
    "act_flame_strike"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Demon judge whose aura of sorrow precedes the sentence.",
   "senses": [
    "darkvision 60 ft.",
@@ -13172,7 +14288,13 @@
    "act_giant_axe",
    "act_crush"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Arena-beast of the abyss, bred for gods' entertainment.",
   "senses": [
    "darkvision 60 ft.",
@@ -13205,7 +14327,13 @@
    "act_greatsword",
    "act_breath_cold_white"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Arctic strategist freezing battlefields into dioramas.",
   "senses": [
    "darkvision 60 ft.",
@@ -13239,7 +14367,13 @@
    "act_fireball",
    "act_dagger"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 65
+   }
+  ],
   "description": "Infernal liturgist baptizing converts in brimstone.",
   "senses": [
    "darkvision 60 ft.",
@@ -13271,7 +14405,13 @@
    "act_rapier",
    "act_fire_bolt"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Half-fiend heir scheming toward an infernal inheritance.",
   "senses": [
    "darkvision 60 ft.",
@@ -13303,7 +14443,13 @@
    "act_corrupting_touch",
    "act_life_drain"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Smoking silhouette of a demon that escaped its summoners.",
   "senses": [
    "darkvision 60 ft.",
@@ -13340,7 +14486,13 @@
   "actions": [
    "act_claw_rend"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Backward-handed tiger lord immune to nearly all prayers.",
   "senses": [
    "darkvision 60 ft.",
@@ -13371,7 +14523,13 @@
   "actions": [
    "act_bite_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 80
+   }
+  ],
   "description": "Hell-leased apex engine; the contract is written in ash.",
   "senses": [
    "darkvision 60 ft.",
@@ -13404,7 +14562,13 @@
    "act_golem_slam",
    "act_crush"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Unbreakable argument ending wars by existing loudly.",
   "condition_immunities": [
    "poisoned",
@@ -13439,7 +14603,13 @@
    "act_heavycrossbow",
    "act_dagger"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Wind-up bloodhound tracking contracts to the letter.",
   "key": "clockwork_hunter",
   "id": "preset_clockwork_hunter"
@@ -13467,7 +14637,13 @@
    "act_longsword",
    "act_slam_generic"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Mass-produced legionnaire; warranty void vs fire.",
   "key": "clockwork_soldier",
   "id": "preset_clockwork_soldier"
@@ -13494,7 +14670,13 @@
   "actions": [
    "act_slam_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Marble hero posing patiently for centuries, then not.",
   "condition_immunities": [
    "poisoned",
@@ -13527,7 +14709,13 @@
   "actions": [
    "act_slam_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Carved dwarf-statue guard dogging vault doors.",
   "condition_immunities": [
    "poisoned",
@@ -13561,7 +14749,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Brass coil-guard striking keys and thieves alike.",
   "condition_immunities": [
    "poisoned",
@@ -13596,7 +14790,13 @@
    "act_slam_lg",
    "act_eye_ray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Glyph-script colossus enforcing library silence forever.",
   "condition_immunities": [
    "poisoned",
@@ -13631,7 +14831,13 @@
    "act_golem_slam",
    "act_crush"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 70
+   }
+  ],
   "description": "Sarcophagus assembled into jealousy of the living.",
   "condition_immunities": [
    "poisoned",
@@ -13666,7 +14872,13 @@
    "act_claw_rend",
    "act_bite_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 80
+   }
+  ],
   "description": "Regenerating horror that heals faster than heroes agree.",
   "size": "huge",
   "key": "dire_troll",
@@ -13695,7 +14907,13 @@
    "act_greatsword",
    "act_slam_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Forge-tyrant marching behind a tower of black iron.",
   "size": "huge",
   "key": "fire_giant_dreadnought",
@@ -13725,7 +14943,13 @@
    "act_lightning_bolt",
    "act_chain_lightning"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Throne-of-clouds ruler deciding droughts and dynasties.",
   "size": "huge",
   "key": "storm_giant_sovereign",
@@ -13754,7 +14978,13 @@
    "act_giant_axe",
    "act_rock_throw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Biggest belly wins the tribe; the tribe wins nothing else.",
   "size": "huge",
   "key": "hill_giant_chief",
@@ -13783,7 +15013,13 @@
    "act_greatclub",
    "act_flame_strike"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 70
+   }
+  ],
   "description": "One eye on this world, one dream on the next.",
   "size": "huge",
   "key": "cyclops_shaman",
@@ -13812,7 +15048,13 @@
    "act_giant_axe",
    "act_javelin"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Promoted by surviving every superior it ate.",
   "key": "ogre_warlord",
   "id": "preset_ogre_warlord"
@@ -13840,7 +15082,13 @@
    "act_claw_rend",
    "act_bite_lg"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 75
+   }
+  ],
   "description": "Crowned in scar tissue; the realm regenerates around him.",
   "size": "large",
   "key": "troll_king",
@@ -13870,7 +15118,13 @@
    "act_crush",
    "act_eye_ray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Under-earth emperor whose gaze warps what it favors.",
   "size": "huge",
   "key": "fomorian_tyrant",
@@ -13899,7 +15153,13 @@
    "act_claw",
    "act_bite_sm"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 33
+   }
+  ],
   "description": "Shark-tattooed raiders surfacing only to take.",
   "speed_feet": 30,
   "key": "sahuagin",
@@ -13928,7 +15188,13 @@
    "act_spear",
    "act_spiritual_weapon"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Blood-tide acolyte feeding the reef gods properly.",
   "speed_feet": 30,
   "key": "sahuagin_priestess",
@@ -13956,7 +15222,13 @@
   "actions": [
    "act_spear"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Coral-court citizens; traders, guides, occasional sirens.",
   "speed_feet": 5,
   "key": "merfolk",
@@ -13985,7 +15257,13 @@
    "act_pseudopod",
    "act_mind_blast"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 80
+   }
+  ],
   "description": "Elder memory-eater whose slaves inherit their servitude.",
   "senses": [
    "darkvision 60 ft.",
@@ -14019,7 +15297,13 @@
    "act_claw_rend",
    "act_grasp"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Pincer-priest performing ancient rites with new victims.",
   "senses": [
    "darkvision 60 ft.",
@@ -14051,7 +15335,13 @@
   "actions": [
    "act_spear"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "1d6",
+    "chance": 31
+   }
+  ],
   "description": "Scaled league-folk defending reef trade routes.",
   "speed_feet": 5,
   "key": "locathah",
@@ -14079,7 +15369,13 @@
   "actions": [
    "act_constrict"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Well-dweller drowning the curious in polite silence.",
   "speed_feet": 30,
   "key": "water_weird",
@@ -14109,7 +15405,13 @@
    "act_engulf",
    "act_breath_lightning"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Primal sea-storm given a destination and a grudge.",
   "size": "gargantuan",
   "speed_feet": 0,
@@ -14139,7 +15441,13 @@
    "act_lightning_bolt",
    "act_vicious_mockery"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Cliff-song luring ships with promises in minor keys.",
   "senses": [
    "darkvision 60 ft.",
@@ -14170,7 +15478,13 @@
   "actions": [
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 35
+   }
+  ],
   "description": "Cliff-nest songbird whose chorus ends mid-air.",
   "senses": [
    "darkvision 60 ft.",
@@ -14202,7 +15516,13 @@
    "act_poison_bite",
    "act_dagger"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "6d6+10",
+    "chance": 60
+   }
+  ],
   "description": "Veiled sculptor collecting portraits she'll never finish.",
   "senses": [
    "darkvision 60 ft.",
@@ -14234,7 +15554,13 @@
    "act_longsword",
    "act_hooves"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Horizon-herder galloping rumors across whole plains.",
   "senses": [
    "darkvision 60 ft.",
@@ -14267,7 +15593,13 @@
    "act_claw_rend",
    "act_eye_ray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Ruins-noble dressing greed in illusions of royalty.",
   "senses": [
    "darkvision 60 ft.",
@@ -14300,7 +15632,13 @@
    "act_claw_rend",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 55
+   }
+  ],
   "description": "Reclusive warden whose curse is also a career.",
   "size": "large",
   "key": "werebear",
@@ -14329,7 +15667,13 @@
    "act_claw_rend",
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Jungle duelists honoring challenges with extra claws.",
   "size": "large",
   "key": "weretiger",
@@ -14358,7 +15702,13 @@
    "act_gore",
    "act_claw"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 50
+   }
+  ],
   "description": "Crossroad bully infecting taverns and travelers alike.",
   "size": "large",
   "key": "wereboar",
@@ -14386,7 +15736,13 @@
   "actions": [
    "act_bite_md"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "4d6",
+    "chance": 45
+   }
+  ],
   "description": "Cave-roost screecher draining rumor from the sleeping.",
   "size": "medium",
   "key": "werebat",
@@ -14416,7 +15772,13 @@
    "act_breath_cold_white",
    "act_wyrm_tail"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "8d6+20",
+    "chance": 85
+   }
+  ],
   "description": "Moonlight's champion; tyranny freezes in its shadow.",
   "senses": [
    "darkvision 60 ft.",
@@ -14449,7 +15811,13 @@
    "act_claw",
    "act_eye_ray"
   ],
-  "loot_table": [],
+  "loot_table": [
+   {
+    "name": "Gold Coins",
+    "quantity_formula": "2d6",
+    "chance": 40
+   }
+  ],
   "description": "Wizard-curse hoarding secrets it can barely carry.",
   "senses": [
    "darkvision 60 ft.",
