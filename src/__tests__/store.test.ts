@@ -92,7 +92,7 @@ const localStorageMock = (() => {
 Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
 
 import { useStore, newCharacter, newStatBlock } from "../store";
-import { PRESET_CLASSES, findClassByArchetype, applyClassTemplate } from "../presets/classes";
+import { PRESET_CLASSES, findClassByArchetype, applyClassTemplate, growPoolsOnLevelUp } from "../presets/classes";
 import { findPresetAction } from "../presets/actions";
 
 describe("Store pure logic", () => {
@@ -686,5 +686,149 @@ describe("Concentration", () => {
     const state = useStore.getState();
     expect(state.concentration[caster.id]).toBeUndefined();
     expect(state.combatantConditions[caster.id] ?? []).not.toContain("Concentrating");
+  });
+});
+
+describe("Rests, growth & undo", () => {
+  const pool = (current: number, maximum: number, reset_condition: "long_rest" | "short_rest" = "long_rest") =>
+    ({ current, maximum, temporary: 0, reset_condition });
+
+  const captureSaves = async () => {
+    const { backend } = await import("../backend");
+    const saved: Array<{ resource_pools?: Record<string, { current?: number; maximum?: number }> }> = [];
+    vi.mocked(backend.saveCharacter).mockImplementation(async (c) => {
+      saved.push(c as never);
+      return c;
+    });
+    return saved;
+  };
+
+  it("longRest heals HP and recharges long-rest pools only", async () => {
+    const saved = await captureSaves();
+    const cleric = applyClassTemplate(newCharacter("Mira"), PRESET_CLASSES.find((c) => c.id === "cleric")!);
+    cleric.resource_pools.hp!.current = 4;
+    cleric.resource_pools.spell_slots_l1!.current = 0;
+    cleric.resource_pools.second_wind = pool(0, 1, "short_rest");
+    useStore.setState({
+      characters: [cleric],
+      combatantStates: { [cleric.id]: { id: cleric.id, name: "Mira", hit_points: 4, status: undefined } },
+    });
+
+    await useStore.getState().longRest();
+
+    const last = saved[saved.length - 1];
+    expect(last?.resource_pools?.hp?.current).toBe(10);
+    expect(last?.resource_pools?.spell_slots_l1?.current).toBe(2);
+    // short-rest pool is untouched by a long rest's recharge pass
+    expect(last?.resource_pools?.second_wind?.current).toBe(0);
+    expect(useStore.getState().combatantStates[cleric.id]?.hit_points).toBe(10);
+  });
+
+  it("shortRest heals half and recharges short-rest pools only", async () => {
+    const saved = await captureSaves();
+    const fighter = applyClassTemplate(newCharacter("Bruno"), PRESET_CLASSES.find((c) => c.id === "fighter")!);
+    fighter.resource_pools.hp!.maximum = 12;
+    fighter.resource_pools.hp!.current = 4;
+    fighter.resource_pools.second_wind = pool(0, 1, "short_rest");
+    fighter.resource_pools.spell_slots_l1 = pool(1, 2, "long_rest");
+    useStore.setState({ characters: [fighter], combatantStates: {} });
+
+    await useStore.getState().shortRest();
+
+    const last = saved[saved.length - 1];
+    expect(last?.resource_pools?.second_wind?.current).toBe(1);
+    expect(last?.resource_pools?.spell_slots_l1?.current).toBe(1);
+    expect(last?.resource_pools?.hp?.current).toBe(10); // 4 + floor(12/2)=6, capped at 12 -> 10
+  });
+
+  it("growPoolsOnLevelUp grows pools and applies primary + secondary unlocks once", () => {
+    const cleric = PRESET_CLASSES.find((c) => c.id === "cleric")!;
+    const wizard = PRESET_CLASSES.find((c) => c.id === "wizard")!;
+    const pools = {
+      hp: pool(20, 20),
+      spell_slots_l1: pool(2, 2),
+      ki_points: pool(1, 2, "short_rest"),
+    };
+    // Cleric unlocks l3 slots at level 5; wizard would add l2 at level 3.
+    const grownL3 = growPoolsOnLevelUp(pools, 3, cleric, wizard);
+    expect(grownL3.hp.maximum).toBe(21);
+    expect(grownL3.ki_points.current).toBe(1);
+    expect(grownL3.spell_slots_l2).toEqual(pool(2, 2));
+    // Reaching the same level again must not duplicate.
+    const grownAgain = growPoolsOnLevelUp(grownL3 as never, 3, cleric, wizard);
+    expect(grownAgain.spell_slots_l2.maximum).toBe(3); // +1 growth, not a second grant
+    // Level 5 adds the cleric's l3 tier alongside wizard's (already present).
+    const grownL5 = growPoolsOnLevelUp(grownAgain as never, 5, cleric, wizard);
+    expect(grownL5.spell_slots_l3).toEqual(pool(2, 2));
+    expect(grownL5.spell_slots_l2.maximum).toBe(4);
+  });
+});
+
+describe("Death saves", () => {
+  const dying = () => {
+    const c = newCharacter("Falling");
+    c.resource_pools.hp!.current = 0;
+    useStore.setState({
+      characters: [c],
+      combatantStates: { [c.id]: { id: c.id, name: "Falling", hit_points: 0, status: "dying" } },
+      deathSaves: {},
+    });
+    return c;
+  };
+
+  it("increments successes on a roll of 10+", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 15, detail: "" });
+    const c = dying();
+    await useStore.getState().rollDeathSave(c.id);
+    expect(useStore.getState().deathSaves[c.id]).toEqual({ successes: 1, failures: 0 });
+  });
+
+  it("third success stabilizes the character", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 15, detail: "" });
+    const c = dying();
+    useStore.setState({ deathSaves: { [c.id]: { successes: 2, failures: 0 } } });
+
+    await useStore.getState().rollDeathSave(c.id);
+
+    const st = useStore.getState();
+    expect(st.deathSaves[c.id]).toEqual({ successes: 3, failures: 0 });
+    expect(st.combatantStates[c.id]?.status).toBe("stable");
+  });
+
+  it("third failure marks the character dead", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 4, detail: "" });
+    const c = dying();
+    useStore.setState({ deathSaves: { [c.id]: { successes: 0, failures: 2 } } });
+
+    await useStore.getState().rollDeathSave(c.id);
+
+    const st = useStore.getState();
+    expect(st.deathSaves[c.id]).toEqual({ successes: 0, failures: 3 });
+    expect(st.combatantStates[c.id]?.status).toBe("dead");
+    expect(st.combatantStates[c.id]?.hit_points).toBe(-1);
+  });
+});
+
+describe("undoLastHpChange", () => {
+  it("restores previous HP and clears the undo buffer", () => {
+    const c = newCharacter("Zap");
+    useStore.setState({
+      combatantStates: { [c.id]: { id: c.id, name: "Zap", hit_points: 4, status: undefined } },
+      lastHpChange: { entityId: c.id, previousHp: 10, newHp: 4 },
+    });
+
+    useStore.getState().undoLastHpChange();
+
+    const st = useStore.getState();
+    expect(st.combatantStates[c.id]?.hit_points).toBe(10);
+    expect(st.lastHpChange).toBeNull();
+  });
+
+  it("is a no-op when there is nothing to undo", () => {
+    useStore.setState({ lastHpChange: null, combatantStates: {} });
+    expect(() => useStore.getState().undoLastHpChange()).not.toThrow();
   });
 });

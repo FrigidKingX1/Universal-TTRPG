@@ -8,6 +8,21 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the content library (bestiary/classes/actions/equipment
+        // presets) into its own cacheable chunk so app-code updates don't
+        // invalidate the ~half-megabyte of game data on every release.
+        manualChunks(id: string) {
+          if (id.includes("/src/presets/") || id.includes("/server/assets/")) {
+            return "content";
+          }
+        },
+      },
+    },
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors
