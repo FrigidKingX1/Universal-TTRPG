@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Shield, Sword, Package, Heart, Crosshair } from "lucide-react";
 import { useStore, newCharacter } from "../store";
 import { PRESET_CLASSES, applyClassTemplate, mergeSecondaryClass } from "../presets/classes";
+import { findPresetAction } from "../presets/actions";
 import { getMultiplayerClient, useMultiplayerStore } from "../multiplayer/store";
 import type { CharacterProfile, EncounterStatBlock, InventoryItem, ResourcePool, AttributeState } from "../types";
 import "../App.css";
@@ -99,11 +100,12 @@ export function PlayerPanel() {
     }
   };
 
-  // Cast/attack straight from the panel: known abilities resolved to
-  // definitions, with a shared target picker and live slot counts.
+  // Cast/attack straight from the panel: known abilities resolved against
+  // the local vault first, then bundled presets (hosted clients may have an
+  // empty local vault while the server resolves its seeded copies).
   const knownActions = character
     ? character.abilities
-        .map((id) => actions.find((a) => a.id === id))
+        .map((id) => actions.find((a) => a.id === id) ?? findPresetAction(id))
         .filter((a): a is NonNullable<typeof a> => Boolean(a))
     : [];
   const targets = [

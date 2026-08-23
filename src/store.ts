@@ -838,7 +838,9 @@ export const useStore = create<AutoDmState>()(
   runAttack: async (attacker, target, actionId, prereq) => {
     const sceneId = get().activeSceneId ?? undefined;
     // Spell-slot gate: character casters must have the pool to spend.
-    const action = get().actions.find((a) => a.id === actionId);
+    // Fallback to bundled presets — hosted clients may have an empty local
+    // vault while the server resolves from its seeded copy of the same defs.
+    const action = get().actions.find((a) => a.id === actionId) ?? findPresetAction(actionId);
     const slotCost = action?.slot_cost;
     const casterIsChar = "identity" in attacker;
     if (slotCost && casterIsChar) {

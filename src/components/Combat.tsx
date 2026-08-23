@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useStore } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { playCombatSfx } from "../sound";
+import { findPresetAction } from "../presets/actions";
 import type { CharacterProfile, EncounterStatBlock, EngineOutcome } from "../types";
 
 const CONDITIONS = ["Poisoned", "Prone", "Stunned", "Frightened", "Blinded", "Charmed", "Invisible", "Exhaustion", "Concentrating"];
@@ -116,18 +117,20 @@ export function Combat() {
   };
 
   // Get actions available to the selected attacker.
+  // Resolve against the local vault first, then bundled presets — hosted
+  // clients may not have the server's seeded actions mirrored locally.
+  const resolveActionDef = (id: string) =>
+    actions.find((a) => a.id === id) ?? findPresetAction(id);
   const attackerActions = (() => {
     const attacker = resolve(attackerKey);
     if (!attacker) return actions;
-    if ("identity" in attacker) {
-      // CharacterProfile — filter by abilities list.
-      const abilityIds = new Set(attacker.abilities);
-      const matched = actions.filter((a) => abilityIds.has(a.id));
-      return matched.length > 0 ? matched : actions;
-    }
-    // EncounterStatBlock — filter by actions list.
-    const actionIds = new Set((attacker as EncounterStatBlock).actions);
-    const matched = actions.filter((a) => actionIds.has(a.id));
+    const ids =
+      "identity" in attacker
+        ? (attacker as CharacterProfile).abilities
+        : (attacker as EncounterStatBlock).actions;
+    const matched = ids
+      .map(resolveActionDef)
+      .filter((a): a is NonNullable<typeof a> => Boolean(a));
     return matched.length > 0 ? matched : actions;
   })();
 
@@ -135,7 +138,7 @@ export function Combat() {
   const slotGate = (() => {
     const attacker = resolve(attackerKey);
     if (!attacker || !("identity" in attacker)) return { ok: true, isChar: false };
-    const cost = actions.find((a) => a.id === actionId)?.slot_cost;
+    const cost = resolveActionDef(actionId)?.slot_cost;
     if (!cost) return { ok: true, isChar: true };
     const pool = attacker.resource_pools[cost.pool];
     return {

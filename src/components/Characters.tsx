@@ -362,10 +362,21 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
         const template = findClassByArchetype(archetype);
         if (!template) return null;
         const unlocked = template.features_by_level.filter((f) => f.level <= level);
+        const secondaryTemplate = findClassByArchetype(
+          profile.identity.archetype_secondary,
+        );
+        const secondaryUnlocked =
+          secondaryTemplate?.features_by_level.filter((f) => f.level <= level) ?? [];
         return (
           <>
             <h3>
-              {template.name} Features <span className="muted">(d{template.hit_die} hit die)</span>
+              {template.name} Features{" "}
+              <span className="muted">(d{template.hit_die} hit die)</span>
+              {secondaryTemplate && (
+                <span className="badge" title={`Dual class: +${Math.floor(secondaryTemplate.hit_die / 2)} HP, half pools, shared ability list`}>
+                  / {secondaryTemplate.name}
+                </span>
+              )}
             </h3>
             {unlocked.length === 0 ? (
               <p className="muted">Features unlock as you gain levels.</p>
@@ -378,6 +389,21 @@ function CharacterSheet({ profile }: { profile: CharacterProfile }) {
                   </li>
                 ))}
               </ul>
+            )}
+            {secondaryTemplate && (
+              <>
+                <h4 style={{ margin: "0.75rem 0 0.25rem" }}>
+                  {secondaryTemplate.name} Features <span className="muted">(dual, d{secondaryTemplate.hit_die})</span>
+                </h4>
+                <ul className="class-features">
+                  {secondaryUnlocked.map((f) => (
+                    <li key={`${secondaryTemplate.id}-${f.name}`}>
+                      <strong>{f.name}</strong> <span className="badge">Lv {f.level}</span>
+                      <p className="muted">{f.description}</p>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </>
         );

@@ -942,7 +942,10 @@ export function mergeSecondaryClass(profile: CharacterProfile, secondary: ClassT
     ...profile,
     identity: { ...profile.identity, archetype_secondary: secondary.name },
     abilities: [...new Set([...profile.abilities, ...secondary.starting_abilities])],
-    resource_pools: { ...profile.resource_pools },
+    // Deep-copy pools so we never mutate the caller's profile objects.
+    resource_pools: Object.fromEntries(
+      Object.entries(profile.resource_pools).map(([k, p]) => [k, { ...p }]),
+    ),
   };
 
   const hp = next.resource_pools.hp;

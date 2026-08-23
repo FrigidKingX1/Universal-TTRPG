@@ -547,6 +547,32 @@ describe("Spell slot consumption", () => {
     expect(vi.mocked(backend.combatAttack)).not.toHaveBeenCalled();
   });
 
+  it("casting with an empty local vault falls back to bundled presets", async () => {
+    const { backend } = await import("../backend");
+    const saved: { resource_pools?: Record<string, { current?: number }> }[] = [];
+    vi.mocked(backend.saveCharacter).mockImplementation(async (c) => {
+      saved.push(c as never);
+      return c;
+    });
+    const cleric = makeCleric();
+    // Simulate a hosted client whose local vault is empty (server has the
+    // seeded copies); runAttack must resolve via findPresetAction fallback.
+    useStore.setState({ characters: [cleric], actions: [], statBlocks: [] });
+    const goblin = newStatBlock("Fallback Dummy");
+
+    await useStore.getState().runAttack(cleric, goblin, "act_cure_wounds");
+
+    expect(vi.mocked(backend.combatAttack)).toHaveBeenCalledTimes(1);
+    const last = saved[saved.length - 1];
+    expect(last?.resource_pools?.spell_slots_l1?.current).toBe(1);
+
+    // And an empty pool must STILL be blocked under the fallback.
+    cleric.resource_pools.spell_slots_l1!.current = 0;
+    vi.mocked(backend.combatAttack).mockClear();
+    await useStore.getState().runAttack(cleric, goblin, "act_cure_wounds");
+    expect(vi.mocked(backend.combatAttack)).not.toHaveBeenCalled();
+  });
+
   it("monsters and cantrips ignore slot costs", async () => {
     const { backend } = await import("../backend");
     vi.mocked(backend.combatAttack).mockClear();

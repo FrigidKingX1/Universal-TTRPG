@@ -246,6 +246,54 @@ describe("Class templates", () => {
     expect(dual.resource_pools.spell_slots_l1?.maximum).toBe(3);
     expect(dual.resource_pools.spell_slots_l1?.current).toBe(3);
   });
+
+  it("dual-classing never mutates the input profile (purity)", () => {
+    const fighter = PRESET_CLASSES.find((c) => c.id === "fighter")!;
+    const wizard = PRESET_CLASSES.find((c) => c.id === "wizard")!;
+    const fresh: import("../types").CharacterProfile = {
+      id: crypto.randomUUID(),
+      system_id: "universal",
+      identity: { name: "Test", level_or_rank: 1 },
+      attributes: {},
+      resource_pools: { hp: { current: 12, maximum: 12, temporary: 0, reset_condition: "long_rest" } },
+      inventory: [],
+      abilities: [],
+    };
+    const applied = applyClassTemplate(fresh, fighter);
+    const hpBefore = { ...applied.resource_pools.hp! };
+    mergeSecondaryClass(applied, wizard);
+    expect(applied.resource_pools.hp).toEqual(hpBefore);
+    expect(fresh.abilities).toEqual([]);
+  });
+
+  it("QA audit: no class grants a slot-costed ability it cannot cast at level 1", () => {
+    for (const c of PRESET_CLASSES) {
+      const pools = new Set(c.starting_pools.map((p) => p.name));
+      for (const abilityId of c.starting_abilities) {
+        const def = findPresetAction(abilityId);
+        expect(def, `${c.name} grants unknown action ${abilityId}`).toBeDefined();
+        const cost = def?.slot_cost;
+        if (!cost) continue;
+        const pool = c.starting_pools.find((p) => p.name === cost.pool);
+        // Pool must exist from level 1 with enough charges to cast at least once.
+        expect(
+          pool && pool.maximum >= cost.amount,
+          `${c.name}: ability ${abilityId} needs ${cost.pool} but has none at level 1`,
+        ).toBe(true);
+        void pools;
+      }
+    }
+  });
+
+  it("QA audit: every class has identity fields, gear, and sane features", () => {
+    for (const c of PRESET_CLASSES) {
+      expect(c.name.length, c.id).toBeGreaterThan(2);
+      expect(Object.keys(c.suggested_attributes), c.id).toContain("CON");
+      expect(c.starting_items.length, `${c.name} gear`).toBeGreaterThanOrEqual(2);
+      const levels = c.features_by_level.map((f) => f.level);
+      expect(Math.min(...levels), `${c.name} first feature`).toBe(1);
+    }
+  });
 });
 
 describe("Equipment catalog", () => {
