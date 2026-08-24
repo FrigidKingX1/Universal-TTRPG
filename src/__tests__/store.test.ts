@@ -832,3 +832,68 @@ describe("undoLastHpChange", () => {
     expect(() => useStore.getState().undoLastHpChange()).not.toThrow();
   });
 });
+
+describe("Battle map", () => {
+  const seedEntity = () => {
+    const c = newCharacter("Mapguy");
+    useStore.setState({ characters: [c] });
+    return c;
+  };
+
+  it("spawn/move/remove manage tokens with clamped positions", () => {
+    const e = seedEntity();
+    useStore.setState({ mapTokens: [] });
+
+    useStore.getState().spawnMapToken(e);
+    const [t] = useStore.getState().mapTokens;
+    expect(t.label).toBe("Mapguy");
+    expect(t.entity_id).toBe(e.id);
+    expect(t.x).toBeGreaterThanOrEqual(0);
+
+    useStore.getState().moveMapToken(t.id, 500, -20);
+    const moved = useStore.getState().mapTokens[0];
+    expect(moved.x).toBe(100); // clamped high
+    expect(moved.y).toBe(0); // clamped low
+
+    useStore.getState().removeMapToken(t.id);
+    expect(useStore.getState().mapTokens).toHaveLength(0);
+  });
+
+  it("persists map tokens and background with combat state", async () => {
+    const { backend } = await import("../backend");
+    vi.mocked(backend.saveCombatState).mockClear();
+    const e = seedEntity();
+    useStore.setState({
+      activeSceneId: "scene-map",
+      mapTokens: [],
+      mapBackground: "",
+      initiativeOrder: [],
+      combatantStates: {},
+      combatantConditions: {},
+      deathSaves: {},
+    });
+    useStore.getState().setMapBackground("assets/maps/tavern.jpg");
+    const nBefore = useStore.getState().mapTokens.length;
+    useStore.getState().spawnMapToken(e, 25, 75);
+
+    // persistCombat is debounced (300ms); flush it.
+    await new Promise((r) => setTimeout(r, 360));
+
+    expect(vi.mocked(backend.saveCombatState)).toHaveBeenCalled();
+    const payload = JSON.parse(
+      vi.mocked(backend.saveCombatState).mock.calls[vi.mocked(backend.saveCombatState).mock.calls.length - 1][1] as string,
+    );
+    expect(payload.mapBackground).toBe("assets/maps/tavern.jpg");
+    expect(payload.mapTokens).toHaveLength(1);
+    // Anti-stacking jitter: ((n%5)-2)*6 applied to the requested x.
+    expect(payload.mapTokens[0].x).toBe(25 + ((nBefore % 5) - 2) * 6);
+  });
+
+  it("clearMapTokens empties the board", () => {
+    const e = seedEntity();
+    useStore.getState().spawnMapToken(e);
+    useStore.getState().spawnMapToken(e);
+    useStore.getState().clearMapTokens();
+    expect(useStore.getState().mapTokens).toHaveLength(0);
+  });
+});

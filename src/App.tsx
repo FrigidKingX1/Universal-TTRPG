@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Wand2, BookOpen, Users, Skull, Swords, Wrench, Castle, HelpCircle, Settings, ChevronLeft, ChevronRight, Wifi, WifiOff } from "lucide-react";
+import { Wand2, BookOpen, Users, Skull, Swords, Wrench, Map as MapIcon, Castle, HelpCircle, Settings, ChevronLeft, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { useStore, subscribeToEvents } from "./store";
 import { useMultiplayerStore, initMultiplayerBridge } from "./multiplayer";
 import { SessionLobby } from "./components/SessionLobby";
@@ -18,6 +18,7 @@ import { Scenes } from "./components/Scenes";
 import { CharacterList } from "./components/Characters";
 import { Bestiary } from "./components/Bestiary";
 import { Combat } from "./components/Combat";
+import { MapPanel } from "./components/MapPanel";
 import { DiceRoller, OraclePanel, DmPanel, SessionLog, OllamaStatus, NpcNotesPanel, LinesVeilPanel } from "./components/Tools";
 import { CampaignExport } from "./components/CampaignExport";
 import { ShortcutsHelp } from "./components/ShortcutsHelp";
@@ -26,13 +27,14 @@ import { Titlebar } from "./components/Titlebar";
 import { usePanelResize } from "./hooks/usePanelResize";
 import "./App.css";
 
-type NavItem = "campaign" | "scenes" | "characters" | "bestiary" | "combat" | "tools";
+type NavItem = "campaign" | "scenes" | "characters" | "bestiary" | "map" | "combat" | "tools";
 
 const NAV_ICONS: Record<NavItem, React.ReactNode> = {
   campaign: <Wand2 size={18} strokeWidth={1.7} />,
   scenes: <BookOpen size={18} strokeWidth={1.7} />,
   characters: <Users size={18} strokeWidth={1.7} />,
   bestiary: <Skull size={18} strokeWidth={1.7} />,
+  map: <MapIcon size={18} strokeWidth={1.7} />,
   combat: <Swords size={18} strokeWidth={1.7} />,
   tools: <Wrench size={18} strokeWidth={1.7} />,
 };
@@ -42,6 +44,7 @@ const NAV_ITEMS: { id: NavItem; label: string }[] = [
   { id: "scenes", label: "Scenes" },
   { id: "characters", label: "Characters" },
   { id: "bestiary", label: "Bestiary" },
+  { id: "map", label: "Map" },
   { id: "combat", label: "Combat" },
   { id: "tools", label: "Tools" },
 ];
@@ -128,7 +131,7 @@ function App() {
     if (e.key === "?") { setShortcutsOpen(true); e.preventDefault(); }
 
     if (appMode === "setup") {
-      const navKeys: Record<string, NavItem> = { "1": "campaign", "2": "scenes", "3": "characters", "4": "bestiary", "5": "combat", "6": "tools" };
+      const navKeys: Record<string, NavItem> = { "1": "campaign", "2": "scenes", "3": "characters", "4": "bestiary", "5": "map", "6": "combat", "7": "tools" };
       if (navKeys[e.key]) { setActiveNav(navKeys[e.key]); e.preventDefault(); }
     }
   }, [setError, appMode, setAppMode, setShortcutsOpen, setActiveNav]);
@@ -153,6 +156,7 @@ function App() {
       case "scenes": return <Scenes />;
       case "characters": return <CharacterList />;
       case "bestiary": return <Bestiary />;
+      case "map": return <MapPanel />;
       case "combat": return <Combat />;
       case "tools":
         return (

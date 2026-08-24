@@ -25,6 +25,7 @@ import type {
   FateCheckResponse,
   InitiativeEntry,
   LogEntry,
+  MapToken,
   NpcCharacter,
   PlotThread,
   PrerequisiteCheck,
@@ -139,6 +140,14 @@ export interface AutoDmState {
   /** entityId → action name the entity is concentrating on. */
   concentration: Record<string, string>;
   dropConcentration: (entityId: string) => void;
+  /** Battle-map state (per scene, persisted with combat state). */
+  mapTokens: MapToken[];
+  mapBackground: string;
+  spawnMapToken: (entity: CharacterProfile | EncounterStatBlock, x?: number, y?: number) => void;
+  moveMapToken: (tokenId: string, x: number, y: number) => void;
+  removeMapToken: (tokenId: string) => void;
+  clearMapTokens: () => void;
+  setMapBackground: (url: string) => void;
   lastHpChange: { entityId: string; previousHp: number; newHp: number } | null;
   undoLastHpChange: () => void;
   exportCampaign: () => Promise<string>;
@@ -355,6 +364,8 @@ export const useStore = create<AutoDmState>()(
   currentTurnIndex: 0,
   deathSaves: {},
   concentration: {},
+  mapTokens: [],
+  mapBackground: "",
   lastHpChange: null,
   ollama: { reachable: false, models: [], currentModel: "llama3.2", numPredict: 512 },
   loot: [],
@@ -441,6 +452,8 @@ export const useStore = create<AutoDmState>()(
               currentRound: parsed.currentRound ?? 0,
               currentTurnIndex: parsed.currentTurnIndex ?? 0,
               deathSaves: parsed.deathSaves ?? {},
+              mapTokens: parsed.mapTokens ?? [],
+              mapBackground: parsed.mapBackground ?? "",
             };
           }
         } catch {
@@ -1172,6 +1185,56 @@ export const useStore = create<AutoDmState>()(
 
   dropConcentration: (entityId) => {
     dropConcentrationRecord(entityId, set);
+  },
+
+  spawnMapToken: (entity, x = 50, y = 50) => {
+    // Spread multiple spawns so they don't stack invisibly.
+    const n = get().mapTokens.length;
+    const jitterX = ((n % 5) - 2) * 6;
+    const jitterY = (Math.floor(n / 5) % 5) * 8;
+    let h = 0;
+    for (const ch of entityName(entity)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const color = `hsl(${h % 360} 55% 45%)`;
+    set((s) => ({
+      mapTokens: [
+        ...s.mapTokens,
+        {
+          id: crypto.randomUUID(),
+          entity_id: entity.id,
+          label: entityName(entity),
+          color,
+          x: Math.min(96, Math.max(4, x + jitterX)),
+          y: Math.min(94, Math.max(6, y + jitterY)),
+        },
+      ],
+    }));
+    persistCombat();
+  },
+
+  moveMapToken: (tokenId, x, y) => {
+    set((s) => ({
+      mapTokens: s.mapTokens.map((t) =>
+        t.id === tokenId
+          ? { ...t, x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) }
+          : t,
+      ),
+    }));
+    persistCombat();
+  },
+
+  removeMapToken: (tokenId) => {
+    set((s) => ({ mapTokens: s.mapTokens.filter((t) => t.id !== tokenId) }));
+    persistCombat();
+  },
+
+  clearMapTokens: () => {
+    set({ mapTokens: [] });
+    persistCombat();
+  },
+
+  setMapBackground: (url) => {
+    set({ mapBackground: url });
+    persistCombat();
   },
 
   showToast: (message: string, type: "info" | "success" | "warning" | "error" = "info", duration = 3000) => {
@@ -1978,6 +2041,8 @@ function persistCombat() {
       currentRound: s.currentRound,
       currentTurnIndex: s.currentTurnIndex,
       deathSaves: s.deathSaves,
+      mapTokens: s.mapTokens,
+      mapBackground: s.mapBackground,
     };
     void backend.saveCombatState(sceneId, JSON.stringify(data));
 

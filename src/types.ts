@@ -18,6 +18,17 @@ export interface Identity {
   level_or_rank: number;
 }
 
+/** A token on the battle map. x/y are percentages (0-100) of the board. */
+export interface MapToken {
+  id: string;
+  /** Links back to a CharacterProfile or EncounterStatBlock id. */
+  entity_id: string;
+  label: string;
+  color: string;
+  x: number;
+  y: number;
+}
+
 export interface AttributeState {
   base_value: number;
   current_value: number;

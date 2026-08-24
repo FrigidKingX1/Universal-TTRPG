@@ -358,3 +358,87 @@ describe("Combat panel", () => {
     expect(mockCombatAttack).toHaveBeenCalledTimes(1);
   });
 });
+
+// ── MapPanel (Phase 1 battle map, round 7 coverage) ───────────────────
+import { MapPanel } from "../components/MapPanel";
+import { fireEvent } from "@testing-library/react";
+
+describe("MapPanel", () => {
+  const seedBoard = () => {
+    const c = newCharacter("Hero");
+    const goblin = newStatBlock("Goblin Scout");
+    useStore.setState({
+      characters: [c],
+      statBlocks: [goblin],
+      mapTokens: [],
+      mapBackground: "",
+      initiativeOrder: [],
+      currentTurnIndex: 0,
+    });
+    return { c, goblin };
+  };
+
+  it("shows the empty-state hint on a bare board", () => {
+    seedBoard();
+    render(<MapPanel />);
+    expect(screen.getByText(/Spawn a token or set a background/i)).toBeInTheDocument();
+  });
+
+  it("renders spawned tokens positioned by their stored percentages", () => {
+    const { c } = seedBoard();
+    useStore.getState().spawnMapToken(c, 30, 40);
+    render(<MapPanel />);
+    const token = screen.getByLabelText("Map token Hero");
+    const stored = useStore.getState().mapTokens[0];
+    expect(token).toBeInTheDocument();
+    // Anti-stacking jitter shifts spawn coords; assert against the store.
+    expect((token as HTMLElement).style.left).toBe(`${stored.x}%`);
+    expect((token as HTMLElement).style.top).toBe(`${stored.y}%`);
+  });
+
+  it("drag (pointer events) moves the token via the store", async () => {
+    const { c } = seedBoard();
+    useStore.getState().spawnMapToken(c, 20, 20);
+    render(<MapPanel />);
+    const token = screen.getByLabelText("Map token Hero");
+
+    // jsdom has no layout: width fallback makes px == pct.
+    fireEvent.pointerDown(token, { clientX: 200, clientY: 200, button: 0 });
+    const board = screen.getByLabelText("Battle map board");
+    fireEvent.pointerMove(board, { clientX: 260, clientY: 200 });
+    fireEvent.pointerUp(board);
+
+    await waitFor(() =>
+      expect(useStore.getState().mapTokens[0].x).toBeGreaterThan(20),
+    );
+  });
+
+  it("gold ring marks the token whose entity owns the current turn", async () => {
+    const { c } = seedBoard();
+    useStore.getState().spawnMapToken(c, 50, 50);
+    const tokenId = useStore.getState().mapTokens[0].id;
+    void tokenId;
+    render(<MapPanel />);
+    // No initiative yet -> no active-turn ring.
+    expect(document.querySelector(".map-token.active-turn")).toBeNull();
+
+    useStore.setState({
+      initiativeOrder: [{ combatant_id: c.id, name: "Hero", roll: 20, modifier: 2 }],
+      currentTurnIndex: 0,
+    });
+
+    await waitFor(() =>
+      expect(document.querySelector(".map-token.active-turn")).not.toBeNull(),
+    );
+  });
+
+  it("double-click removes the token", async () => {
+    const user = userEvent.setup();
+    const { c } = seedBoard();
+    useStore.getState().spawnMapToken(c, 10, 10);
+    render(<MapPanel />);
+    const token = screen.getByLabelText("Map token Hero");
+    await user.dblClick(token);
+    expect(useStore.getState().mapTokens).toHaveLength(0);
+  });
+});
