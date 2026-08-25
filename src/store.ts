@@ -1237,7 +1237,10 @@ export const useStore = create<AutoDmState>()(
   },
 
   moveMapToken: (tokenId, x, y) => {
+    // Scoped guard: only THIS token's remote echoes are merged around,
+    // other players' drags stay live while we drag.
     mapDragGuard.until = Date.now() + 700;
+    mapDragGuard.tokenId = tokenId;
     set((s) => ({
       mapTokens: s.mapTokens.map((t) =>
         t.id === tokenId

@@ -95,6 +95,8 @@ export interface ResyncPayload {
   recent_logs: LogEntry[];
   map_tokens: unknown[];
   map_background: string;
+  /** Turn-gate snapshot (may be absent from older servers). */
+  turn?: { mode: GameMode; current_turn: string | null; queue: string[] } | null;
 }
 
 // ── REST response types ──────────────────────────────────────────────

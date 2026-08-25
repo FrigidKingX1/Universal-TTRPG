@@ -39,8 +39,39 @@ function clearPersistedSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch { /* noop */ }
 }
 
-// Suppress incoming map echoes while the local user is actively dragging.
-export const mapDragGuard: { until: number } = { until: 0 };
+// While the local user is dragging token X, incoming boards must not
+// clobber *that* token's in-flight position — but updates from other
+// players (dragging different tokens) must still land, so the guard is
+// scoped to the dragged id rather than a blanket time window.
+export const mapDragGuard: { until: number; tokenId: string | null } = {
+  until: 0,
+  tokenId: null,
+};
+
+/**
+ * Merge an authoritative remote board into local state. If a local drag
+ * is active on token T, T keeps its local position while every other
+ * token takes the remote value — simultaneous drags stay live for both.
+ */
+function mergeRemoteMap(
+  setState: MainStoreSet | null,
+  getLocal: () => { x: number; y: number } | null,
+  remoteTokens: any[],
+  background: string,
+) {
+  if (!setState) return;
+  const dragging =
+    Date.now() < mapDragGuard.until && mapDragGuard.tokenId
+      ? mapDragGuard.tokenId
+      : null;
+  const localPos = dragging ? getLocal() : null;
+  const tokens = localPos
+    ? remoteTokens.map((t: any) =>
+        t?.id === dragging ? { ...t, x: localPos.x, y: localPos.y } : t,
+      )
+    : remoteTokens;
+  setState(() => ({ mapTokens: tokens, mapBackground: background }));
+}
 
 export interface MultiplayerState {
   // ── Connection ────────────────────────────────────────────────────
@@ -375,14 +406,6 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
 
   // ── Internal: Resync handler ────────────────────────────────────
   _handleResync: (payload) => {
-    if (Date.now() < mapDragGuard.until) {
-      // Avoid snapping tokens back mid-drag; resync will refresh shortly.
-    } else {
-      set({
-        mapTokens: (payload as any).map_tokens ?? [],
-        mapBackground: (payload as any).map_background ?? "",
-      });
-    }
     set({
       scene: payload.scene,
       sceneSummary: payload.scene_summary,
@@ -393,38 +416,25 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
       summaries: payload.summaries,
       recentLogs: payload.recent_logs,
     });
+    // Turn-gate snapshot: late joiners / reconnectors land with a correct
+    // turn UI instead of "exploration / nobody" until someone acts.
+    if (payload.turn) {
+      set({
+        gameMode: payload.turn.mode,
+        currentTurn: payload.turn.current_turn,
+        turnQueue: payload.turn.queue,
+      });
+    }
 
     // Sync resync data into the main store so the UI reflects server state.
     _syncResyncToMainStore(payload);
   },
 
-  // ── Internal: Event handler (push into main store) ──────────────
+  // ── Internal: Event handler ─────────────────────────────────────
+  // Pure forwarder: all state application (including drag-aware map
+  // merging) happens in _dispatchEventToMainStore. The previous local
+  // switch here maintained a second, unread copy of clocks/map state.
   _handleEvent: (event) => {
-    // Update multiplayer store's own state.
-    switch (event.type) {
-      case "clock_advanced":
-        set((s) => ({
-          doomClocks: s.doomClocks.map((c) =>
-            c.id === event.clock_id
-              ? { ...c, current: Math.min(c.max, Math.max(0, c.current + event.ticks)) }
-              : c,
-          ),
-        }));
-        break;
-      case "condition_applied":
-        // Optimistic: will be confirmed on next resync.
-        break;
-      case "item_added":
-        // Optimistic loot refresh.
-        break;
-      case "map_updated":
-        if (Date.now() >= mapDragGuard.until) {
-          set({ mapTokens: event.tokens as any, mapBackground: event.background });
-        }
-        break;
-    }
-
-    // Dispatch to main store for UI updates.
     _dispatchEventToMainStore(event);
   },
 
@@ -531,12 +541,17 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
 
   // Map state (joiners need the current board without waiting for an event).
   if ((payload as any).map_tokens || (payload as any).map_background !== undefined) {
-    if (Date.now() >= mapDragGuard.until) {
-      setState(() => ({
-        mapTokens: (payload as any).map_tokens ?? [],
-        mapBackground: (payload as any).map_background ?? "",
-      }));
-    }
+    mergeRemoteMap(
+      setState,
+      () => {
+        const t = _mainStoreGet?.().mapTokens?.find(
+          (tok: any) => tok.id === mapDragGuard.tokenId,
+        );
+        return t ? { x: t.x, y: t.y } : null;
+      },
+      (payload as any).map_tokens ?? [],
+      (payload as any).map_background ?? "",
+    );
   }
 }
 
@@ -590,11 +605,17 @@ function _dispatchEventToMainStore(event: GameEvent) {
       break;
 
     case "map_updated":
-      if (Date.now() < mapDragGuard.until) break;
-      setState(() => ({
-        mapTokens: event.tokens as any,
-        mapBackground: event.background,
-      }));
+      mergeRemoteMap(
+        setState,
+        () => {
+          const t = getState().mapTokens?.find(
+            (tok: any) => tok.id === mapDragGuard.tokenId,
+          );
+          return t ? { x: t.x, y: t.y } : null;
+        },
+        event.tokens as any,
+        event.background,
+      );
       break;
 
     case "npc_spoke":

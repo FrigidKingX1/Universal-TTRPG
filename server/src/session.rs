@@ -78,6 +78,12 @@ pub struct TurnGate {
     inner: tokio::sync::Mutex<TurnState>,
 }
 
+impl Default for TurnGate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TurnGate {
     pub fn new() -> Self {
         Self {
@@ -256,6 +262,10 @@ pub struct ResyncPayload {
     /// Last 200 log entries for narrative scrollback display only —
     /// NOT for state reconstruction.
     pub recent_logs: Vec<auto_dm_engine::LogEntry>,
+    /// Turn-gate snapshot so late joiners / reconnectors land with a
+    /// correct turn UI without waiting for the next mutation.
+    #[serde(default)]
+    pub turn: Option<TurnStatePayload>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -309,8 +319,9 @@ pub async fn broadcast_turn_state(session: &Session) {
 // ── Session registry ─────────────────────────────────────────────────
 
 pub struct SessionRegistry {
-    /// session_id → Session
-    pub(crate) sessions: RwLock<HashMap<String, Arc<Session>>>,
+    /// session_id → Session.  Pub for the binary's disconnect handler;
+    /// treat as internal — prefer registry methods when available.
+    pub sessions: RwLock<HashMap<String, Arc<Session>>>,
     /// join_code → session_id (short lookup for the join endpoint)
     codes: RwLock<HashMap<String, String>>,
     /// token → (session_id, player_id) — the identity backbone for C3.
@@ -442,7 +453,7 @@ impl SessionRegistry {
             }
 
             let pipeline = self.build_pipeline();
-            let model_name = self.ollama_model.read().unwrap().clone();
+            let model_name = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
 
             let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
             let game = GameState {
@@ -536,8 +547,8 @@ impl SessionRegistry {
 
     /// Build a DmPipeline from current Ollama config (OllamaLlmBackend if reachable, stub otherwise).
     fn build_pipeline(&self) -> auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>> {
-        let url = self.ollama_url.read().unwrap().clone();
-        let model = self.ollama_model.read().unwrap().clone();
+        let url = self.ollama_url.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+        let model = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
         let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
             if auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&url) {
                 tracing::info!(url = %url, model = %model, "Using Ollama backend");
@@ -585,8 +596,8 @@ impl SessionRegistry {
 
     /// Get current Ollama config.
     pub fn ollama_config(&self) -> (String, String, bool) {
-        let url = self.ollama_url.read().unwrap().clone();
-        let model = self.ollama_model.read().unwrap().clone();
+        let url = self.ollama_url.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+        let model = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
         let reachable = auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&url);
         (url, model, reachable)
     }
@@ -775,7 +786,7 @@ impl SessionRegistry {
         }
 
         let pipeline = self.build_pipeline();
-        let model_name = self.ollama_model.read().unwrap().clone();
+        let model_name = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
 
         let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
         let game = GameState {
@@ -1034,6 +1045,7 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         map_tokens: session.map_tokens.read().await.clone(),
         map_background: session.map_background.read().await.clone(),
         recent_logs: logs.unwrap_or_default(),
+        turn: Some(TurnStatePayload::from_gate(&session.turn_gate).await),
     })
 }
 
@@ -1092,5 +1104,50 @@ mod turn_state_tests {
         assert_eq!(v["mode"], "combat");
         assert_eq!(v["current_turn"], "bob");
         assert_eq!(v["queue"], serde_json::json!(["carol"]));
+    }
+
+    #[tokio::test]
+    async fn resync_payload_carries_turn_snapshot() {
+        // Late joiners / reconnectors hydrate their turn UI from resync;
+        // without this they show exploration/no-turn until someone acts.
+        let dir = std::env::temp_dir()
+            .join(format!("auto-dm-resync-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let pool =
+            auto_dm_engine::open_pool(&dir.join("test.db")).await.unwrap();
+        auto_dm_engine::run_migrations(&pool).await.unwrap();
+
+        let (tx, _rx) = tokio::sync::broadcast::channel(16);
+        let session = Session {
+            id: "sess".into(),
+            join_code: "JOIN01".into(),
+            game: auto_dm_engine::GameState {
+                repo: auto_dm_engine::SqliteRepository::new(pool),
+                dm: tokio::sync::Mutex::new(None),
+                memory: std::sync::Mutex::new(auto_dm_core::memory::CampaignMemory::new()),
+                ollama_child: std::sync::Mutex::new(None),
+                current_model: std::sync::Mutex::new("test-model".into()),
+                current_num_predict: std::sync::Mutex::new(512),
+            },
+            event_tx: tx,
+            session_lock: tokio::sync::Mutex::new(()),
+            players: Default::default(),
+            turn_gate: TurnGate::new(),
+            combatants: Default::default(),
+            combatant_conditions: Default::default(),
+            map_tokens: Default::default(),
+            map_background: Default::default(),
+        };
+
+        session.turn_gate.start_combat("alice".into()).await;
+        session.turn_gate.join_queue("bob".into()).await;
+
+        let payload = build_resync(&session).await;
+        let turn = payload.turn.expect("resync carries turn snapshot");
+        assert_eq!(turn.mode, "combat");
+        assert_eq!(turn.current_turn.as_deref(), Some("alice"));
+        assert_eq!(turn.queue, vec!["bob".to_string()]);
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

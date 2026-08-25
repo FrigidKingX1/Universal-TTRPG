@@ -15,8 +15,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-mod presets;
-mod session;
+// Reuse the library's modules — one compilation, no dead-code warnings
+// for items only the lib's external consumers (mcp-server) exercise.
+use auto_dm_server::{presets, session};
 use session::{broadcast_turn_state, GameMode, SessionRegistry, TurnCheck, WsMessage};
 
 struct AppState {
@@ -93,8 +94,26 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+/// Embedded-library sizes, parsed once — /health may be probed often.
+fn preset_counts() -> (usize, usize) {
+    static COUNTS: std::sync::OnceLock<(usize, usize)> = std::sync::OnceLock::new();
+    *COUNTS.get_or_init(|| {
+        (
+            presets::preset_actions().len(),
+            presets::preset_stat_blocks().len(),
+        )
+    })
+}
+
 async fn health() -> Json<Value> {
-    Json(json!({ "status": "ok" }))
+    // Embedded-library counts double as a build fingerprint and give the
+    // tunnel/uptime probe something meaningful to compare across restarts.
+    let (actions, monsters) = preset_counts();
+    Json(json!({
+        "status": "ok",
+        "preset_actions": actions,
+        "preset_monsters": monsters,
+    }))
 }
 
 // â”€â”€ Ollama configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1534,9 +1553,28 @@ async fn handle_socket(
                     Some(Ok(Message::Pong(_))) => {
                         last_activity = tokio::time::Instant::now();
                     }
+                    // App-level keepalive from browsers (they cannot send
+                    // protocol ping frames, and never see ours). Reply so
+                    // the client's idle watchdog sees traffic — otherwise
+                    // quiet tables get disconnected every ~90s.
+                    Some(Ok(Message::Text(text))) => {
+                        last_activity = tokio::time::Instant::now();
+                        let is_ping = serde_json::from_str::<Value>(&text)
+                            .ok()
+                            .and_then(|v| {
+                                v.get("type").and_then(|t| t.as_str()).map(|s| s == "ping")
+                            })
+                            .unwrap_or(false);
+                        if is_ping {
+                            let pong = serde_json::json!({ "type": "pong" }).to_string();
+                            if socket.send(Message::Text(pong.into())).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
                     Some(Ok(Message::Close(_))) => break,
                     None => break,
-                    _ => {} // ignore text/binary from client
+                    _ => {} // ignore other binary/text from client
                 }
             }
         }

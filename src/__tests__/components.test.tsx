@@ -171,7 +171,7 @@ vi.mock("../multiplayer/store", () => {
     __setMockClient: (c: unknown) => { holder.client = c; },
     isInMultiplayerSession: () => false,
     // Main store mutates this guard on token drags; tests run local-only.
-    mapDragGuard: { until: 0 },
+    mapDragGuard: { until: 0, tokenId: null },
     useMultiplayerStore: (sel: (s: unknown) => unknown) =>
       sel({
         playerId: "p1",

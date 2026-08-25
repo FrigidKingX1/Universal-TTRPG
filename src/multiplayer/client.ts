@@ -91,6 +91,9 @@ export class MultiplayerClient {
     };
 
     this.ws.onmessage = (ev) => {
+      // Any inbound message — including keepalive pongs — proves the
+      // socket is alive; without this, quiet tables trip the 90s
+      // watchdog even though protocol-level pings are flowing.
       this.lastActivity = Date.now();
       try {
         const msg: WsMessage = JSON.parse(ev.data);
