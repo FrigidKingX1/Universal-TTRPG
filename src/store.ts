@@ -295,6 +295,35 @@ function dropConcentrationRecord(
   persistCombat();
 }
 
+/**
+ * Local dice roll for combat-critical saves. Browser-only players have no
+ * Tauri backend, so death saves and concentration checks must not depend
+ * on `backend.rollDice`. Supports "XdN" with an optional ± modifier —
+ * enough for d20 saves; complex expressions still go through the engine.
+ */
+export function rollDiceLocal(expr: string): { total: number; detail: string } {
+  const m = /^(\d+)\s*d\s*(\d+)(?:\s*([+-])\s*(\d+))?$/i.exec(expr.trim());
+  if (!m) throw new Error(`rollDiceLocal: unsupported expression "${expr}"`);
+  const count = Math.min(100, Math.max(1, parseInt(m[1], 10)));
+  const sides = Math.min(1000, Math.max(2, parseInt(m[2], 10)));
+  const sign = m[3] === "-" ? -1 : 1;
+  const mod = m[4] ? parseInt(m[4], 10) * sign : 0;
+  // Rejection sampling keeps the distribution uniform (no modulo bias).
+  const limit = Math.floor(0x100000000 / sides) * sides;
+  const buf = new Uint32Array(1);
+  const rolls: number[] = [];
+  for (let i = 0; i < count; i++) {
+    let v: number;
+    do {
+      crypto.getRandomValues(buf);
+      v = buf[0];
+    } while (v >= limit);
+    rolls.push((v % sides) + 1);
+  }
+  const sum = rolls.reduce((a, b) => a + b, 0);
+  return { total: sum + mod, detail: `${count}d${sides}[${rolls.join(", ")}]${mod ? `${mod > 0 ? "+" : ""}${mod}` : ""}` };
+}
+
 let mapPushTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleMapPush() {
   if (!isInMultiplayerSession()) return;
@@ -987,7 +1016,8 @@ export const useStore = create<AutoDmState>()(
         conMod = Math.floor((((target.attributes.CON as number | undefined) ?? 10) - 10) / 2);
       }
       playDiceSound();
-      const save = await backend.rollDice(`1d20 + ${conMod}`);
+      // Local roll — browser-hosted players have no Tauri backend here.
+      const save = rollDiceLocal(`1d20 + ${conMod}`);
       const broke = save.total < dc;
       if (broke) {
         const spellName = get().concentration[target.id];
@@ -1048,10 +1078,21 @@ export const useStore = create<AutoDmState>()(
   },
 
   nextTurn: () => { set((s) => {
-    if (s.initiativeOrder.length === 0) return {};
-    const nextIdx = (s.currentTurnIndex + 1) % s.initiativeOrder.length;
-    const newRound = nextIdx === 0 ? s.currentRound + 1 : s.currentRound;
-    return { currentTurnIndex: nextIdx, currentRound: newRound };
+    const n = s.initiativeOrder.length;
+    if (n === 0) return {};
+    // Skip defeated combatants (0 HP or dead) — they don't take turns.
+    const isDown = (id: string) => {
+      const st = s.combatantStates[id];
+      return !!st && (st.hit_points <= 0 || st.status === "dead");
+    };
+    let idx = s.currentTurnIndex;
+    for (let step = 0; step < n; step++) {
+      idx = (idx + 1) % n;
+      if (!isDown(s.initiativeOrder[idx].combatant_id)) break;
+    }
+    // Wrapped past the start → new round.
+    const newRound = idx <= s.currentTurnIndex ? s.currentRound + 1 : s.currentRound;
+    return { currentTurnIndex: idx, currentRound: newRound };
   }); persistCombat(); },
 
   endCombat: () => { set({
@@ -1065,6 +1106,7 @@ export const useStore = create<AutoDmState>()(
   }); persistCombat(); },
 
   removeCombatant: (entityId) => { set((s) => {
+    const removedIdx = s.initiativeOrder.findIndex((e) => e.combatant_id === entityId);
     const newStates = { ...s.combatantStates };
     delete newStates[entityId];
     const newConditions = { ...s.combatantConditions };
@@ -1072,11 +1114,22 @@ export const useStore = create<AutoDmState>()(
     const newOrder = s.initiativeOrder.filter((e) => e.combatant_id !== entityId);
     const newDeathSaves = { ...s.deathSaves };
     delete newDeathSaves[entityId];
+    // Keep the turn pointer pointing at the same combatant: removing an
+    // entry before it shifts everyone down; removal can also leave the
+    // old index out of bounds entirely.
+    let currentTurnIndex = s.currentTurnIndex;
+    if (removedIdx !== -1 && removedIdx < s.currentTurnIndex) currentTurnIndex -= 1;
+    if (newOrder.length === 0) {
+      currentTurnIndex = 0;
+    } else {
+      currentTurnIndex = ((currentTurnIndex % newOrder.length) + newOrder.length) % newOrder.length;
+    }
     return {
       combatantStates: newStates,
       combatantConditions: newConditions,
       initiativeOrder: newOrder,
       deathSaves: newDeathSaves,
+      currentTurnIndex,
     };
   }); persistCombat(); },
 
@@ -1337,7 +1390,8 @@ export const useStore = create<AutoDmState>()(
     const s = get();
     const ds = s.deathSaves[entityId] ?? { successes: 0, failures: 0 };
     playDiceSound();
-    const r = await backend.rollDice("1d20");
+    // Local roll — browser-hosted players have no Tauri backend here.
+    const r = rollDiceLocal("1d20");
     const isTenPlus = r.total >= 10;
     const newDs = isTenPlus
       ? { successes: ds.successes + 1, failures: ds.failures }
@@ -1374,11 +1428,22 @@ export const useStore = create<AutoDmState>()(
     const s = get();
     const st = s.combatantStates[change.entityId];
     if (st) {
+      // Restore status coherently with the restored HP: undoing a killing
+      // blow revives the entry (engine "ALIVE") and wipes any death-save
+      // progress recorded after the hit; undoing a heal just restores HP.
+      const revived = change.previousHp > 0 && (st.status === "DEFEATED" || st.status === "dead");
+      const deathSaves = { ...s.deathSaves };
+      if (revived) delete deathSaves[change.entityId];
       set((prev) => ({
         combatantStates: {
           ...prev.combatantStates,
-          [change.entityId]: { ...st, hit_points: change.previousHp },
+          [change.entityId]: {
+            ...st,
+            hit_points: change.previousHp,
+            ...(revived ? { status: "ALIVE" } : {}),
+          },
         },
+        ...(revived ? { deathSaves } : {}),
         lastHpChange: null,
       }));
       persistCombat();

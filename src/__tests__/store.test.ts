@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock the Tauri backend module before importing store
 vi.mock("../backend", () => ({
@@ -91,9 +91,19 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
 
-import { useStore, newCharacter, newStatBlock } from "../store";
+import { useStore, newCharacter, newStatBlock, rollDiceLocal } from "../store";
 import { PRESET_CLASSES, findClassByArchetype, applyClassTemplate, growPoolsOnLevelUp } from "../presets/classes";
 import { findPresetAction } from "../presets/actions";
+
+/** Force the next local d20 face(s): getRandomValues sees u32 = value. */
+function stubNextU32(value: number) {
+  return vi.spyOn(crypto, "getRandomValues").mockImplementation((buf) => {
+    if (!buf) return buf;
+    new Uint32Array(buf.buffer as ArrayBuffer)[0] = value;
+    return buf;
+  });
+}
+
 
 describe("Store pure logic", () => {
   beforeEach(() => {
@@ -168,6 +178,43 @@ describe("Store pure logic", () => {
       expect(useStore.getState().currentTurnIndex).toBe(0);
       expect(useStore.getState().currentRound).toBe(2);
     });
+
+    it("skips defeated combatants (0 HP)", () => {
+      useStore.setState({
+        initiativeOrder: [
+          { combatant_id: "a", name: "Alice", roll: 18, modifier: 4 },
+          { combatant_id: "b", name: "Bob", roll: 12, modifier: 2 },
+          { combatant_id: "c", name: "Cultist", roll: 10, modifier: 0 },
+        ],
+        combatantStates: {
+          b: { id: "b", name: "Bob", hit_points: 0, status: "DEFEATED" },
+        },
+        currentRound: 1,
+        currentTurnIndex: 0,
+      });
+      useStore.getState().nextTurn();
+      // Bob is down â€” turn passes to the cultist, same round.
+      expect(useStore.getState().currentTurnIndex).toBe(2);
+      expect(useStore.getState().currentRound).toBe(1);
+    });
+
+    it("skips dead-by-death-save combatants too", () => {
+      useStore.setState({
+        initiativeOrder: [
+          { combatant_id: "a", name: "Alice", roll: 18, modifier: 4 },
+          { combatant_id: "b", name: "Bob", roll: 12, modifier: 2 },
+        ],
+        combatantStates: {
+          b: { id: "b", name: "Bob", hit_points: -1, status: "dead" },
+        },
+        currentRound: 1,
+        currentTurnIndex: 0,
+      });
+      useStore.getState().nextTurn();
+      expect(useStore.getState().currentTurnIndex).toBe(0);
+      // Wrapped all the way around â†’ new round.
+      expect(useStore.getState().currentRound).toBe(2);
+    });
   });
 
   describe("endCombat", () => {
@@ -212,6 +259,37 @@ describe("Store pure logic", () => {
       expect(s.combatantStates.b).toBeDefined();
       expect(s.combatantConditions.a).toBeUndefined();
       expect(s.combatantConditions.b).toEqual(["Stunned"]);
+    });
+
+    it("keeps the turn pointer on the same combatant when removing earlier entries", () => {
+      // Order [a, b, c], turn is on b (idx 1). Removing a shifts b to 0 â€”
+      // without the clamp, b would be skipped and c would act in b's place.
+      useStore.setState({
+        initiativeOrder: [
+          { combatant_id: "a", name: "Alice", roll: 18, modifier: 4 },
+          { combatant_id: "b", name: "Bob", roll: 12, modifier: 2 },
+          { combatant_id: "c", name: "Cultist", roll: 10, modifier: 0 },
+        ],
+        currentTurnIndex: 1,
+      });
+      useStore.getState().removeCombatant("a");
+      const s = useStore.getState();
+      expect(s.initiativeOrder.map((e) => e.combatant_id)).toEqual(["b", "c"]);
+      expect(s.currentTurnIndex).toBe(0); // still Bob
+    });
+
+    it("clamps the pointer when removing the last entry at the current index", () => {
+      useStore.setState({
+        initiativeOrder: [
+          { combatant_id: "a", name: "Alice", roll: 18, modifier: 4 },
+          { combatant_id: "b", name: "Bob", roll: 12, modifier: 2 },
+        ],
+        currentTurnIndex: 1, // pointing at b, who is removed
+      });
+      useStore.getState().removeCombatant("b");
+      const s = useStore.getState();
+      expect(s.currentTurnIndex).toBe(0);
+      expect(s.initiativeOrder[0].combatant_id).toBe("a"); // in bounds
     });
   });
 
@@ -588,6 +666,7 @@ describe("Spell slot consumption", () => {
 });
 
 describe("Concentration", () => {
+  afterEach(() => vi.restoreAllMocks());
   const setUpCaster = () => {
     const spell = findPresetAction("act_spiritual_weapon")!;
     const cure = findPresetAction("act_cure_wounds")!;
@@ -619,14 +698,15 @@ describe("Concentration", () => {
   });
 
   it("a failed CON save on damage breaks concentration", async () => {
+    // CON save rolls locally now — force a natural 1 (total 1 < DC 10).
+    stubNextU32(0)
     const { backend } = await import("../backend");
-    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20 + 0", total: 2, detail: "[1d20] = 2" });
     const { caster, target, spell } = setUpCaster();
     // Concentrate first.
     await useStore.getState().runAttack(caster, target, spell.id);
     vi.mocked(backend.combatAttack).mockClear();
 
-    // Damage the concentrating caster — DC is max(10, 5/2) = 10; rolled 2.
+    // Damage the concentrating caster â€” DC is max(10, 5/2) = 10; rolled 2.
     await useStore.getState().runAttack(target, caster, "act_cure_wounds");
 
     const state = useStore.getState();
@@ -635,8 +715,9 @@ describe("Concentration", () => {
   });
 
   it("a successful CON save holds concentration", async () => {
+    // CON save rolls locally now — force a natural 20 (holds vs any DC).
+    stubNextU32(19)
     const { backend } = await import("../backend");
-    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20 + 5", total: 25, detail: "[1d20+15] = 25" });
     const { caster, target, spell } = setUpCaster();
     await useStore.getState().runAttack(caster, target, spell.id);
     vi.mocked(backend.combatAttack).mockClear();
@@ -659,7 +740,7 @@ describe("Concentration", () => {
 
   it("being defeated ends concentration outright", async () => {
     const { backend } = await import("../backend");
-    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 25, detail: "save ok" });
+    // (defeat path bypasses the save; this roll mock is harmless)
     const { caster, target, spell } = setUpCaster();
     await useStore.getState().runAttack(caster, target, spell.id);
 
@@ -765,6 +846,14 @@ describe("Rests, growth & undo", () => {
 });
 
 describe("Death saves", () => {
+  // rollDeathSave now rolls locally (browser players have no backend), so
+  // determinism comes from intercepting crypto.getRandomValues: the roll
+  // consumes one u32 and maps it to face = (u32 % 20) + 1.
+  function stubD20(face: number) {
+    return stubNextU32(face - 1);
+  }
+  afterEach(() => vi.restoreAllMocks());
+
   const dying = () => {
     const c = newCharacter("Falling");
     c.resource_pools.hp!.current = 0;
@@ -777,16 +866,14 @@ describe("Death saves", () => {
   };
 
   it("increments successes on a roll of 10+", async () => {
-    const { backend } = await import("../backend");
-    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 15, detail: "" });
+    stubD20(15);
     const c = dying();
     await useStore.getState().rollDeathSave(c.id);
     expect(useStore.getState().deathSaves[c.id]).toEqual({ successes: 1, failures: 0 });
   });
 
   it("third success stabilizes the character", async () => {
-    const { backend } = await import("../backend");
-    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 15, detail: "" });
+    stubD20(15);
     const c = dying();
     useStore.setState({ deathSaves: { [c.id]: { successes: 2, failures: 0 } } });
 
@@ -798,8 +885,7 @@ describe("Death saves", () => {
   });
 
   it("third failure marks the character dead", async () => {
-    const { backend } = await import("../backend");
-    vi.mocked(backend.rollDice).mockResolvedValue({ expression: "1d20", total: 4, detail: "" });
+    stubD20(4);
     const c = dying();
     useStore.setState({ deathSaves: { [c.id]: { successes: 0, failures: 2 } } });
 
@@ -830,6 +916,57 @@ describe("undoLastHpChange", () => {
   it("is a no-op when there is nothing to undo", () => {
     useStore.setState({ lastHpChange: null, combatantStates: {} });
     expect(() => useStore.getState().undoLastHpChange()).not.toThrow();
+  });
+
+  it("revives and clears death saves when undoing a killing blow", () => {
+    const c = newCharacter("Victim");
+    useStore.setState({
+      combatantStates: {
+        [c.id]: { id: c.id, name: "Victim", hit_points: -3, status: "DEFEATED" },
+      },
+      deathSaves: { [c.id]: { successes: 1, failures: 2 } },
+      lastHpChange: { entityId: c.id, previousHp: 9, newHp: -3 },
+    });
+
+    useStore.getState().undoLastHpChange();
+
+    const st = useStore.getState();
+    expect(st.combatantStates[c.id]?.hit_points).toBe(9);
+    expect(st.combatantStates[c.id]?.status).toBe("ALIVE");
+    expect(st.deathSaves[c.id]).toBeUndefined();
+    expect(st.lastHpChange).toBeNull();
+  });
+});
+
+describe("rollDiceLocal", () => {
+  it("rolls within range for plain NdN", () => {
+    for (let i = 0; i < 200; i++) {
+      const r = rollDiceLocal("2d6");
+      expect(r.total).toBeGreaterThanOrEqual(2);
+      expect(r.total).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it("applies positive and negative modifiers", () => {
+    for (let i = 0; i < 100; i++) {
+      expect(rollDiceLocal("1d20 + 5").total).toBeGreaterThanOrEqual(6);
+      expect(rollDiceLocal("1d20 + 5").total).toBeLessThanOrEqual(25);
+      expect(rollDiceLocal("1d20 - 3").total).toBeGreaterThanOrEqual(-2);
+      expect(rollDiceLocal("1d20 - 3").total).toBeLessThanOrEqual(17);
+    }
+  });
+
+  it("rejects unsupported expressions loudly", () => {
+    expect(() => rollDiceLocal("4d6kh3")).toThrow();
+    expect(() => rollDiceLocal("hello")).toThrow();
+  });
+
+  it("distribution sanity: d20 covers the full range over many rolls", () => {
+    const seen = new Set<number>();
+    for (let i = 0; i < 3000; i++) seen.add(rollDiceLocal("1d20").total);
+    for (let face = 1; face <= 20; face++) {
+      expect(seen.has(face)).toBe(true);
+    }
   });
 });
 
