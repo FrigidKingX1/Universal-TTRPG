@@ -5,6 +5,7 @@
 //! source of truth for persistence, session effects, and combat parsing.
 
 pub mod combat;
+pub mod crew;
 pub mod error;
 pub mod events;
 pub mod session;

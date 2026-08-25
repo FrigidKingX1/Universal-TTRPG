@@ -1,6 +1,8 @@
 use auto_dm_engine::{
     apply_session_effects, combatant_from_value, remember, tick_idle_clocks, GameState, Repository,
 };
+use auto_dm_engine::crew::run_crew_turn;
+use auto_dm_core::agents::CrewOrchestrator;
 use auto_dm_core::dice::DiceEngine;
 use auto_dm_core::engine::{
     execute_attack, roll_initiative, Combatant, EngineOutcome, PrerequisiteCheck,
@@ -807,7 +809,23 @@ pub async fn dm_resolve(
             .cloned()
             .ok_or_else(|| "DM backend not initialized".to_string())?
     };
-    let mut response = pipeline.resolve_action(&request).await.map_err(err)?;
+    // Try the 5-agent crew first (offline-first, same Ollama binary); fall
+    // back to the single-agent pipeline if the crew fails for any reason.
+    let mut response = {
+        let crew_orch = CrewOrchestrator::new(pipeline.backend().as_ref() as &dyn auto_dm_core::llm::LlmBackend);
+        match run_crew_turn(&crew_orch, &state, &request).await {
+            Ok(out) => {
+                if !out.lore_used.is_empty() {
+                    log::debug!("crew lore citations: {:?}", out.lore_used);
+                }
+                out.response
+            }
+            Err(e) => {
+                log::warn!("crew turn failed ({e}), falling back to single-agent pipeline");
+                pipeline.resolve_action(&request).await.map_err(err)?
+            }
+        }
+    };
     let mut events = apply_session_effects(&state, &request, &mut response).await;
     // Idle clock ticking: if the log tail shows N consecutive idle
     // entries, advance all active doom clocks by 1.
