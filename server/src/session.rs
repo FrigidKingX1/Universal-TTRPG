@@ -762,6 +762,10 @@ impl SessionRegistry {
         &self,
         title: &str,
     ) -> Result<(String, String, String), String> {
+        let title = title.trim();
+        if title.is_empty() {
+            return Err("Session title cannot be empty".into());
+        }
         let session_id = uuid::Uuid::new_v4().to_string();
         let join_code = generate_unique_join_code(&self.codes).await;
         let host_id = uuid::Uuid::new_v4().to_string();
@@ -860,6 +864,14 @@ impl SessionRegistry {
         join_code: &str,
         player_name: &str,
     ) -> Result<(String, String, String), String> {
+        // Roster hygiene: no blank or oversized display names.
+        let player_name = player_name.trim();
+        if player_name.is_empty() {
+            return Err("Player name cannot be empty".into());
+        }
+        if player_name.len() > 32 {
+            return Err("Player name too long (max 32 characters)".into());
+        }
         let session_id = {
             let codes = self.codes.read().await;
             codes.get(join_code).cloned().ok_or("Invalid join code")?
@@ -1052,6 +1064,47 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
 #[cfg(test)]
 mod turn_state_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn join_rejects_blank_and_oversized_names() {
+        let dir = std::env::temp_dir()
+            .join(format!("auto-dm-join-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let registry =
+            SessionRegistry::new(dir.clone(), "http://localhost:11434".into(), "m".into())
+                .await
+                .unwrap();
+        let (_sid, code, _host_token) = registry.create_session("QA Table").await.unwrap();
+
+        assert!(registry.join_session(&code, "   ").await.is_err());
+        assert!(registry.join_session(&code, "").await.is_err());
+        assert!(registry.join_session(&code, &"x".repeat(33)).await.is_err());
+
+        // Trimmed valid name lands in the roster.
+        let (.., player_id) = registry.join_session(&code, "  Gandalf  ").await.unwrap();
+        let sessions = registry.sessions.read().await;
+        let session = sessions.values().next().unwrap();
+        let players = session.players.read().await;
+        assert!(
+            players.iter().any(|p| p.id == player_id && p.name == "Gandalf"),
+            "trimmed name not stored"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn create_session_rejects_empty_title() {
+        let dir = std::env::temp_dir()
+            .join(format!("auto-dm-title-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let registry =
+            SessionRegistry::new(dir.clone(), "http://localhost:11434".into(), "m".into())
+                .await
+                .unwrap();
+        assert!(registry.create_session("   ").await.is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
 
     #[tokio::test]
     async fn payload_mirrors_gate_status_through_combat_lifecycle() {

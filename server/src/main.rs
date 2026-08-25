@@ -634,6 +634,21 @@ async fn equip_item(
     let profile = state.registry.equip_item(&session, &player_id, &req.item_id, req.equipped).await
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
 
+    // Mid-combat item changes (e.g. a shield) must reach the server-
+    // authoritative combatant list, or the next resync reverts them.
+    {
+        let _lock = session.session_lock.lock().await;
+        if let Ok(value) = serde_json::to_value(&profile) {
+            let mut combatants = session.combatants.write().await;
+            for c in combatants.iter_mut() {
+                if c.get("id").and_then(|v| v.as_str()) == Some(profile.id.as_str()) {
+                    *c = value;
+                    break;
+                }
+            }
+        }
+    }
+
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
 
@@ -659,6 +674,21 @@ async fn use_item(
     }
     let profile = state.registry.use_item(&session, &player_id, &req.item_id).await
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    // A potion drunk mid-combat changes HP on the profile; without this
+    // patch the next resync's stale combatant snapshot reverts it.
+    {
+        let _lock = session.session_lock.lock().await;
+        if let Ok(value) = serde_json::to_value(&profile) {
+            let mut combatants = session.combatants.write().await;
+            for c in combatants.iter_mut() {
+                if c.get("id").and_then(|v| v.as_str()) == Some(profile.id.as_str()) {
+                    *c = value;
+                    break;
+                }
+            }
+        }
+    }
 
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
@@ -1615,6 +1645,10 @@ async fn handle_socket(
 }
 
 async fn mark_disconnected(state: &AppState, session: &session::Session, player_id: &str) {
+    // Serialize with resolve/skip: the gate mutation + TurnState broadcast
+    // must not interleave with an in-flight resolve's own advance+broadcast,
+    // or peers can end on a stale turn snapshot.
+    let _lock = session.session_lock.lock().await;
     // Remove from combat queue if present; advance turn if needed.
     let (mode, next_turn) = session.turn_gate.remove_player(player_id).await;
     state.registry.persist_turn_state(session).await;

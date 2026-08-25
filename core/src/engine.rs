@@ -293,13 +293,17 @@ fn attacker_advantage(attacker: &Combatant, target: &Combatant) -> AdvState {
     let has = |list: &[&str], conds: &[String]| -> bool {
         list.iter().any(|c| conds.iter().any(|x| x.eq_ignore_ascii_case(c)))
     };
-    if has(DISADV_ON_ATTACK, &attacker.conditions) || has(ADV_AGAINST, &target.conditions) {
-        return AdvState::Disadvantage;
+    // 5e RAW: when multiple effects impose both advantage and disadvantage
+    // on the same roll, they cancel to a straight roll regardless of count.
+    let grants_advantage =
+        has(ADV_ON_ATTACK, &attacker.conditions) || has(ADV_AGAINST, &target.conditions);
+    let imposes_disadvantage = has(DISADV_ON_ATTACK, &attacker.conditions);
+    match (grants_advantage, imposes_disadvantage) {
+        (true, true) => AdvState::Normal,
+        (true, false) => AdvState::Advantage,
+        (false, true) => AdvState::Disadvantage,
+        (false, false) => AdvState::Normal,
     }
-    if has(ADV_ON_ATTACK, &attacker.conditions) {
-        return AdvState::Advantage;
-    }
-    AdvState::Normal
 }
 
 /// Rewrite a plain `1d20 …` formula into `2d20kh1/kl1 …` for advantage.
@@ -838,6 +842,46 @@ mod tests {
         assert_eq!(outcome.attack_result, "MISS");
         assert_eq!(outcome.damage_dealt, 0);
         assert_eq!(outcome.target_hp_remaining, 7);
+    }
+
+    #[test]
+    fn advantage_and_disadvantage_cancel_to_a_straight_roll() {
+        // Invisible attacker (advantage) vs prone target (grants advantage
+        // to attacker) but also Poisoned (disadvantage) — RAW: straight roll.
+        // Deterministic probe: with AC 20 and +3 to hit, a straight d20 can
+        // still miss on low rolls; kh1 could not. Seed chosen so the first
+        // of two kept-higher dice would have hit while a straight roll misses,
+        // proving no kh1 rewrite happened.
+        let mut dice = DiceEngine::with_seed(7);
+        let mut attacker = Combatant::from(&profile_with_str("Hero", 16, 14, 20));
+        attacker.conditions = vec!["Invisible".into(), "Poisoned".into()];
+        let mut target = Combatant::from(&goblin());
+        target.armor_class = 18;
+        target.conditions = vec!["Prone".into()];
+        let action = longsword();
+        for _ in 0..25 {
+            let outcome =
+                execute_attack(&mut dice, &attacker, &mut target, &action, None).unwrap();
+            let detail = outcome.attack_detail.clone().unwrap_or_default();
+            assert!(
+                !detail.contains("2d20"),
+                "expected straight 1d20, got {detail}"
+            );
+        }
+    }
+    #[test]
+    fn target_prone_grants_advantage_rewrite() {
+        // Sanity anchor for the cancellation test: without the attacker's
+        // disadvantage source, the prone target DOES yield the kh1 rewrite.
+        let mut dice = DiceEngine::with_seed(7);
+        let attacker = Combatant::from(&profile_with_str("Hero", 16, 14, 20));
+        let mut target = Combatant::from(&goblin());
+        target.armor_class = 18;
+        target.conditions = vec!["Prone".into()];
+        let action = longsword();
+        let outcome = execute_attack(&mut dice, &attacker, &mut target, &action, None).unwrap();
+        let detail = outcome.attack_detail.unwrap_or_default();
+        assert!(detail.contains("2d20kh"), "{detail}");
     }
 
     fn cure_wounds() -> ActionDefinition {
