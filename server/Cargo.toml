@@ -3,6 +3,14 @@ name = "auto-dm-server"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "auto_dm_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "auto-dm-server"
+path = "src/main.rs"
+
 [dependencies]
 auto-dm-core = { path = "../core" }
 auto-dm-engine = { path = "../engine" }

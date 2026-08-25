@@ -14,6 +14,7 @@
 
 use auto_dm_core::models::{ActionDefinition, EncounterStatBlock};
 use auto_dm_engine::{DbError, Repository};
+use serde_json::Value;
 
 pub const PRESET_ACTIONS_JSON: &str = include_str!("../assets/preset_actions.json");
 pub const PRESET_MONSTERS_JSON: &str = include_str!("../assets/preset_monsters.json");
@@ -27,6 +28,26 @@ pub fn preset_actions() -> Vec<ActionDefinition> {
 /// `preset_<key>` id assigned at export time.
 pub fn preset_stat_blocks() -> Vec<EncounterStatBlock> {
     serde_json::from_str(PRESET_MONSTERS_JSON).expect("embedded preset monsters are valid JSON")
+}
+
+/// Find a preset action by ID.
+pub fn find_preset_action(id: &str) -> Option<ActionDefinition> {
+    preset_actions().into_iter().find(|a| a.id == id)
+}
+
+/// Find a preset monster by ID.
+pub fn find_preset_monster(id: &str) -> Option<EncounterStatBlock> {
+    preset_stat_blocks().into_iter().find(|m| m.id == id)
+}
+
+/// Find a preset class by ID — not available in server (frontend only).
+pub fn find_preset_class(_id: &str) -> Option<Value> {
+    None
+}
+
+/// All preset actions as a constant slice reference (for listing).
+pub fn all_preset_actions() -> Vec<ActionDefinition> {
+    preset_actions()
 }
 
 /// Idempotently seed any missing preset content into a session repository.

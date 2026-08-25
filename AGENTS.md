@@ -6,7 +6,23 @@ Commands and pipeline facts for coding agents working in this repo.
 
 Tauri desktop + Axum multiplayer server for an automated tabletop RPG
 game master. Deterministic Rust engine (`core`, `engine`), React/TS
-frontend, content library in `src/presets/`.
+frontend, content library in `src/presets/`. `mcp-server` crate exposes
+deterministic core tools over stdio (rmcp 3.x) so external MCP clients
+can drive dice/oracle/intent/presets/recall.
+
+### MCP server notes (rmcp 3.1.x)
+
+- Feature is `transport-io` (NOT `transport-stdio`); error type is
+  `ErrorData`; `call_tool` returns `CallToolResponse` (use `.into()` from
+  `CallToolResult`); tool schemas are `Arc<JsonObject>` — wrap json! via
+  the `schema()` helper; `#[non_exhaustive]` structs must be built via
+  `Default` + field mutation, not struct literals.
+- Smoke test (PowerShell): pipe an NDJSON initialize request into
+  `target\debug\mcp-server.exe`; per-request calls need `_meta` carrying
+  `io.modelcontextprotocol/protocolVersion` + clientCapabilities.
+- V1 tools are pure/deterministic (11). Stateful session tools need the
+  async engine session fns — their signatures differ from the sync ones
+  (`remember(&GameState, ...)`, `count_idle_trail(&[LogEntry])`).
 
 ## Commands
 
