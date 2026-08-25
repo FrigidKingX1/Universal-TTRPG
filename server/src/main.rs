@@ -249,34 +249,37 @@ async fn resolve(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
 
-    // Per-session lock â€” check turn gate INSIDE the lock for atomicity.
-    // In exploration: anyone can act.  In combat: only the current turn-holder.
-    let _lock = session.session_lock.lock().await;
-
-    match session.turn_gate.can_act(&player_id).await {
-        TurnCheck::Allowed => {}
-        TurnCheck::Waiting { position } => {
-            return Err((
-                StatusCode::CONFLICT,
-                format!("Not your turn â€” you are #{position} in the queue"),
-            ));
-        }
-        TurnCheck::NotInQueue => {
-            return Err((
-                StatusCode::CONFLICT,
-                "Combat is active but you are not in the turn queue".into(),
-            ));
-        }
-    }
-
+    // ── Phase A: gate check + context snapshot under the lock, then
+    // RELEASE it for the LLM call.  Holding the per-session lock across a
+    // generate (up to 180 s) serialized every player's actions behind one
+    // request; in exploration mode the table froze on whoever typed last.
     {
-        let mem = session.game.memory.lock().map_err(|e| {
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-        })?;
-        if !mem.is_empty() {
-            request.memory_context = Some(mem.to_context(20));
+        let _lock = session.session_lock.lock().await;
+        match session.turn_gate.can_act(&player_id).await {
+            TurnCheck::Allowed => {}
+            TurnCheck::Waiting { position } => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    format!("Not your turn — you are #{position} in the queue"),
+                ));
+            }
+            TurnCheck::NotInQueue => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    "Combat is active but you are not in the turn queue".into(),
+                ));
+            }
         }
-    }
+
+        {
+            let mem = session.game.memory.lock().map_err(|e| {
+                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            })?;
+            if !mem.is_empty() {
+                request.memory_context = Some(mem.to_context(20));
+            }
+        }
+    } // lock released — LLM runs unlocked
 
     let pipeline = {
         let dm = session.game.dm.lock().await;
@@ -290,9 +293,24 @@ async fn resolve(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    // ── Phase B: re-validate and apply atomically.  The gate verdict is
+    // re-checked because combat may have started/ended (or the holder may
+    // have skipped) while we were generating.  Apply + broadcast + advance
+    // stay under one lock so event order matches state order.
+    let _lock = session.session_lock.lock().await;
+    match session.turn_gate.can_act(&player_id).await {
+        TurnCheck::Allowed => {}
+        _ => {
+            return Err((
+                StatusCode::CONFLICT,
+                "Turn changed while resolving — action not applied".into(),
+            ));
+        }
+    }
+
     let events = apply_session_effects(&session.game, &request, &mut response).await;
 
-    // Broadcast WHILE session lock held â€” order guarantee.
+    // Broadcast WHILE session lock held — order guarantee.
     for event in &events {
         let _ = session.event_tx.send(WsMessage::Event { event: event.clone() });
     }
@@ -1167,6 +1185,10 @@ async fn server_combat_attack(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Serialize with other combat mutations: this handler does
+    // read-compute-patch on the shared combatant list; unlocked, two
+    // concurrent hits on one target can interleave and lose damage.
+    let _lock = session.session_lock.lock().await;
 
     let mut dice = auto_dm_core::dice::DiceEngine::new();
     let mut actor = auto_dm_engine::combatant_from_value(&req.attacker)
@@ -1298,10 +1320,15 @@ async fn server_combat_heal(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Same lost-update rationale as the attack handler.
+    let _lock = session.session_lock.lock().await;
 
+    // Clamp early: a hostile/laggy client must not be able to inject
+    // negative "healing" (i.e., free damage) through this endpoint.
+    let amount = req.amount.max(0);
     let mut victim = auto_dm_engine::combatant_from_value(&req.target)
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
-    let healed = auto_dm_core::engine::apply_healing(&mut victim, req.amount);
+    let healed = auto_dm_core::engine::apply_healing(&mut victim, amount);
 
     // Update server-authoritative combatant state.
     {
@@ -1349,6 +1376,9 @@ async fn server_combat_condition(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Read-modify-write on the shared condition map — keep it atomic
+    // against attacks/heals running under the same lock.
+    let _lock = session.session_lock.lock().await;
 
     {
         let mut conditions = session.combatant_conditions.write().await;
