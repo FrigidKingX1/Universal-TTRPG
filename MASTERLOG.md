@@ -4,7 +4,7 @@
 
 Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant built with Tauri v2 + React/TypeScript. It combines a custom Rust core engine for dice, combat, oracles, and intent parsing with a local LLM backend (Ollama) for narrative generation.
 
-**Status:** Active development — fully functional core loop. Tests: 85 core Rust + 6 Tauri SQLite + 31 frontend store = 122 passing.
+**Status:** Active development — fully functional core loop, hosted multiplayer, multi-agent DM crew, and an MCP server surface. Tests: 172 Rust (130 core + 25 engine + 7 mcp + 5+5 server lib/bin) + 105 frontend ≈ 277 passing.
 
 > **Note:** This log mixes historical design decisions with state snapshots.
 > For the authoritative current state, prefer `git log` and `README.md`.
@@ -16,24 +16,40 @@ Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   React Frontend                     │
-│  Zustand store · 5-tab UI · 8 components             │
-│  Characters · Bestiary · Combat · Scenes · Tools     │
+│  Zustand store · 6-tab UI · 10+ components           │
+│  Characters · Bestiary · Combat · Scenes · Map ·     │
+│  Tools · src/presets content library                 │
 ├─────────────────────────────────────────────────────┤
 │              Tauri v2 Bridge (IPC)                    │
-│  commands.rs — 40+ invoke commands                    │
-│  db.rs — SQLite persistence (AppState)               │
-│  lib.rs — Ollama lifecycle, app init                  │
+│  commands.rs — 40+ invoke commands                   │
+│  crew-first DM resolve with pipeline fallback        │
+│  lib.rs — Ollama lifecycle, panic hook, app init     │
 ├─────────────────────────────────────────────────────┤
 │               Core Engine (Rust)                      │
 │  dice.rs    — Expression parser, d20/d6/d100/etc     │
-│  engine.rs  — Combat engine, HP, AC, prerequisites   │
+│  engine.rs  — Combat, HP, AC, slots, concentration   │
 │  oracle.rs  — Mythic GM Emulator (Fate Chart + IE)   │
-│  intent.rs  — GameIntent parser (7 intent types)     │
+│  intent.rs  — GameIntent parser + campaign repair    │
 │  llm.rs     — DmPipeline, LlmBackend trait           │
-│  ollama.rs  — OllamaLlmBackend (HTTP + JSON mode)    │
+│  ollama.rs  — Ollama backend, model auto-fallback    │
 │  memory.rs  — CampaignMemory ring buffer              │
-│  models.rs  — CharacterProfile, EncounterStatBlock    │
-└─────────────────────────────────────────────────────┘
+│  memory_vec.rs — hybrid recall (TF-IDF + embeddings) │
+│  vector_store.rs — sqlite-vec-shaped store            │
+│  agents.rs  — five-role CrewOrchestrator              │
+│  models.rs  — Profiles, StatBlocks, NPCs, zones       │
+├─────────────────────────────────────────────────────┤
+│         Engine Crate (auto-dm-engine)                 │
+│  state.rs   — SqliteRepository, GameState, migrations│
+│  session.rs — apply_session_effects, resolve, rewind │
+│  combat.rs/events.rs/crew.rs/error.rs                │
+├──────────────────────┬──────────────────────────────┤
+│  Axum Multiplayer    │  MCP Server (stdio)           │
+│  server/ — sessions, │  mcp-server/ — rmcp 3.x       │
+│  WS events, resync,  │  11 deterministic tools:      │
+│  map sync, preset    │  dice · oracle · intent ·     │
+│  seeding (112 acts,  │  presets (112 actions,        │
+│  376 monsters)       │  376 monsters) · lore_recall  │
+└──────────────────────┴──────────────────────────────┘
 ```
 
 ---
@@ -59,34 +75,51 @@ Auto-DM is a desktop TTRPG (tabletop role-playing game) dungeon master assistant
 auto-dm/
 ├── core/src/
 │   ├── dice.rs         — Dice expression parser & evaluator
-│   ├── engine.rs       — Combat engine (attack, damage, initiative)
-│   ├── intent.rs       — GameIntent enum + LLM JSON parser
+│   ├── engine.rs       — Combat engine (attack, damage, slots, concentration)
+│   ├── intent.rs       — GameIntent enum + LLM JSON parser + campaign repair
 │   ├── llm.rs          — DmPipeline + LlmBackend trait
 │   ├── memory.rs       — CampaignMemory ring buffer
-│   ├── models.rs       — CharacterProfile, EncounterStatBlock
-│   ├── ollama.rs       — OllamaLlmBackend (HTTP client)
+│   ├── memory_vec.rs   — Hybrid recall: TF-IDF + optional nomic-embed-text cosine
+│   ├── vector_store.rs — sqlite-vec-shaped VectorStore wrapper
+│   ├── agents.rs       — CrewOrchestrator (5 roles, embedder-aware)
+│   ├── prompts/*.md    — narrator/rules_arbiter/lorekeeper/npc_actor/combat_director
+│   ├── models.rs       — CharacterProfile, EncounterStatBlock, NPCs, zones, clocks
+│   ├── ollama.rs       — OllamaLlmBackend + resolve_effective_model
 │   ├── oracle.rs       — Mythic Oracle (Fate Chart + Meaning Tables)
 │   └── lib.rs          — crate re-exports
+├── engine/src/
+│   ├── state.rs        — SqliteRepository, GameState, open_pool/migrations
+│   ├── session.rs      — apply_session_effects, entity resolution, rewind, idle clocks
+│   ├── combat.rs       — Combatant conversion helpers
+│   ├── events.rs       — GameEvent schema (+Healed, MapUpdated)
+│   ├── crew.rs         — run_crew_turn bridge into engine state
+│   └── error.rs        — DbError/EngineError
+├── server/src/          — Axum hosted multiplayer (lib+bin)
+│   ├── main.rs         — HTTP/WS routes incl. POST /sessions/{id}/map
+│   ├── session.rs      — Session registry, broadcast, resync
+│   ├── presets.rs      — Embedded 112 actions + 376 monsters, idempotent seeding
+│   └── lib.rs          — preset re-exports for MCP
+├── mcp-server/src/      — stdio MCP server (rmcp 3.1.4)
+│   ├── lib.rs          — TtrpgMcpServer handler + run_stdio
+│   ├── tools.rs        — 11-tool catalog + dispatch (pure/deterministic)
+│   └── bin/mcp-server.rs
 ├── src-tauri/src/
-│   ├── commands.rs     — 15+ Tauri invoke commands
+│   ├── commands.rs     — 40+ Tauri invoke commands, crew-first DM path
 │   ├── db.rs           — SQLite repository + AppState
-│   ├── lib.rs          — App builder, Ollama lifecycle
-│   └── main.rs         — entry point
-├── src/
-│   ├── App.tsx          — Tab layout, toast, badges
-│   ├── App.css          — All styles (dark theme)
-│   ├── store.ts         — Zustand store (40+ state fields)
-│   ├── backend.ts       — Tauri invoke wrappers
-│   ├── types.ts         — TypeScript type mirrors
-│   └── components/
-│       ├── Characters.tsx — Character list, editors, quick rolls
-│       ├── Bestiary.tsx   — Monster list, stat block editor, clone
-│       ├── Combat.tsx     — Turn tracker, HP, conditions, rests
-│       ├── Scenes.tsx     — Scene CRUD, summary, CF editing
-│       └── Tools.tsx      — Dice roller, Oracle, DM panel, Logs
-├── Cargo.toml           — Workspace root
-├── core/Cargo.toml      — Core engine crate
-└── package.json         — Frontend dependencies
+│   ├── lib.rs          — App builder, Ollama lifecycle, panic hook
+│   └── main.rs
+├── src/                 — React frontend
+│   ├── App.tsx / App.css / store.ts (~2200 lines) / backend.ts / types.ts
+│   ├── commands.ts     — slash-command router
+│   ├── assets.ts/sound.ts — portrait resolver, SFX playback
+│   ├── presets/        — bestiary(376) actions(112) classes(36) equipment(216)
+│   ├── multiplayer/    — client/store/types (WS sync, mapDragGuard)
+│   ├── components/     — Characters Bestiary Combat Scenes MapPanel PlayerPanel …
+│   └── __tests__/      — 105 Vitest tests across 8 suites
+├── scripts/            — export_presets, gen_portraits/sfx/dice_sound, map_tokens
+├── init-models.sh/.ps1 — pull llama3.2 + nomic-embed-text
+├── MASTERLOG.md · AGENTS.md · README.md · ASSETS.md
+└── Cargo.toml          — workspace: core, engine, server, src-tauri, mcp-server
 ```
 
 ---
@@ -115,6 +148,82 @@ auto-dm/
 | `c357f25` | Flesh out Round 10: combat persistence, loot, NPC notes, keyboard shortcuts |
 | `dd232a6` | Flesh out Round 11: SQLite persistence for loot/notes/combat, batch HP, loot tables, combat summary |
 | `1d1ee88`+ | Layer 1-2: Plot Threads, NPC Characters, Oracle enrichment, Scene Tests, CF auto-adjust, Lines & Veils, Damage Types (see `git log`) |
+| *(rounds…)* | Content presets (376 monsters / 36 classes / 112 actions / 216 gear), spell slots + concentration, heal path, bestiary search, hosted Axum multiplayer + map sync, campaign-JSON repair, Ollama model fallback, portraits/SFX/token pipeline, ESLint+CI, NSIS installer v0.1.0 — see `git log` |
+| `300f34f` | feat: Phase 1 battle map — DOM board, spawnable tokens, initiative linkage |
+| `2164cca` | feat(map): Phase 2 — live multiplayer sync, pick-image + grid size, persisted board |
+| `067f784` | feat(lore): hybrid recall — TF-IDF baseline plus optional nomic-embed-text cosine |
+| `c47a0c6` | feat(agents): five-role DM crew (narrator/rules/lore/npc/combat) wired through engine and tauri |
+| `e65fa95` | feat(mcp): stdio MCP server exposing 11 deterministic engine tools (rmcp 3.x) |
+
+---
+
+## Recent Rounds — Multiplayer, Content, Crew, MCP
+
+### Hosted Multiplayer (`server/`)
+- Axum HTTP + WebSocket server; session registry with broadcast channels
+- `GameEvent` protocol incl. `Healed`, `MapUpdated`; full-state resync hydration (incl. map tokens/background)
+- `POST /sessions/{id}/map` for battle-map pushes; client `mapDragGuard` suppresses echo of own drags
+- Preset seeding embedded in the binary: 112 actions + 376 monsters, idempotent, name-aware (host imports win)
+- Server split into lib + bin so MCP reuses the preset library
+
+### Content Library (`src/presets/`)
+- **376 monsters** via compact `qm()` builder with CR-tiered auto-loot and per-type nature traits
+- **36 classes** (12 core + 24 expanded), each 5 features + pool unlocks; dual-classing via `mergeSecondaryClass()` + `growPoolsOnLevelUp`
+- **~112 actions** with `slot_cost` tiers (l1/l2/l3), concentration set, monster attacks, class actions
+- **~216 equipment** items across 6 categories; character-sheet datalist + weight autofill
+- Export pipeline TS→JSON drift-guarded by Vitest + Rust tests both sides
+
+### Rules Depth
+- **Spell slots**: tiered pools, slot-gated attacks in store + Combat UI, rest recharge, level-up growth
+- **Concentration**: single-instance rule, CON saves on damage, defeat/voluntary drop, combat badge
+- **Healing**: `SuccessOutcome.heal` → engine `apply_healing` → `GameEvent::Healed`
+
+### Battle Map
+- Phase 1: DOM board, spawn/drag/remove tokens, initiative gold ring, grid size slider, background picker
+- Phase 2: live multiplayer sync via MapUpdated events + resync, Tauri native image dialog
+
+### Asset Pipeline
+- `gen_portraits.mjs` — pure-Node PNG writer: 376 heraldic sigils + 36 class crests
+- `gen_sfx.mjs`/`gen_dice_sound.mjs` — RIFF/PCM16 WAVs (dice, hit, miss, heal chime)
+- `map_tokens.mjs` — batch art-pack matcher (slugify/noise-strip/precedence), unit-tested
+
+### LLM Hardening
+- Campaign JSON repair: fence stripping, truncation salvaging mid-string/mid-array, payload unwrap, key aliases
+- Ollama 404s surface response body; `resolve_effective_model` auto-falls back to first installed model
+- num_predict budget doubled to 8192 for campaign generation
+
+### Multi-Agent Crew (`core/src/agents.rs` + `engine/src/crew.rs`)
+- Five roles with compile-time prompts in `core/prompts/*.md`: Narrator, Rules Arbiter, Lorekeeper, NPC Actor, Combat Director
+- Sequential handoff via `CrewState` (intent theory-of-mind field survives to Narrator)
+- Lorekeeper runs deterministic recall (0 LLM calls); Combat Director only speaks when combat active
+- Wired into src-tauri resolve path crew-first with single-pipeline fallback
+
+### Hybrid Recall (`core/src/memory_vec.rs`)
+- Sync TF-IDF `hybrid_recall(query, docs, k)` — signature stable, offline default
+- `hybrid_recall_async` blends `0.7·cosine(nomic-embed-text) + 0.3·TF-IDF` via `Embedder` trait
+  - `OllamaEmbedder` (`/api/embeddings`, configurable URL/model) + deterministic `StubEmbedder` for CI
+  - Auto-fallback to TF-IDF when Ollama is down or the model isn't pulled
+- `VectorStore` = sqlite-vec-shaped insert/search wrapper ready for extension swap-in
+- Lorekeeper flipped to async hybrid (`CrewOrchestrator::new` defaults Ollama, `with_embedder` for tests)
+
+### MCP Server (`mcp-server/`)
+- rmcp **3.1.4**, stdio transport, stateless `TtrpgMcpServer`
+- **11 tools**: roll_dice · oracle_fate_check · oracle_random_event · scene_test · parse_intent ·
+  repair_campaign_json · campaign_json_schema · list_preset_actions · get_preset_action ·
+  get_preset_monster · lore_recall
+- Live-tested: initialize handshake ✓, tools/list ✓, `4d6kh3+2 → kept [4,2,1], total 9` ✓
+- Binary: `target/debug/mcp-server.exe`
+- **rmcp 3.x gotchas** (also in AGENTS.md):
+  - feature is `transport-io` (not `-stdio`); error type is `ErrorData`
+  - `call_tool` must return `CallToolResponse` (`.into()` from `CallToolResult`)
+  - tool schemas are `Arc<JsonObject>` — wrap json! via the `schema()` helper
+  - `#[non_exhaustive]` structs: build via `Default` + mutation, not literals
+  - per-request calls need `_meta` carrying protocolVersion + clientCapabilities
+
+### Ops
+- `init-models.sh` / `init-models.ps1` pull `llama3.2` + `nomic-embed-text`
+- CI: frontend lint+vitest job, Rust `cargo test --workspace` job
+- Installer v0.1.0 published on GitHub Releases (updater plugin removed to fix startup panic)
 
 ---
 
@@ -452,11 +561,10 @@ npx vite build
 
 ---
 
-## Current State (as of latest commit)
+## Current State (as of latest commit `e65fa95`)
 
-- 122 tests passing (85 core Rust + 6 Tauri SQLite + 31 frontend store)
-- Clippy clean (zero warnings)
-- TS + Vite build clean
+- **172 Rust tests** (130 core incl. agents/memory_vec/vector_store · 25 engine incl. crew · 7 mcp · 5+5 server lib/bin) + **105 frontend** ≈ 277 passing
+- Clippy clean; `npm run lint` clean; TS + Vite build clean
 - All core gameplay loops functional:
   - Create scenes → populate characters/monsters → run combat → rest → complete scenes
   - Oracle fate checks and random events
@@ -485,3 +593,16 @@ npx vite build
 - **Launcher shortcut** — .bat + .vbs for one-click app launching
 - **Modern dark theme** — redesigned color palette with acrylic sidebar and top bar
   - **Doom Clocks** (tick-based countdown with tick/advance/reset/delete, SQLite-persisted)
+- **Content library** — 376 monsters · 36 classes · ~112 actions · ~216 equipment (clean-room)
+- **Spell slots + concentration** — tiered pools, slot-gated attacks, CON saves, single-instance rule
+- **Hosted multiplayer** — Axum sessions over WebSocket, resync, live battle-map sync
+- **Battle map** — DOM tokens, drag, grid/background picker, initiative ring, multiplayer push
+- **Multi-agent DM crew** — 5 specialist roles, deterministic Lorekeeper recall, crew-first resolve
+- **Hybrid lore recall** — TF-IDF baseline with optional `nomic-embed-text` cosine blend
+- **MCP server** — 11 deterministic tools over stdio; any MCP client can drive the engine
+
+### Next Up
+1. Stateful MCP tools — async bridge over GameState/SqliteRepository (~10 more tools: apply_session_effects, combat CRUD, NPC/thread persistence). Verified signatures: `remember(&GameState,…)` async, `count_idle_trail(&[LogEntry])`, `tick_idle_clocks(&GameState,&str)`.
+2. Claude Desktop / Cursor config snippet for the shipped MCP binary.
+3. `systems/test_config.json` parametrized combat harness per system pack.
+4. sqlite-vec swap-in behind `VectorStore`.
