@@ -70,6 +70,12 @@ both processes for you when `cloudflared` is on PATH.
 - Session join codes + per-player bearer tokens gate every HTTP route and
   the WebSocket handshake (`?token=` query param) — a public URL does not
   expose sessions by itself.
+- **WS tokens appear in the URL.** Browsers cannot send headers with a
+  WebSocket handshake, so the token rides in the query string. That means
+  it can show up in reverse-proxy access logs (including Cloudflare's).
+  For a home table this is an accepted tradeoff; if you need stricter
+  hygiene, put the tunnel behind Cloudflare Access so only your group
+  reaches the server at all.
 - Anyone with the join code can still create a player slot; treat the code
   like a table password. Re-create the session between groups if needed.
 - axum's `WebSocketUpgrade` performs no Origin validation; behind a tunnel

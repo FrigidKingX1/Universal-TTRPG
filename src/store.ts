@@ -299,7 +299,8 @@ let mapPushTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleMapPush() {
   if (!isInMultiplayerSession()) return;
   if (mapPushTimer) clearTimeout(mapPushTimer);
-  mapDragGuard.until = Date.now() + 600;
+  // NOTE: no mapDragGuard touch here — echo suppression is scoped to the
+  // actively dragged token id; our own push echoing back merges harmlessly.
   mapPushTimer = setTimeout(async () => {
     mapPushTimer = null;
     try {

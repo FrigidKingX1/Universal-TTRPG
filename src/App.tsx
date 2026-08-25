@@ -118,21 +118,32 @@ function App() {
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+    const t = e.target as HTMLElement | null;
+    if (
+      t instanceof HTMLInputElement ||
+      t instanceof HTMLTextAreaElement ||
+      t instanceof HTMLSelectElement ||
+      t?.isContentEditable
+    ) {
+      return;
+    }
 
     // While a modal is open, only Escape (handled by its focus trap) applies —
     // don't switch nav or stack more modals underneath.
     if (useStore.getState().settingsOpen || useStore.getState().shortcutsOpen) return;
 
+    const editingModifier = e.ctrlKey || e.metaKey || e.altKey;
+
     // Global shortcuts
     if (e.key === "Escape") { setError(null); }
     if (e.ctrlKey && e.key === "b") { setSidebarCollapsed(prev => !prev); e.preventDefault(); }
     if (e.ctrlKey && e.key === "m") { setAppMode(appMode === "setup" ? "tabletop" : "setup"); e.preventDefault(); }
-    if (e.key === "?") { setShortcutsOpen(true); e.preventDefault(); }
+    if (!editingModifier && e.key === "?") { setShortcutsOpen(true); e.preventDefault(); }
 
     if (appMode === "setup") {
       const navKeys: Record<string, NavItem> = { "1": "campaign", "2": "scenes", "3": "characters", "4": "bestiary", "5": "map", "6": "combat", "7": "tools" };
-      if (navKeys[e.key]) { setActiveNav(navKeys[e.key]); e.preventDefault(); }
+      // No modifier handling: Ctrl+1..9 must stay browser tab-switching.
+      if (!editingModifier && navKeys[e.key]) { setActiveNav(navKeys[e.key]); e.preventDefault(); }
     }
   }, [setError, appMode, setAppMode, setShortcutsOpen, setActiveNav]);
 
