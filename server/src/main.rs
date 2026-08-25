@@ -17,7 +17,7 @@ use std::time::Duration;
 
 mod presets;
 mod session;
-use session::{GameMode, SessionRegistry, TurnCheck, WsMessage};
+use session::{broadcast_turn_state, GameMode, SessionRegistry, TurnCheck, WsMessage};
 
 struct AppState {
     registry: Arc<SessionRegistry>,
@@ -281,6 +281,7 @@ async fn resolve(
     // Advance turn if in combat mode.
     let (mode, next_turn) = session.turn_gate.advance_turn().await;
     state.registry.persist_turn_state(&session).await;
+    broadcast_turn_state(&session).await;
     if mode == GameMode::Combat {
         tracing::info!(
             session = %session_id,
@@ -378,6 +379,7 @@ async fn start_combat(
     let _lock = session.session_lock.lock().await;
     session.turn_gate.start_combat(player_id.clone()).await;
     state.registry.persist_turn_state(&session).await;
+    broadcast_turn_state(&session).await;
     tracing::info!(session = %session_id, starter = %player_id, "Combat started");
     Ok(Json(json!({ "mode": "combat", "current_turn": player_id })))
 }
@@ -396,6 +398,7 @@ async fn end_combat(
     let _lock = session.session_lock.lock().await;
     session.turn_gate.end_combat().await;
     state.registry.persist_turn_state(&session).await;
+    broadcast_turn_state(&session).await;
     tracing::info!(session = %session_id, "Combat ended");
     Ok(Json(json!({ "mode": "exploration" })))
 }
@@ -414,6 +417,7 @@ async fn join_combat_queue(
     let _lock = session.session_lock.lock().await;
     session.turn_gate.join_queue(&player_id).await;
     state.registry.persist_turn_state(&session).await;
+    broadcast_turn_state(&session).await;
     let (mode, current, queue) = session.turn_gate.status().await;
     Ok(Json(json!({
         "mode": mode,
@@ -442,6 +446,7 @@ async fn skip_turn(
         TurnCheck::Allowed => {
             let (mode, next) = session.turn_gate.advance_turn().await;
             state.registry.persist_turn_state(&session).await;
+            broadcast_turn_state(&session).await;
             Ok(Json(json!({ "mode": mode, "skipped": player_id, "current_turn": next })))
         }
         other => Err((StatusCode::CONFLICT, format!("Cannot skip: {other:?}"))),
@@ -1485,6 +1490,15 @@ async fn handle_socket(
                             break;
                         }
                     }
+                    Ok(WsMessage::TurnState(payload)) => {
+                        let json = match serde_json::to_string(&WsMessage::TurnState(payload)) {
+                            Ok(j) => j,
+                            Err(_) => continue,
+                        };
+                        if socket.send(Message::Text(json.into())).await.is_err() {
+                            break;
+                        }
+                    }
                     Ok(WsMessage::Resync(_)) => {}
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged â€” resync");
@@ -1541,9 +1555,10 @@ async fn mark_disconnected(state: &AppState, session: &session::Session, player_
             session = %session.id,
             disconnected = %player_id,
             next_turn = ?next_turn,
-            "Player disconnected during combat â€” turn advanced"
+            "Player disconnected during combat — turn advanced"
         );
     }
+    broadcast_turn_state(session).await;
 
     // Mark disconnected in player list.
     let sessions = state.registry.sessions.read().await;

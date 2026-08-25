@@ -263,6 +263,47 @@ pub struct ResyncPayload {
 pub enum WsMessage {
     Event { event: auto_dm_engine::GameEvent },
     Resync(Box<ResyncPayload>),
+    /// Pushed after any turn-gate mutation so every peer's turn UI
+    /// updates without polling (C4 closeout).
+    TurnState(TurnStatePayload),
+}
+
+/// Materialized turn-gate state — mirrors `/combat/status`.  Wire shape
+/// uses `mode` as a plain string (the HTTP endpoints hand-roll JSON the
+/// same way), not the internally-tagged serde enum.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct TurnStatePayload {
+    pub mode: String,
+    pub current_turn: Option<String>,
+    pub queue: Vec<String>,
+}
+
+impl GameMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Exploration => "exploration",
+            Self::Combat => "combat",
+        }
+    }
+}
+
+impl TurnStatePayload {
+    /// Snapshot the gate's current state.
+    pub async fn from_gate(gate: &TurnGate) -> Self {
+        let (mode, current_turn, queue) = gate.status().await;
+        Self {
+            mode: mode.as_str().to_string(),
+            current_turn,
+            queue,
+        }
+    }
+}
+
+/// Read the gate and push a `TurnState` to every connected peer.
+/// Fire-and-forget: lagged receivers resync on their own.
+pub async fn broadcast_turn_state(session: &Session) {
+    let payload = TurnStatePayload::from_gate(&session.turn_gate).await;
+    let _ = session.event_tx.send(WsMessage::TurnState(payload));
 }
 
 // ── Session registry ─────────────────────────────────────────────────
@@ -994,4 +1035,62 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         map_background: session.map_background.read().await.clone(),
         recent_logs: logs.unwrap_or_default(),
     })
+}
+
+#[cfg(test)]
+mod turn_state_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn payload_mirrors_gate_status_through_combat_lifecycle() {
+        let gate = TurnGate::new();
+
+        // Exploration: no current turn, empty queue.
+        let p = TurnStatePayload::from_gate(&gate).await;
+        assert_eq!(p.mode, "exploration");
+        assert_eq!(p.current_turn, None);
+        assert!(p.queue.is_empty());
+
+        // Start combat: starter becomes current turn.
+        gate.start_combat("alice".into()).await;
+        let p = TurnStatePayload::from_gate(&gate).await;
+        assert_eq!(p.mode, "combat");
+        assert_eq!(p.current_turn.as_deref(), Some("alice"));
+
+        // Join queue: waiting players listed in FIFO order.
+        gate.join_queue("bob".into()).await;
+        gate.join_queue("carol".into()).await;
+        let p = TurnStatePayload::from_gate(&gate).await;
+        assert_eq!(p.queue, vec!["bob".to_string(), "carol".to_string()]);
+
+        // Advance: next in queue takes over, predecessor is not re-queued.
+        gate.advance_turn().await;
+        let p = TurnStatePayload::from_gate(&gate).await;
+        assert_eq!(p.current_turn.as_deref(), Some("bob"));
+        assert_eq!(p.queue, vec!["carol".to_string()]);
+
+        // End combat: back to exploration with nothing pending.
+        gate.end_combat().await;
+        let p = TurnStatePayload::from_gate(&gate).await;
+        assert_eq!(p.mode, "exploration");
+        assert_eq!(p.current_turn, None);
+        assert!(p.queue.is_empty());
+    }
+
+    #[test]
+    fn ws_message_serializes_with_client_contract_shape() {
+        // The frontend store dispatches on `msg.type === "turn_state"` and
+        // types `mode` as the plain string union "exploration" | "combat"
+        // (same shape every /combat/* HTTP response uses). Lock it here.
+        let msg = WsMessage::TurnState(TurnStatePayload {
+            mode: "combat".into(),
+            current_turn: Some("bob".into()),
+            queue: vec!["carol".into()],
+        });
+        let v: Value = serde_json::to_value(&msg).unwrap();
+        assert_eq!(v["type"], "turn_state");
+        assert_eq!(v["mode"], "combat");
+        assert_eq!(v["current_turn"], "bob");
+        assert_eq!(v["queue"], serde_json::json!(["carol"]));
+    }
 }
