@@ -553,6 +553,23 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
       (payload as any).map_background ?? "",
     );
   }
+
+  // Initiative order (reconnectors / late joiners keep the turn order).
+  // The pointer is re-derived from the turn-holder so the highlight lands
+  // on the right combatant instead of resetting to the top of the list.
+  if (payload.initiative?.length) {
+    const turnHolder = useMultiplayerStore.getState().currentTurn;
+    setState((s: any) => {
+      const order = payload.initiative!;
+      const idx = order.findIndex((e) => e.combatant_id === turnHolder);
+      return {
+        initiativeOrder: order,
+        ...(idx >= 0 ? { currentTurnIndex: idx } : {}),
+        // A fresh order with no round context starts at round 1.
+        ...(s.currentRound ? {} : { currentRound: 1 }),
+      };
+    });
+  }
 }
 
 function _dispatchEventToMainStore(event: GameEvent) {

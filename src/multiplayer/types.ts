@@ -97,6 +97,8 @@ export interface ResyncPayload {
   map_background: string;
   /** Turn-gate snapshot (may be absent from older servers). */
   turn?: { mode: GameMode; current_turn: string | null; queue: string[] } | null;
+  /** Rolled initiative order, so reconnectors keep the turn order. */
+  initiative?: Array<{ combatant_id: string; name: string; roll: number; modifier: number }>;
 }
 
 // ── REST response types ──────────────────────────────────────────────

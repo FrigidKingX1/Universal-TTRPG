@@ -1494,8 +1494,17 @@ async fn server_combat_initiative(
     let entries = auto_dm_core::engine::roll_initiative(&mut dice, &participants, &formula)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Persist initiative order so resync includes it.
-    // (Initiative is transient combat state — no need to broadcast resync here.)
+    // Persist + broadcast: every client needs the order (their Combat tab
+    // renders it), and reconnectors get it back via resync.
+    let entries_json: Vec<Value> =
+        serde_json::to_value(&entries).unwrap_or_default()
+        .as_array().cloned().unwrap_or_default();
+    {
+        let _lock = session.session_lock.lock().await;
+        *session.initiative.write().await = entries_json.clone();
+    }
+    let resync = session::build_resync(&session).await;
+    let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     Ok(Json(serde_json::to_value(&entries).unwrap_or_default()))
 }

@@ -308,22 +308,19 @@ fn attacker_advantage(attacker: &Combatant, target: &Combatant) -> AdvState {
 
 /// Rewrite a plain `1d20 …` formula into `2d20kh1/kl1 …` for advantage.
 fn apply_adv_to_formula(formula: &str, adv: AdvState) -> String {
+    // Slice the TRIMMED head: slicing the raw string after trim_start()
+    // would chop mid-token (" 1d20+5" → "2d20kh10+5").
+    let trimmed = formula.trim_start();
     match adv {
         AdvState::Normal => formula.to_string(),
-        AdvState::Advantage => {
-            if formula.trim_start().starts_with("1d20") {
-                format!("2d20kh1{}", &formula[4..])
-            } else {
-                formula.to_string()
-            }
-        }
-        AdvState::Disadvantage => {
-            if formula.trim_start().starts_with("1d20") {
-                format!("2d20kl1{}", &formula[4..])
-            } else {
-                formula.to_string()
-            }
-        }
+        AdvState::Advantage => match trimmed.strip_prefix("1d20") {
+            Some(rest) => format!("2d20kh1{rest}"),
+            None => formula.to_string(),
+        },
+        AdvState::Disadvantage => match trimmed.strip_prefix("1d20") {
+            Some(rest) => format!("2d20kl1{rest}"),
+            None => formula.to_string(),
+        },
     }
 }
 

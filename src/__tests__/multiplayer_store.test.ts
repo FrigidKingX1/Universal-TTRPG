@@ -14,6 +14,7 @@ import {
 type MainState = {
   mapTokens: Array<{ id: string; x: number; y: number }>;
   mapBackground: string;
+  [key: string]: any;
 };
 
 function makeMainStore() {
@@ -162,5 +163,39 @@ describe("scoped mapDragGuard", () => {
     expect(mp.gameMode).toBe("combat");
     expect(mp.currentTurn).toBe("alice");
     expect(mp.turnQueue).toEqual(["bob"]);
+  });
+
+  it("resync hydrates initiative order and aligns the turn pointer", () => {
+    const main = makeMainStore();
+    initMultiplayerBridge(main.get, main.set as any);
+
+    // Turn-holder is the second entry — pointer must land on them, not idx 0.
+    useMultiplayerStore.setState({ currentTurn: "bob" });
+    useMultiplayerStore.getState()._handleResync({
+      scene: null,
+      scene_summary: "",
+      doom_clocks: [],
+      npcs: [],
+      loot: [],
+      threads: [],
+      summaries: [],
+      combat_state: null,
+      characters: [],
+      player_characters: {},
+      combatants: [],
+      combatant_conditions: {},
+      recent_logs: [],
+      map_tokens: [],
+      map_background: "",
+      turn: null,
+      initiative: [
+        { combatant_id: "gob1", name: "Goblin", roll: 17, modifier: 2 },
+        { combatant_id: "bob", name: "Bob", roll: 12, modifier: 2 },
+      ],
+    } as any);
+
+    expect(main.snapshot().initiativeOrder).toHaveLength(2);
+    expect(main.snapshot().currentTurnIndex).toBe(1); // Bob's seat
+    expect(main.snapshot().currentRound).toBe(1); // fresh order starts at 1
   });
 });
