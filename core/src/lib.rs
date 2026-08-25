@@ -1,4 +1,7 @@
+pub mod agents;
 pub mod dice;
+pub mod memory_vec;
+pub mod vector_store;
 pub mod guardrails;
 pub mod engine;
 pub mod intent;
