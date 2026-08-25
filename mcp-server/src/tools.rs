@@ -226,7 +226,7 @@ pub async fn handle_call(name: &str, args: Value) -> Result<CallToolResult, McpS
                 a.chaos_factor.clamp(1, 9) as u8,
                 oracle.rng_mut(),
             );
-            json_result(serde_json::to_value(&outcome)?)
+            json_result(serde_json::to_value(outcome)?)
         }
         "parse_intent" => {
             let a: TextArgs = parse_args(args)?;

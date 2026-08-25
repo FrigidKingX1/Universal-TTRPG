@@ -38,7 +38,13 @@ impl OllamaEmbedder {
 #[async_trait::async_trait]
 impl Embedder for OllamaEmbedder {
     async fn embed(&self, text: &str) -> Result<Vec<f32>, String> {
-        let client = reqwest::Client::new();
+        // Bounded so a hung Ollama degrades to TF-IDF fallback instead of
+        // stalling the Lorekeeper agent indefinitely.
+        let client = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .timeout(std::time::Duration::from_secs(20))
+            .build()
+            .map_err(|e| e.to_string())?;
         let body = serde_json::json!({ "model": self.model, "prompt": text });
         let resp = client
             .post(format!("{}/api/embeddings", self.base_url))

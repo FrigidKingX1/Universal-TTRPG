@@ -1,35 +1,39 @@
 #!/usr/bin/env bash
 # Pull required Ollama models for Universal TTRPG.
-# Usage: ./init-models.sh [OLLAMA_URL]
-# Default OLLAMA_URL: http://localhost:11434
+# Usage: ./init-models.sh
+# Exit code is non-zero if any pull fails (network, disk, unknown model).
 
-set -euo pipefail
+set -u
 
-OLLAMA_URL="${1:-http://localhost:11434}"
-
-# Core DM model (the one the crew uses for narration/rules/combat/NPC)
 DM_MODEL="llama3.2"
-# Alternative smaller/faster DM model: qwen2.5:7b
-
-# Embedding model for hybrid recall (Lorekeeper semantic search)
 EMBED_MODEL="nomic-embed-text"
 
-echo "Pulling models from $OLLAMA_URL..."
-echo "  DM model:       $DM_MODEL"
-echo "  Embedding model: $EMBED_MODEL"
+failures=0
 
 pull_model() {
     local model="$1"
     echo ">>> ollama pull $model"
-    if ollama pull "$model" 2>&1 | grep -q "already exists"; then
-        echo "  ✓ $model already present"
-    else
-        echo "  ✓ $model pulled"
+    local output status
+    output="$(ollama pull "$model" 2>&1)"
+    status=$?
+    if [ $status -ne 0 ]; then
+        echo "  ✗ $model pull FAILED (exit $status):"
+        echo "$output" | tail -n 5 | sed 's/^/    /'
+        failures=$((failures + 1))
+        return
     fi
+    # Ollama streams progress; the tail tells fresh pulls from no-ops.
+    echo "  ✓ $model: $(echo "$output" | tail -n 1)"
 }
 
 pull_model "$DM_MODEL"
 pull_model "$EMBED_MODEL"
+
+if [ $failures -gt 0 ]; then
+    echo ""
+    echo "$failures model pull(s) failed. Check that the Ollama server is running."
+    exit 1
+fi
 
 echo ""
 echo "All models ready. Verify with:"

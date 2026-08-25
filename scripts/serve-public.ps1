@@ -30,6 +30,8 @@ $env:ADDR = "0.0.0.0:$Port"
 Write-Host "Starting auto-dm-server on 0.0.0.0:$Port (data: $DataDir)"
 $server = Start-Process -FilePath $exe -ArgumentList $DataDir `
     -PassThru -NoNewWindow
+$tunnel = $null
+$out = $null
 try {
     # Wait for /health before opening the tunnel.
     $healthy = $false
@@ -73,12 +75,17 @@ try {
 
         Write-Host "Press Ctrl+C to stop both processes."
         try { Wait-Process -Id $server.Id } finally {
-            if (-not $tunnel.HasExited) { Stop-Process -Id $tunnel.Id -Force -ErrorAction SilentlyContinue }
+            if ($tunnel -and -not $tunnel.HasExited) {
+                Stop-Process -Id $tunnel.Id -Force -ErrorAction SilentlyContinue
+            }
+            if ($out) { Remove-Item $out.FullName -Force -ErrorAction SilentlyContinue }
         }
     } else {
         Write-Host "Press Ctrl+C to stop."
         Wait-Process -Id $server.Id
     }
 } finally {
-    if (-not $server.HasExited) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
+    if ($server -and -not $server.HasExited) {
+        Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+    }
 }
