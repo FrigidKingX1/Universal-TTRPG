@@ -8,10 +8,30 @@ import type { GameEvent, ResyncPayload, WsMessage } from "./types";
 export type WsEventHandler = (event: GameEvent) => void;
 export type ResyncHandler = (payload: ResyncPayload) => void;
 export type ConnectionHandler = (connected: boolean) => void;
+export type TurnStateHandler = (state: {
+  mode: "exploration" | "combat";
+  current_turn: string | null;
+  queue: string[];
+}) => void;
 
 const PING_INTERVAL_MS = 30_000;
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
+
+/**
+ * Derive a WebSocket URL from a server base URL. Accepts http(s) URLs,
+ * bare hosts, or already-correct ws(s) URLs — required so Cloudflare
+ * Tunnel endpoints (https://…) produce valid wss:// connections.
+ */
+export function toWebSocketUrl(base: string): string {
+  const trimmed = base.trim().replace(/\/+$/, "");
+  if (/^wss:\/\//i.test(trimmed)) return trimmed;
+  if (/^ws:\/\//i.test(trimmed)) return trimmed;
+  if (/^https:\/\//i.test(trimmed)) return "wss://" + trimmed.slice("https://".length);
+  if (/^http:\/\//i.test(trimmed)) return "ws://" + trimmed.slice("http://".length);
+  // Bare host or host:port — assume secure (tunnels and public hosts).
+  return "wss://" + trimmed;
+}
 
 export class MultiplayerClient {
   private ws: WebSocket | null = null;
@@ -22,6 +42,7 @@ export class MultiplayerClient {
   private onEvent: WsEventHandler;
   private onResync: ResyncHandler;
   private onConnection: ConnectionHandler;
+  private onTurnState: TurnStateHandler | null;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -35,16 +56,19 @@ export class MultiplayerClient {
     onEvent: WsEventHandler;
     onResync: ResyncHandler;
     onConnection: ConnectionHandler;
+    /** Optional — receives turn-gate pushes (C4). */
+    onTurnState?: TurnStateHandler;
   }) {
     // Strip trailing slash from server URL.
     const base = opts.serverUrl.replace(/\/+$/, "");
     this.httpBase = base;
     this.sessionId = opts.sessionId;
     this.token = opts.token;
-    this.url = `${base}/sessions/${opts.sessionId}/ws?token=${encodeURIComponent(opts.token)}`;
+    this.url = `${toWebSocketUrl(base)}/sessions/${opts.sessionId}/ws?token=${encodeURIComponent(opts.token)}`;
     this.onEvent = opts.onEvent;
     this.onResync = opts.onResync;
     this.onConnection = opts.onConnection;
+    this.onTurnState = opts.onTurnState ?? null;
   }
 
   connect() {
@@ -74,6 +98,12 @@ export class MultiplayerClient {
           this.onEvent(msg.event);
         } else if (msg.type === "resync") {
           this.onResync(msg.payload);
+        } else if (msg.type === "turn_state") {
+          this.onTurnState?.({
+            mode: msg.mode,
+            current_turn: msg.current_turn,
+            queue: msg.queue,
+          });
         }
       } catch {
         // Ignore malformed messages.

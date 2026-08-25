@@ -101,6 +101,11 @@ export interface MultiplayerState {
   _handleResync: (payload: ResyncPayload) => void;
   _handleEvent: (event: GameEvent) => void;
   _handleConnection: (connected: boolean) => void;
+  _handleTurnState: (state: {
+    mode: "exploration" | "combat";
+    current_turn: string | null;
+    queue: string[];
+  }) => void;
 }
 
 let client: MultiplayerClient | null = null;
@@ -264,8 +269,18 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
       onEvent: get()._handleEvent,
       onResync: get()._handleResync,
       onConnection: get()._handleConnection,
+      onTurnState: get()._handleTurnState,
     });
     client.connect();
+  },
+
+  // ── Turn-gate push (C4 closeout) ────────────────────────────────
+  _handleTurnState: (state) => {
+    set({
+      gameMode: state.mode,
+      currentTurn: state.current_turn,
+      turnQueue: state.queue,
+    });
   },
 
   // ── Disconnect ──────────────────────────────────────────────────

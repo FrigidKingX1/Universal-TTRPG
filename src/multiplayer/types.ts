@@ -25,7 +25,9 @@ export type TurnCheck =
 
 export type WsMessage =
   | { type: "event"; event: GameEvent }
-  | { type: "resync"; payload: ResyncPayload };
+  | { type: "resync"; payload: ResyncPayload }
+  /** Pushed after any turn-gate mutation (C4 closeout) */
+  | { type: "turn_state"; mode: GameMode; current_turn: string | null; queue: string[] };
 
 // ── GameEvent (mirrors engine/src/events.rs) ─────────────────────────
 

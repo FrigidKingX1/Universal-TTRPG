@@ -52,7 +52,13 @@ export function MapPanel() {
   ) => {
     if (e.button !== 0) return;
     e.preventDefault();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    // Capture can throw (jsdom has no active pointer; browsers can race
+    // release) — dragging must survive losing capture.
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
     const rect = boardRef.current?.getBoundingClientRect();
     dragRef.current = {
       id: token.id,
@@ -159,14 +165,17 @@ export function MapPanel() {
         </button>
       </div>
 
-      {/* The board */}
+      {/* The board. No onPointerLeave clear: during pointer capture the
+          browser retargets events into this subtree anyway, and synthetic
+          leave events (jsdom / zero-rect layouts) would cancel drags
+          mid-move. */}
       <div
         ref={boardRef}
         className={`map-board ${showGrid ? "map-grid" : ""}`}
         style={showGrid ? ({ ["--grid-size" as string]: `${mapGridSize}px` } as React.CSSProperties) : undefined}
         onPointerMove={onBoardPointerMove}
         onPointerUp={onBoardPointerUp}
-        onPointerLeave={onBoardPointerUp}
+        onPointerCancel={onBoardPointerUp}
         role="application"
         aria-label="Battle map board"
       >
