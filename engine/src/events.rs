@@ -5,6 +5,7 @@
 //! Every handler returns events instead of mutating silently.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// Wire-schema version for [`GameEvent`] payloads. Bump on any variant
 /// rename/restructure; remote clients key their parsers off this.
@@ -34,6 +35,12 @@ pub enum GameEvent {
         target_name: String,
         amount: i32,
         hp_remaining: i32,
+    },
+    /// Battle-map tokens/background changed on the shared map.
+    MapUpdated {
+        /// Array of MapToken JSON objects.
+        tokens: Value,
+        background: String,
     },
     /// The mutation target was ambiguous; `candidates` are the valid choices
     /// (generic disambiguation shared by clocks, NPCs, monsters).
@@ -82,6 +89,7 @@ impl GameEvent {
             GameEvent::Healed { target_name, amount, hp_remaining, .. } => {
                 format!("{amount} HP restored to {target_name} — {hp_remaining} HP remain")
             }
+            GameEvent::MapUpdated { .. } => "Battle map updated.".to_string(),
             GameEvent::AmbiguousTarget { message, candidates, .. } => {
                 format!("{message} Options: {}", candidates.join(", "))
             }

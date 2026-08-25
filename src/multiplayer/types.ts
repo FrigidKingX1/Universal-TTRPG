@@ -51,6 +51,11 @@ export type GameEvent =
       amount: number;
       hp_remaining: number;
     }
+  | {
+      type: "map_updated";
+      tokens: unknown[];
+      background: string;
+    }
   | { type: "condition_applied"; target: string; condition: string }
   | { type: "ambiguous_target"; kind: string; message: string; candidates: string[] }
   | { type: "rule_answered"; question: string };
@@ -86,6 +91,8 @@ export interface ResyncPayload {
   combatants: Record<string, any>[];
   combatant_conditions: Record<string, string[]>;
   recent_logs: LogEntry[];
+  map_tokens: unknown[];
+  map_background: string;
 }
 
 // ── REST response types ──────────────────────────────────────────────

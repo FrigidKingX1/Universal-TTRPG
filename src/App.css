@@ -880,8 +880,8 @@ button.rolling {
 }
 .map-board.map-grid {
   background-image:
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 48px),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 48px);
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px var(--grid-size, 48px)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px var(--grid-size, 48px));
 }
 .map-bg {
   position: absolute;

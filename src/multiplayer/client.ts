@@ -206,6 +206,11 @@ export class MultiplayerClient {
     return this.httpPost("/combat/initiative", { combatants, formula });
   }
 
+  /** Replace the shared battle-map state on the server. */
+  async updateMap(tokens: unknown[], background: string): Promise<void> {
+    await this.httpPost("/map", { tokens, background });
+  }
+
   /** Generic authenticated POST to the session's REST API. */
   async httpPost<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetch(`${this.httpBase}/sessions/${this.sessionId}${path}`, {

@@ -78,6 +78,7 @@ async fn main() {
         .route("/sessions/{session_id}/clocks/{clock_id}/reset", post(reset_clock))
         .route("/sessions/{session_id}/clocks/{clock_id}", delete(delete_clock))
         .route("/sessions/{session_id}/combat/attack", post(server_combat_attack))
+        .route("/sessions/{session_id}/map", post(server_map_update))
         .route("/sessions/{session_id}/combat/heal", post(server_combat_heal))
         .route("/sessions/{session_id}/combat/condition", post(server_combat_condition))
         .route("/sessions/{session_id}/combat/sync", post(server_combat_sync))
@@ -1215,6 +1216,44 @@ async fn server_combat_attack(
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     Ok(Json(serde_json::to_value(&outcome).unwrap_or_default()))
+}
+
+#[derive(Deserialize)]
+struct MapUpdateRequest {
+    tokens: Value,
+    background: String,
+}
+
+/// Replace the shared battle-map state and broadcast it to all clients.
+async fn server_map_update(
+    AxumState(state): AxumState<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    headers: axum::http::header::HeaderMap,
+    Json(req): Json<MapUpdateRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let token = extract_token(&headers)?;
+    let (session, _player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    if session.id != session_id {
+        return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+
+    {
+        let mut tokens = session.map_tokens.write().await;
+        *tokens = req.tokens.as_array().cloned().unwrap_or_default();
+    }
+    {
+        let mut bg = session.map_background.write().await;
+        *bg = req.background.clone();
+    }
+
+    let event = auto_dm_engine::GameEvent::MapUpdated {
+        tokens: req.tokens,
+        background: req.background,
+    };
+    let _ = session.event_tx.send(WsMessage::Event { event });
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Deserialize)]

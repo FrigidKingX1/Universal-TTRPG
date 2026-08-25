@@ -7,6 +7,7 @@ import { PRESET_CLASSES, applyClassTemplate, mergeSecondaryClass } from "./prese
 import { findPresetAction } from "./presets/actions";
 import { CONCENTRATION_ACTIONS } from "./presets/actions";
 import { playDiceSound, playCombatSfx, sfxForOutcome } from "./sound";
+import { mapDragGuard } from "./multiplayer/store";
 import type {
   ActionDefinition,
   CampaignGenerationResult,
@@ -143,11 +144,13 @@ export interface AutoDmState {
   /** Battle-map state (per scene, persisted with combat state). */
   mapTokens: MapToken[];
   mapBackground: string;
+  mapGridSize: number;
   spawnMapToken: (entity: CharacterProfile | EncounterStatBlock, x?: number, y?: number) => void;
   moveMapToken: (tokenId: string, x: number, y: number) => void;
   removeMapToken: (tokenId: string) => void;
   clearMapTokens: () => void;
   setMapBackground: (url: string) => void;
+  setMapGridSize: (size: number) => void;
   lastHpChange: { entityId: string; previousHp: number; newHp: number } | null;
   undoLastHpChange: () => void;
   exportCampaign: () => Promise<string>;
@@ -292,6 +295,25 @@ function dropConcentrationRecord(
   persistCombat();
 }
 
+let mapPushTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleMapPush() {
+  if (!isInMultiplayerSession()) return;
+  if (mapPushTimer) clearTimeout(mapPushTimer);
+  mapDragGuard.until = Date.now() + 600;
+  mapPushTimer = setTimeout(async () => {
+    mapPushTimer = null;
+    try {
+      const { getMultiplayerClient } = await import("./multiplayer/store");
+      const client = getMultiplayerClient();
+      if (!client) return;
+      const s = useStore.getState();
+      await client.updateMap(s.mapTokens as unknown[], s.mapBackground);
+    } catch {
+      /* best-effort */
+    }
+  }, 180);
+}
+
 /**
  * Pools (other than HP) whose reset_condition matches this rest type,
  * restored to maximum — spell slots, rage uses, second wind, etc.
@@ -366,6 +388,7 @@ export const useStore = create<AutoDmState>()(
   concentration: {},
   mapTokens: [],
   mapBackground: "",
+  mapGridSize: 48,
   lastHpChange: null,
   ollama: { reachable: false, models: [], currentModel: "llama3.2", numPredict: 512 },
   loot: [],
@@ -454,6 +477,7 @@ export const useStore = create<AutoDmState>()(
               deathSaves: parsed.deathSaves ?? {},
               mapTokens: parsed.mapTokens ?? [],
               mapBackground: parsed.mapBackground ?? "",
+              mapGridSize: parsed.mapGridSize ?? 48,
             };
           }
         } catch {
@@ -1209,9 +1233,11 @@ export const useStore = create<AutoDmState>()(
       ],
     }));
     persistCombat();
+    scheduleMapPush();
   },
 
   moveMapToken: (tokenId, x, y) => {
+    mapDragGuard.until = Date.now() + 700;
     set((s) => ({
       mapTokens: s.mapTokens.map((t) =>
         t.id === tokenId
@@ -1220,21 +1246,32 @@ export const useStore = create<AutoDmState>()(
       ),
     }));
     persistCombat();
+    scheduleMapPush();
   },
 
   removeMapToken: (tokenId) => {
     set((s) => ({ mapTokens: s.mapTokens.filter((t) => t.id !== tokenId) }));
     persistCombat();
+    scheduleMapPush();
   },
 
   clearMapTokens: () => {
     set({ mapTokens: [] });
     persistCombat();
+    scheduleMapPush();
   },
 
   setMapBackground: (url) => {
     set({ mapBackground: url });
     persistCombat();
+    scheduleMapPush();
+  },
+
+  setMapGridSize: (size) => {
+    const clamped = Math.min(64, Math.max(32, Math.round(size / 8) * 8));
+    set({ mapGridSize: clamped });
+    persistCombat();
+    scheduleMapPush();
   },
 
   showToast: (message: string, type: "info" | "success" | "warning" | "error" = "info", duration = 3000) => {
@@ -2043,6 +2080,7 @@ function persistCombat() {
       deathSaves: s.deathSaves,
       mapTokens: s.mapTokens,
       mapBackground: s.mapBackground,
+      mapGridSize: s.mapGridSize,
     };
     void backend.saveCombatState(sceneId, JSON.stringify(data));
 

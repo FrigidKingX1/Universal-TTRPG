@@ -39,6 +39,9 @@ function clearPersistedSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch { /* noop */ }
 }
 
+// Suppress incoming map echoes while the local user is actively dragging.
+export const mapDragGuard: { until: number } = { until: 0 };
+
 export interface MultiplayerState {
   // ── Connection ────────────────────────────────────────────────────
   connected: boolean;
@@ -66,6 +69,8 @@ export interface MultiplayerState {
   threads: ResyncPayload["threads"];
   summaries: ResyncPayload["summaries"];
   recentLogs: ResyncPayload["recent_logs"];
+  mapTokens: unknown[];
+  mapBackground: string;
 
   // ── UI state ──────────────────────────────────────────────────────
   lobbyOpen: boolean;
@@ -130,6 +135,8 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
   threads: [],
   summaries: [],
   recentLogs: [],
+  mapTokens: [],
+  mapBackground: "",
   lobbyOpen: false,
 
   setLobbyOpen: (open) => set({ lobbyOpen: open }),
@@ -353,6 +360,14 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
 
   // ── Internal: Resync handler ────────────────────────────────────
   _handleResync: (payload) => {
+    if (Date.now() < mapDragGuard.until) {
+      // Avoid snapping tokens back mid-drag; resync will refresh shortly.
+    } else {
+      set({
+        mapTokens: (payload as any).map_tokens ?? [],
+        mapBackground: (payload as any).map_background ?? "",
+      });
+    }
     set({
       scene: payload.scene,
       sceneSummary: payload.scene_summary,
@@ -386,6 +401,11 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
         break;
       case "item_added":
         // Optimistic loot refresh.
+        break;
+      case "map_updated":
+        if (Date.now() >= mapDragGuard.until) {
+          set({ mapTokens: event.tokens as any, mapBackground: event.background });
+        }
         break;
     }
 
@@ -493,6 +513,16 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
   if (payload.combatant_conditions) {
     setState(() => ({ combatantConditions: payload.combatant_conditions }));
   }
+
+  // Map state (joiners need the current board without waiting for an event).
+  if ((payload as any).map_tokens || (payload as any).map_background !== undefined) {
+    if (Date.now() >= mapDragGuard.until) {
+      setState(() => ({
+        mapTokens: (payload as any).map_tokens ?? [],
+        mapBackground: (payload as any).map_background ?? "",
+      }));
+    }
+  }
 }
 
 function _dispatchEventToMainStore(event: GameEvent) {
@@ -542,6 +572,14 @@ function _dispatchEventToMainStore(event: GameEvent) {
           },
         };
       });
+      break;
+
+    case "map_updated":
+      if (Date.now() < mapDragGuard.until) break;
+      setState(() => ({
+        mapTokens: event.tokens as any,
+        mapBackground: event.background,
+      }));
       break;
 
     case "npc_spoke":

@@ -220,6 +220,10 @@ pub struct Session {
     pub combatants: RwLock<Vec<Value>>,
     /// Per-combatant condition tags (e.g. "Poisoned", "Prone").
     pub combatant_conditions: RwLock<std::collections::HashMap<String, Vec<String>>>,
+
+    /// Shared battle-map state (tokens + background), last-write-wins.
+    pub map_tokens: RwLock<Vec<Value>>,
+    pub map_background: RwLock<String>,
 }
 
 // ── WsMessage ─────────────────────────────────────────────────────────
@@ -240,6 +244,11 @@ pub struct ResyncPayload {
     pub characters: Vec<auto_dm_core::models::CharacterProfile>,
     /// Player-to-character mapping: player_id → character_id
     pub player_characters: std::collections::HashMap<String, String>,
+    /// Shared battle-map state snapshot.
+    #[serde(default)]
+    pub map_tokens: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub map_background: String,
     /// Server-authoritative combatant JSON list (CharacterProfile or EncounterStatBlock).
     pub combatants: Vec<Value>,
     /// Per-combatant condition tags.
@@ -459,6 +468,8 @@ impl SessionRegistry {
                 turn_gate,
                 combatants: RwLock::new(Vec::new()),
                 combatant_conditions: RwLock::new(std::collections::HashMap::new()),
+            map_tokens: RwLock::new(Vec::new()),
+            map_background: RwLock::new(String::new()),
             });
 
             // Populate in-memory maps.
@@ -751,6 +762,8 @@ impl SessionRegistry {
             turn_gate: TurnGate::new(),
             combatants: RwLock::new(Vec::new()),
             combatant_conditions: RwLock::new(std::collections::HashMap::new()),
+            map_tokens: RwLock::new(Vec::new()),
+            map_background: RwLock::new(String::new()),
         });
 
         // Register session + token in memory.
@@ -977,6 +990,8 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         player_characters,
         combatants: session.combatants.read().await.clone(),
         combatant_conditions: session.combatant_conditions.read().await.clone(),
+        map_tokens: session.map_tokens.read().await.clone(),
+        map_background: session.map_background.read().await.clone(),
         recent_logs: logs.unwrap_or_default(),
     })
 }

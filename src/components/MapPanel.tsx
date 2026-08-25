@@ -21,6 +21,8 @@ export function MapPanel() {
   const removeMapToken = useStore((s) => s.removeMapToken);
   const clearMapTokens = useStore((s) => s.clearMapTokens);
   const setMapBackground = useStore((s) => s.setMapBackground);
+  const mapGridSize = useStore((s) => s.mapGridSize);
+  const setMapGridSize = useStore((s) => s.setMapGridSize);
 
   const boardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -115,16 +117,53 @@ export function MapPanel() {
           style={{ flex: 1 }}
           aria-label="Map background"
         />
+        <button
+          onClick={async () => {
+            try {
+              const { open } = await import("@tauri-apps/plugin-dialog");
+              const { convertFileSrc } = await import("@tauri-apps/api/core");
+              const picked = await open({
+                multiple: false,
+                filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+              });
+              if (typeof picked === "string") setMapBackground(convertFileSrc(picked));
+            } catch {
+              /* fallback to manual URL entry */
+            }
+          }}
+        >
+          Pick Image…
+        </button>
         <label style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.85rem" }}>
           <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.currentTarget.checked)} />
           Grid
         </label>
+      </div>
+      <div className="row" style={{ marginBottom: "0.5rem" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem" }}>
+          Grid size
+          <input
+            type="range"
+            min={32}
+            max={64}
+            step={8}
+            value={mapGridSize}
+            onChange={(e) => setMapGridSize(Number(e.currentTarget.value))}
+            style={{ width: "7rem" }}
+            aria-label="Grid size"
+          />
+          <span className="muted">{mapGridSize}px</span>
+        </label>
+        <button onClick={() => setMapGridSize(48)} disabled={mapGridSize === 48} style={{ fontSize: "0.8rem" }}>
+          Reset
+        </button>
       </div>
 
       {/* The board */}
       <div
         ref={boardRef}
         className={`map-board ${showGrid ? "map-grid" : ""}`}
+        style={showGrid ? ({ ["--grid-size" as string]: `${mapGridSize}px` } as React.CSSProperties) : undefined}
         onPointerMove={onBoardPointerMove}
         onPointerUp={onBoardPointerUp}
         onPointerLeave={onBoardPointerUp}
