@@ -134,7 +134,6 @@ export interface SkipTurnResponse {
 
 export interface SessionSummary {
   id: string;
-  join_code: string;
   player_count: number;
 }
 

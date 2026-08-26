@@ -1,4 +1,4 @@
-﻿//! C2+C3+C4 â€” Session model: per-session isolation, player-identity
+//! C2+C3+C4 â€” Session model: per-session isolation, player-identity
 //! tokens, materialized resync, and turn concurrency policy.
 //!
 //! The turn gate switches between free-form (exploration) and queued
@@ -43,7 +43,12 @@ pub struct PlayerSlotView {
 
 impl From<&PlayerSlot> for PlayerSlotView {
     fn from(p: &PlayerSlot) -> Self {
-        Self { id: p.id.clone(), name: p.name.clone(), connected: p.connected, character_id: p.character_id.clone() }
+        Self {
+            id: p.id.clone(),
+            name: p.name.clone(),
+            connected: p.connected,
+            character_id: p.character_id.clone(),
+        }
     }
 }
 
@@ -103,9 +108,7 @@ impl TurnGate {
             GameMode::Combat => {
                 if state.current_turn.as_deref() == Some(player_id) {
                     TurnCheck::Allowed
-                } else if let Some(pos) =
-                    state.queue.iter().position(|id| id == player_id)
-                {
+                } else if let Some(pos) = state.queue.iter().position(|id| id == player_id) {
                     TurnCheck::Waiting { position: pos + 1 }
                 } else {
                     TurnCheck::NotInQueue
@@ -187,11 +190,7 @@ impl TurnGate {
     /// Current game mode and turn holder.
     pub async fn status(&self) -> (GameMode, Option<String>, Vec<String>) {
         let state = self.inner.lock().await;
-        (
-            state.mode,
-            state.current_turn.clone(),
-            state.queue.iter().cloned().collect(),
-        )
+        (state.mode, state.current_turn.clone(), state.queue.iter().cloned().collect())
     }
 
     /// Restore turn state from persisted data (called on startup).
@@ -279,7 +278,9 @@ pub struct ResyncPayload {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum WsMessage {
-    Event { event: auto_dm_engine::GameEvent },
+    Event {
+        event: auto_dm_engine::GameEvent,
+    },
     Resync(Box<ResyncPayload>),
     /// Pushed after any turn-gate mutation so every peer's turn UI
     /// updates without polling (C4 closeout).
@@ -309,11 +310,7 @@ impl TurnStatePayload {
     /// Snapshot the gate's current state.
     pub async fn from_gate(gate: &TurnGate) -> Self {
         let (mode, current_turn, queue) = gate.status().await;
-        Self {
-            mode: mode.as_str().to_string(),
-            current_turn,
-            queue,
-        }
+        Self { mode: mode.as_str().to_string(), current_turn, queue }
     }
 }
 
@@ -413,14 +410,12 @@ impl SessionRegistry {
         ];
         let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
         for stmt in schema {
-            sqlx::query(stmt)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| e.to_string())?;
+            sqlx::query(stmt).execute(&mut *tx).await.map_err(|e| e.to_string())?;
         }
         // Migration: add character_id to existing registry_players tables.
         let _ = sqlx::query("ALTER TABLE registry_players ADD COLUMN character_id TEXT")
-            .execute(&mut *tx).await;
+            .execute(&mut *tx)
+            .await;
         tx.commit().await.map_err(|e| e.to_string())?;
         Ok(pool)
     }
@@ -443,12 +438,8 @@ impl SessionRegistry {
                 continue;
             }
 
-            let pool = auto_dm_engine::open_pool(&db_path)
-                .await
-                .map_err(|e| e.to_string())?;
-            auto_dm_engine::run_migrations(&pool)
-                .await
-                .map_err(|e| e.to_string())?;
+            let pool = auto_dm_engine::open_pool(&db_path).await.map_err(|e| e.to_string())?;
+            auto_dm_engine::run_migrations(&pool).await.map_err(|e| e.to_string())?;
             let repo = auto_dm_engine::SqliteRepository::new(pool);
 
             // Idempotent: tops up content added to the preset library since
@@ -461,7 +452,8 @@ impl SessionRegistry {
             }
 
             let pipeline = self.build_pipeline();
-            let model_name = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+            let model_name =
+                self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
 
             let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
             let game = GameState {
@@ -504,19 +496,17 @@ impl SessionRegistry {
 
             let turn_gate = TurnGate::new();
             if let Some((mode, current, queue_json)) = turn_row {
-                let queue: Vec<String> =
-                    serde_json::from_str(&queue_json).unwrap_or_default();
+                let queue: Vec<String> = serde_json::from_str(&queue_json).unwrap_or_default();
                 turn_gate.restore_from_persisted(&mode, current.as_deref(), &queue).await;
             }
 
             // Build token map entries.
-            let token_entries: Vec<(String, String)> = sqlx::query_as(
-                "SELECT token, id FROM registry_players WHERE session_id = ?",
-            )
-            .bind(&session_id)
-            .fetch_all(&self.registry_pool)
-            .await
-            .map_err(|e| e.to_string())?;
+            let token_entries: Vec<(String, String)> =
+                sqlx::query_as("SELECT token, id FROM registry_players WHERE session_id = ?")
+                    .bind(&session_id)
+                    .fetch_all(&self.registry_pool)
+                    .await
+                    .map_err(|e| e.to_string())?;
 
             let session = Arc::new(Session {
                 id: session_id.clone(),
@@ -528,22 +518,16 @@ impl SessionRegistry {
                 turn_gate,
                 combatants: RwLock::new(Vec::new()),
                 combatant_conditions: RwLock::new(std::collections::HashMap::new()),
-            map_tokens: RwLock::new(Vec::new()),
-            map_background: RwLock::new(String::new()),
-            initiative: RwLock::new(Vec::new()),
+                map_tokens: RwLock::new(Vec::new()),
+                map_background: RwLock::new(String::new()),
+                initiative: RwLock::new(Vec::new()),
             });
 
             // Populate in-memory maps.
-            self.sessions
-                .write()
-                .await
-                .insert(session_id.clone(), session);
+            self.sessions.write().await.insert(session_id.clone(), session);
             self.codes.write().await.insert(join_code, session_id.clone());
             for (token, pid) in token_entries {
-                self.tokens
-                    .write()
-                    .await
-                    .insert(token, (session_id.clone(), pid));
+                self.tokens.write().await.insert(token, (session_id.clone(), pid));
             }
 
             tracing::info!(session = %session_id, "Restored from registry");
@@ -555,13 +539,19 @@ impl SessionRegistry {
     }
 
     /// Build a DmPipeline from current Ollama config (OllamaLlmBackend if reachable, stub otherwise).
-    fn build_pipeline(&self) -> auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>> {
+    fn build_pipeline(
+        &self,
+    ) -> auto_dm_core::llm::DmPipeline<Box<dyn auto_dm_core::llm::LlmBackend>> {
         let url = self.ollama_url.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
-        let model = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+        let model =
+            self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
         let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
             if auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&url) {
                 tracing::info!(url = %url, model = %model, "Using Ollama backend");
-                Box::new(auto_dm_core::ollama::OllamaLlmBackend::new_with_url(Some(model), Some(url)))
+                Box::new(auto_dm_core::ollama::OllamaLlmBackend::new_with_url(
+                    Some(model),
+                    Some(url),
+                ))
             } else {
                 tracing::warn!("Ollama unreachable â€” falling back to stub backend");
                 Box::new(auto_dm_core::llm::StubLlmBackend)
@@ -606,7 +596,8 @@ impl SessionRegistry {
     /// Get current Ollama config.
     pub fn ollama_config(&self) -> (String, String, bool) {
         let url = self.ollama_url.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
-        let model = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+        let model =
+            self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
         let reachable = auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&url);
         (url, model, reachable)
     }
@@ -621,12 +612,18 @@ impl SessionRegistry {
         character_id: &str,
     ) -> Result<(), String> {
         // Verify the character exists.
-        let _char = session.game.repo.load_character(character_id).await
+        let _char = session
+            .game
+            .repo
+            .load_character(character_id)
+            .await
             .map_err(|_| "Character not found".to_string())?;
 
         {
             let mut players = session.players.write().await;
-            let player = players.iter_mut().find(|p| p.id == player_id)
+            let player = players
+                .iter_mut()
+                .find(|p| p.id == player_id)
                 .ok_or("Player not found in session")?;
             player.character_id = Some(character_id.to_string());
         }
@@ -649,7 +646,11 @@ impl SessionRegistry {
         player_id: &str,
         profile: auto_dm_core::models::CharacterProfile,
     ) -> Result<auto_dm_core::models::CharacterProfile, String> {
-        session.game.repo.save_character(&profile).await
+        session
+            .game
+            .repo
+            .save_character(&profile)
+            .await
             .map_err(|e| format!("Failed to save character: {e}"))?;
 
         // Link player to the new character.
@@ -666,10 +667,17 @@ impl SessionRegistry {
         equipped: bool,
     ) -> Result<auto_dm_core::models::CharacterProfile, String> {
         let character_id = self.get_character_id(session, player_id).await?;
-        let mut profile = session.game.repo.load_character(&character_id).await
+        let mut profile = session
+            .game
+            .repo
+            .load_character(&character_id)
+            .await
             .map_err(|e| format!("Character load failed: {e}"))?;
 
-        let item = profile.inventory.iter_mut().find(|i| i.id == item_id)
+        let item = profile
+            .inventory
+            .iter_mut()
+            .find(|i| i.id == item_id)
             .ok_or("Item not found in inventory")?;
         item.state = if equipped {
             auto_dm_core::models::ItemState::Equipped
@@ -677,7 +685,11 @@ impl SessionRegistry {
             auto_dm_core::models::ItemState::Stowed
         };
 
-        session.game.repo.save_character(&profile).await
+        session
+            .game
+            .repo
+            .save_character(&profile)
+            .await
             .map_err(|e| format!("Save failed: {e}"))?;
         Ok(profile)
     }
@@ -690,10 +702,17 @@ impl SessionRegistry {
         item_id: &str,
     ) -> Result<auto_dm_core::models::CharacterProfile, String> {
         let character_id = self.get_character_id(session, player_id).await?;
-        let mut profile = session.game.repo.load_character(&character_id).await
+        let mut profile = session
+            .game
+            .repo
+            .load_character(&character_id)
+            .await
             .map_err(|e| format!("Character load failed: {e}"))?;
 
-        let idx = profile.inventory.iter().position(|i| i.id == item_id)
+        let idx = profile
+            .inventory
+            .iter()
+            .position(|i| i.id == item_id)
             .ok_or("Item not found in inventory")?;
 
         profile.inventory[idx].quantity -= 1;
@@ -701,7 +720,11 @@ impl SessionRegistry {
             profile.inventory.remove(idx);
         }
 
-        session.game.repo.save_character(&profile).await
+        session
+            .game
+            .repo
+            .save_character(&profile)
+            .await
             .map_err(|e| format!("Save failed: {e}"))?;
         Ok(profile)
     }
@@ -714,7 +737,11 @@ impl SessionRegistry {
         item: auto_dm_core::models::InventoryItem,
     ) -> Result<auto_dm_core::models::CharacterProfile, String> {
         let character_id = self.get_character_id(session, player_id).await?;
-        let mut profile = session.game.repo.load_character(&character_id).await
+        let mut profile = session
+            .game
+            .repo
+            .load_character(&character_id)
+            .await
             .map_err(|e| format!("Character load failed: {e}"))?;
 
         // Stack with existing item of same name if found.
@@ -724,7 +751,11 @@ impl SessionRegistry {
             profile.inventory.push(item);
         }
 
-        session.game.repo.save_character(&profile).await
+        session
+            .game
+            .repo
+            .save_character(&profile)
+            .await
             .map_err(|e| format!("Save failed: {e}"))?;
         Ok(profile)
     }
@@ -737,7 +768,11 @@ impl SessionRegistry {
         long: bool,
     ) -> Result<auto_dm_core::models::CharacterProfile, String> {
         let character_id = self.get_character_id(session, player_id).await?;
-        let mut profile = session.game.repo.load_character(&character_id).await
+        let mut profile = session
+            .game
+            .repo
+            .load_character(&character_id)
+            .await
             .map_err(|e| format!("Character load failed: {e}"))?;
 
         let condition = if long {
@@ -753,24 +788,31 @@ impl SessionRegistry {
             }
         }
 
-        session.game.repo.save_character(&profile).await
+        session
+            .game
+            .repo
+            .save_character(&profile)
+            .await
             .map_err(|e| format!("Save failed: {e}"))?;
         Ok(profile)
     }
 
     /// Helper: resolve player_id â†’ character_id.
-    async fn get_character_id(&self, session: &Arc<Session>, player_id: &str) -> Result<String, String> {
+    async fn get_character_id(
+        &self,
+        session: &Arc<Session>,
+        player_id: &str,
+    ) -> Result<String, String> {
         let players = session.players.read().await;
-        let player = players.iter().find(|p| p.id == player_id)
-            .ok_or("Player not found")?;
-        player.character_id.clone().ok_or("No character linked â€” create or link a character first".into())
+        let player = players.iter().find(|p| p.id == player_id).ok_or("Player not found")?;
+        player
+            .character_id
+            .clone()
+            .ok_or("No character linked â€” create or link a character first".into())
     }
 
     /// Create a new session and mint the host's player token.
-    pub async fn create_session(
-        &self,
-        title: &str,
-    ) -> Result<(String, String, String), String> {
+    pub async fn create_session(&self, title: &str) -> Result<(String, String, String), String> {
         let title = title.trim();
         if title.is_empty() {
             return Err("Session title cannot be empty".into());
@@ -782,12 +824,8 @@ impl SessionRegistry {
 
         // Per-session database.
         let db_path = self.data_dir.join(format!("{session_id}.db"));
-        let pool = auto_dm_engine::open_pool(&db_path)
-            .await
-            .map_err(|e| e.to_string())?;
-        auto_dm_engine::run_migrations(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
+        let pool = auto_dm_engine::open_pool(&db_path).await.map_err(|e| e.to_string())?;
+        auto_dm_engine::run_migrations(&pool).await.map_err(|e| e.to_string())?;
         let repo = auto_dm_engine::SqliteRepository::new(pool);
 
         // Ship every new session with the full preset bestiary + action vault.
@@ -799,7 +837,8 @@ impl SessionRegistry {
         }
 
         let pipeline = self.build_pipeline();
-        let model_name = self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+        let model_name =
+            self.ollama_model.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
 
         let (event_tx, _rx) = broadcast::channel(BROADCAST_CAPACITY);
         let game = GameState {
@@ -891,8 +930,7 @@ impl SessionRegistry {
 
         {
             let sessions = self.sessions.read().await;
-            let session =
-                sessions.get(&session_id).ok_or("Session not found")?;
+            let session = sessions.get(&session_id).ok_or("Session not found")?;
             let mut players = session.players.write().await;
             players.push(PlayerSlot {
                 id: player_id.clone(),
@@ -923,17 +961,13 @@ impl SessionRegistry {
     }
 
     /// Resolve a player token â†’ (session, player_id).
-    pub async fn authenticate(
-        &self,
-        token: &str,
-    ) -> Result<(Arc<Session>, String), String> {
+    pub async fn authenticate(&self, token: &str) -> Result<(Arc<Session>, String), String> {
         let (session_id, player_id) = {
             let tokens = self.tokens.read().await;
             tokens.get(token).cloned().ok_or("Invalid token")?
         };
         let sessions = self.sessions.read().await;
-        let session =
-            sessions.get(&session_id).cloned().ok_or("Session not found")?;
+        let session = sessions.get(&session_id).cloned().ok_or("Session not found")?;
         Ok((session, player_id))
     }
 
@@ -950,11 +984,7 @@ impl SessionRegistry {
         let mut out = Vec::new();
         for s in sessions.values() {
             let players = s.players.read().await;
-            out.push(SessionSummary {
-                id: s.id.clone(),
-                join_code: s.join_code.clone(),
-                player_count: players.len(),
-            });
+            out.push(SessionSummary { id: s.id.clone(), player_count: players.len() });
         }
         out
     }
@@ -988,7 +1018,6 @@ impl SessionRegistry {
 #[derive(Serialize)]
 pub struct SessionSummary {
     pub id: String,
-    pub join_code: String,
     pub player_count: usize,
 }
 
@@ -1078,8 +1107,7 @@ mod turn_state_tests {
 
     #[tokio::test]
     async fn join_rejects_blank_and_oversized_names() {
-        let dir = std::env::temp_dir()
-            .join(format!("auto-dm-join-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("auto-dm-join-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let registry =
             SessionRegistry::new(dir.clone(), "http://localhost:11434".into(), "m".into())
@@ -1106,8 +1134,7 @@ mod turn_state_tests {
 
     #[tokio::test]
     async fn create_session_rejects_empty_title() {
-        let dir = std::env::temp_dir()
-            .join(format!("auto-dm-title-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("auto-dm-title-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let registry =
             SessionRegistry::new(dir.clone(), "http://localhost:11434".into(), "m".into())
@@ -1174,11 +1201,9 @@ mod turn_state_tests {
     async fn resync_payload_carries_turn_snapshot() {
         // Late joiners / reconnectors hydrate their turn UI from resync;
         // without this they show exploration/no-turn until someone acts.
-        let dir = std::env::temp_dir()
-            .join(format!("auto-dm-resync-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("auto-dm-resync-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
-        let pool =
-            auto_dm_engine::open_pool(&dir.join("test.db")).await.unwrap();
+        let pool = auto_dm_engine::open_pool(&dir.join("test.db")).await.unwrap();
         auto_dm_engine::run_migrations(&pool).await.unwrap();
 
         let (tx, _rx) = tokio::sync::broadcast::channel(16);
