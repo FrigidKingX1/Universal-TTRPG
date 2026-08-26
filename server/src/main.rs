@@ -128,8 +128,18 @@ struct ConfigureOllamaRequest {
 
 async fn configure_ollama(
     AxumState(state): AxumState<Arc<AppState>>,
+    headers: axum::http::header::HeaderMap,
     Json(req): Json<ConfigureOllamaRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
+    // Host-only, and it must stay that way: this endpoint chooses where the
+    // DM's prompts go. Left open, any session member (or anyone reached via
+    // the tunnel with a stolen join code) could repoint Ollama at a server
+    // they control and harvest every prompt the table sends.
+    let token = extract_token(&headers)?;
+    let (session, player_id) =
+        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
+    require_host(&session, &player_id).await?;
+
     if let Some(url) = req.url {
         state.registry.set_ollama_url(url).await.map_err(|e| {
             (StatusCode::INTERNAL_SERVER_ERROR, e)

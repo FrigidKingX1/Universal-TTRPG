@@ -251,21 +251,27 @@ pub fn apply_damage(target: &mut Combatant, amount: i32) -> DamageResult {
 /// Returns the adjusted damage (immune → 0, resistant → half, vulnerable → double).
 pub fn modify_damage_for_type(raw: i32, damage_type: &str, target: &Combatant) -> i32 {
     let dt = damage_type.to_lowercase();
-    if target.resistances.iter().any(|r| r.eq_ignore_ascii_case(&dt)) {
-        raw / 2
-    } else if target.vulnerabilities.iter().any(|v| v.eq_ignore_ascii_case(&dt)) {
-        raw * 2
-    } else if target.immunities.iter().any(|i| i.eq_ignore_ascii_case(&dt)) {
-        0
-    } else {
-        raw
+    // 5e RAW: vulnerability and resistance both apply when a target has
+    // both — double first, then halve (net ×1), not either/or.
+    let mut dmg = raw;
+    if target.vulnerabilities.iter().any(|v| v.eq_ignore_ascii_case(&dt)) {
+        dmg *= 2;
     }
+    if target.resistances.iter().any(|r| r.eq_ignore_ascii_case(&dt)) {
+        dmg /= 2;
+    }
+    if target.immunities.iter().any(|i| i.eq_ignore_ascii_case(&dt)) {
+        dmg = 0;
+    }
+    dmg
 }
 
 /// Heal a combatant, clamped to its maximum. Healing above 0 HP revives a
-/// defeated combatant and clears any lingering status.
+/// defeated combatant and clears any lingering status. Negative amounts
+/// are clamped to zero — HP reduction is `apply_damage`'s job.
 pub fn apply_healing(target: &mut Combatant, amount: i32) -> i32 {
     let before = target.hit_points;
+    let amount = amount.max(0);
     target.hit_points = (target.hit_points + amount).min(target.max_hit_points);
     if target.hit_points > 0 {
         target.status = None;
@@ -1042,6 +1048,18 @@ mod tests {
     }
 
     #[test]
+    fn negative_heal_is_a_no_op() {
+        // HP reduction is apply_damage's job; a negative "heal" must not
+        // sneak damage through either transport (server clamps too, but
+        // the engine is the last line of defense).
+        let mut target = Combatant::from(&goblin());
+        target.hit_points = 5;
+        let healed = apply_healing(&mut target, -10);
+        assert_eq!(healed, 0);
+        assert_eq!(target.hit_points, 5);
+    }
+
+    #[test]
     fn negative_damage_clamped_to_zero() {
         let mut target = Combatant::from(&goblin());
         let result = apply_damage(&mut target, -5);
@@ -1187,6 +1205,15 @@ mod tests {
         let mut target = make_combatant("T");
         target.vulnerabilities.push("cold".to_string());
         assert_eq!(modify_damage_for_type(5, "cold", &target), 10);
+    }
+
+    #[test]
+    fn modify_damage_resist_and_vuln_stack_to_normal() {
+        // 5e RAW: both apply — double, then halve → net full damage.
+        let mut target = make_combatant("T");
+        target.resistances.push("fire".to_string());
+        target.vulnerabilities.push("fire".to_string());
+        assert_eq!(modify_damage_for_type(20, "fire", &target), 20);
     }
 
     #[test]

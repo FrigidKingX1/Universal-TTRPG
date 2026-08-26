@@ -1,4 +1,4 @@
-//! Preset content library embedded in the server binary.
+﻿//! Preset content library embedded in the server binary.
 //!
 //! The JSON payloads are generated from the frontend's TypeScript preset
 //! library (`src/presets/{actions,bestiary}.ts`) by
@@ -14,12 +14,11 @@
 
 use auto_dm_core::models::{ActionDefinition, EncounterStatBlock};
 use auto_dm_engine::{DbError, Repository};
-use serde_json::Value;
 
 pub const PRESET_ACTIONS_JSON: &str = include_str!("../assets/preset_actions.json");
 pub const PRESET_MONSTERS_JSON: &str = include_str!("../assets/preset_monsters.json");
 
-/// Parse the embedded action library (panics on corruption — build-time data).
+/// Parse the embedded action library (panics on corruption â€” build-time data).
 pub fn preset_actions() -> Vec<ActionDefinition> {
     serde_json::from_str(PRESET_ACTIONS_JSON).expect("embedded preset actions are valid JSON")
 }
@@ -38,11 +37,6 @@ pub fn find_preset_action(id: &str) -> Option<ActionDefinition> {
 /// Find a preset monster by ID.
 pub fn find_preset_monster(id: &str) -> Option<EncounterStatBlock> {
     preset_stat_blocks().into_iter().find(|m| m.id == id)
-}
-
-/// Find a preset class by ID — not available in server (frontend only).
-pub fn find_preset_class(_id: &str) -> Option<Value> {
-    None
 }
 
 /// All preset actions as a constant slice reference (for listing).
