@@ -79,6 +79,15 @@ impl ServerHandler for TtrpgMcpServer {
 
         match handle_call(&name, serde_json::Value::Object(args)).await {
             Ok(ok) => Ok(CallToolResponse::from(ok)),
+            // Bad arguments and unknown tool names are the CALLER's fault —
+            // report them as invalid params so agents can self-correct,
+            // instead of a generic internal error.
+            Err(McpServerError::Json(e)) => {
+                Err(ErrorData::invalid_params(format!("invalid arguments: {e}"), None))
+            }
+            Err(McpServerError::UnknownTool(t)) => {
+                Err(ErrorData::invalid_params(format!("unknown tool: {t}"), None))
+            }
             Err(e) => Err(ErrorData::internal_error(e.to_string(), None)),
         }
     }

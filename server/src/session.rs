@@ -1,4 +1,4 @@
-//! C2+C3+C4 â€” Session model: per-session isolation, player-identity
+﻿//! C2+C3+C4 Ã¢â‚¬â€ Session model: per-session isolation, player-identity
 //! tokens, materialized resync, and turn concurrency policy.
 //!
 //! The turn gate switches between free-form (exploration) and queued
@@ -15,12 +15,18 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Types Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 pub const BROADCAST_CAPACITY: usize = 256;
 
+/// Resource guards for tunnel-exposed hosts: a scanner hitting
+/// `POST /sessions` should not be able to fill the disk with session DBs,
+/// and a leaked join code shouldn't allow an unbounded roster.
+pub const MAX_SESSIONS: usize = 64;
+pub const MAX_PLAYERS_PER_SESSION: usize = 16;
+
 /// A connected player slot within a session.  The `token` is the
-/// player-identity credential â€” it encodes who this player is, not
+/// player-identity credential Ã¢â‚¬â€ it encodes who this player is, not
 /// just "allowed into the session."
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
@@ -52,7 +58,7 @@ impl From<&PlayerSlot> for PlayerSlotView {
     }
 }
 
-// â”€â”€ Turn concurrency (C4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Turn concurrency (C4) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
@@ -130,7 +136,7 @@ impl TurnGate {
             state.current_turn = Some(next.clone());
             (state.mode, Some(next))
         } else {
-            // Queue empty â†’ combat ends automatically.
+            // Queue empty Ã¢â€ â€™ combat ends automatically.
             state.mode = GameMode::Exploration;
             state.current_turn = None;
             (GameMode::Exploration, None)
@@ -143,7 +149,7 @@ impl TurnGate {
         let mut state = self.inner.lock().await;
         state.mode = GameMode::Combat;
         state.current_turn = Some(first_player.clone());
-        // Remove first player from queue â€” they're acting now, not waiting.
+        // Remove first player from queue Ã¢â‚¬â€ they're acting now, not waiting.
         state.queue.retain(|id| id != &first_player);
     }
 
@@ -161,7 +167,7 @@ impl TurnGate {
     pub async fn join_queue(&self, player_id: &str) {
         let mut state = self.inner.lock().await;
         if state.current_turn.as_deref() == Some(player_id) {
-            return; // Already acting â€” don't queue them.
+            return; // Already acting Ã¢â‚¬â€ don't queue them.
         }
         if !state.queue.contains(&player_id.to_string()) {
             state.queue.push_back(player_id.to_string());
@@ -210,7 +216,7 @@ impl TurnGate {
     }
 }
 
-/// A live game session â€” one database, one broadcast channel, one lock.
+/// A live game session Ã¢â‚¬â€ one database, one broadcast channel, one lock.
 pub struct Session {
     pub id: String,
     pub join_code: String,
@@ -231,13 +237,13 @@ pub struct Session {
     pub map_background: RwLock<String>,
     /// Rolled initiative order (roll_initiative entries as JSON).  Without
     /// this, only the client that rolled ever sees the order and every
-    /// reconnect loses it â€” resync carries it back to everyone.
+    /// reconnect loses it Ã¢â‚¬â€ resync carries it back to everyone.
     pub initiative: RwLock<Vec<Value>>,
 }
 
-// â”€â”€ WsMessage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ WsMessage Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-/// Materialized state sent on reconnect â€” the same data `bootstrap()`
+/// Materialized state sent on reconnect Ã¢â‚¬â€ the same data `bootstrap()`
 /// would fetch.  Client replaces its local store wholesale; no log
 /// replay, no duplicated derivation logic.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -251,7 +257,7 @@ pub struct ResyncPayload {
     pub summaries: Vec<auto_dm_engine::EpisodicSummary>,
     pub combat_state: Option<String>,
     pub characters: Vec<auto_dm_core::models::CharacterProfile>,
-    /// Player-to-character mapping: player_id â†’ character_id
+    /// Player-to-character mapping: player_id Ã¢â€ â€™ character_id
     pub player_characters: std::collections::HashMap<String, String>,
     /// Shared battle-map state snapshot.
     #[serde(default)]
@@ -262,7 +268,7 @@ pub struct ResyncPayload {
     pub combatants: Vec<Value>,
     /// Per-combatant condition tags.
     pub combatant_conditions: std::collections::HashMap<String, Vec<String>>,
-    /// Last 200 log entries for narrative scrollback display only â€”
+    /// Last 200 log entries for narrative scrollback display only Ã¢â‚¬â€
     /// NOT for state reconstruction.
     pub recent_logs: Vec<auto_dm_engine::LogEntry>,
     /// Turn-gate snapshot so late joiners / reconnectors land with a
@@ -287,7 +293,7 @@ pub enum WsMessage {
     TurnState(TurnStatePayload),
 }
 
-/// Materialized turn-gate state â€” mirrors `/combat/status`.  Wire shape
+/// Materialized turn-gate state Ã¢â‚¬â€ mirrors `/combat/status`.  Wire shape
 /// uses `mode` as a plain string (the HTTP endpoints hand-roll JSON the
 /// same way), not the internally-tagged serde enum.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -321,15 +327,15 @@ pub async fn broadcast_turn_state(session: &Session) {
     let _ = session.event_tx.send(WsMessage::TurnState(payload));
 }
 
-// â”€â”€ Session registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Session registry Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 pub struct SessionRegistry {
-    /// session_id â†’ Session.  Pub for the binary's disconnect handler;
-    /// treat as internal â€” prefer registry methods when available.
+    /// session_id Ã¢â€ â€™ Session.  Pub for the binary's disconnect handler;
+    /// treat as internal Ã¢â‚¬â€ prefer registry methods when available.
     pub sessions: RwLock<HashMap<String, Arc<Session>>>,
-    /// join_code â†’ session_id (short lookup for the join endpoint)
+    /// join_code Ã¢â€ â€™ session_id (short lookup for the join endpoint)
     codes: RwLock<HashMap<String, String>>,
-    /// token â†’ (session_id, player_id) â€” the identity backbone for C3.
+    /// token Ã¢â€ â€™ (session_id, player_id) Ã¢â‚¬â€ the identity backbone for C3.
     tokens: RwLock<HashMap<String, (String, String)>>,
     /// Base directory for per-session databases.
     data_dir: PathBuf,
@@ -416,6 +422,13 @@ impl SessionRegistry {
         let _ = sqlx::query("ALTER TABLE registry_players ADD COLUMN character_id TEXT")
             .execute(&mut *tx)
             .await;
+        // Migration: persist rolled initiative alongside turn state so a
+        // mid-combat server restart restores the order, not just the mode.
+        let _ = sqlx::query(
+            "ALTER TABLE registry_turn_state ADD COLUMN initiative_json TEXT NOT NULL DEFAULT '[]'",
+        )
+        .execute(&mut *tx)
+        .await;
         tx.commit().await.map_err(|e| e.to_string())?;
         Ok(pool)
     }
@@ -434,7 +447,7 @@ impl SessionRegistry {
             // Check if the per-session database file exists.
             let db_path = self.data_dir.join(format!("{session_id}.db"));
             if !db_path.exists() {
-                tracing::warn!(session = %session_id, "Registry entry missing .db file â€” skipping");
+                tracing::warn!(session = %session_id, "Registry entry missing .db file Ã¢â‚¬â€ skipping");
                 continue;
             }
 
@@ -485,9 +498,12 @@ impl SessionRegistry {
                 })
                 .collect();
 
-            // Load turn state.
-            let turn_row: Option<(String, Option<String>, String)> = sqlx::query_as(
-                "SELECT mode, current_turn, queue_json FROM registry_turn_state WHERE session_id = ?",
+            // Load turn state + rolled initiative (initiative_json added by
+            // migration; COALESCE keeps pre-migration rows working).
+            let turn_row: Option<(String, Option<String>, String, String)> = sqlx::query_as(
+                "SELECT mode, current_turn, queue_json, \
+                        COALESCE(initiative_json, '[]') FROM registry_turn_state \
+                 WHERE session_id = ?",
             )
             .bind(&session_id)
             .fetch_optional(&self.registry_pool)
@@ -495,9 +511,11 @@ impl SessionRegistry {
             .map_err(|e| e.to_string())?;
 
             let turn_gate = TurnGate::new();
-            if let Some((mode, current, queue_json)) = turn_row {
+            let mut restored_initiative: Vec<Value> = Vec::new();
+            if let Some((mode, current, queue_json, initiative_json)) = turn_row {
                 let queue: Vec<String> = serde_json::from_str(&queue_json).unwrap_or_default();
                 turn_gate.restore_from_persisted(&mode, current.as_deref(), &queue).await;
+                restored_initiative = serde_json::from_str(&initiative_json).unwrap_or_default();
             }
 
             // Build token map entries.
@@ -520,7 +538,7 @@ impl SessionRegistry {
                 combatant_conditions: RwLock::new(std::collections::HashMap::new()),
                 map_tokens: RwLock::new(Vec::new()),
                 map_background: RwLock::new(String::new()),
-                initiative: RwLock::new(Vec::new()),
+                initiative: RwLock::new(restored_initiative),
             });
 
             // Populate in-memory maps.
@@ -553,7 +571,7 @@ impl SessionRegistry {
                     Some(url),
                 ))
             } else {
-                tracing::warn!("Ollama unreachable â€” falling back to stub backend");
+                tracing::warn!("Ollama unreachable Ã¢â‚¬â€ falling back to stub backend");
                 Box::new(auto_dm_core::llm::StubLlmBackend)
             };
         auto_dm_core::llm::DmPipeline::new(backend)
@@ -602,7 +620,7 @@ impl SessionRegistry {
         (url, model, reachable)
     }
 
-    // â”€â”€ Character management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Character management Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     /// Link a player to a character by ID. Host-only operation.
     pub async fn link_character(
@@ -797,7 +815,7 @@ impl SessionRegistry {
         Ok(profile)
     }
 
-    /// Helper: resolve player_id â†’ character_id.
+    /// Helper: resolve player_id Ã¢â€ â€™ character_id.
     async fn get_character_id(
         &self,
         session: &Arc<Session>,
@@ -808,7 +826,7 @@ impl SessionRegistry {
         player
             .character_id
             .clone()
-            .ok_or("No character linked â€” create or link a character first".into())
+            .ok_or("No character linked Ã¢â‚¬â€ create or link a character first".into())
     }
 
     /// Create a new session and mint the host's player token.
@@ -816,6 +834,9 @@ impl SessionRegistry {
         let title = title.trim();
         if title.is_empty() {
             return Err("Session title cannot be empty".into());
+        }
+        if self.sessions.read().await.len() >= MAX_SESSIONS {
+            return Err(format!("Too many active sessions (max {MAX_SESSIONS}) â€” end one first"));
         }
         let session_id = uuid::Uuid::new_v4().to_string();
         let join_code = generate_unique_join_code(&self.codes).await;
@@ -927,11 +948,13 @@ impl SessionRegistry {
         };
         let player_id = uuid::Uuid::new_v4().to_string();
         let token = uuid::Uuid::new_v4().to_string();
-
         {
             let sessions = self.sessions.read().await;
             let session = sessions.get(&session_id).ok_or("Session not found")?;
             let mut players = session.players.write().await;
+            if players.len() >= MAX_PLAYERS_PER_SESSION {
+                return Err(format!("Session is full (max {MAX_PLAYERS_PER_SESSION} players)"));
+            }
             players.push(PlayerSlot {
                 id: player_id.clone(),
                 name: player_name.to_string(),
@@ -960,7 +983,7 @@ impl SessionRegistry {
         Ok((session_id, token, player_id))
     }
 
-    /// Resolve a player token â†’ (session, player_id).
+    /// Resolve a player token Ã¢â€ â€™ (session, player_id).
     pub async fn authenticate(&self, token: &str) -> Result<(Arc<Session>, String), String> {
         let (session_id, player_id) = {
             let tokens = self.tokens.read().await;
@@ -971,7 +994,7 @@ impl SessionRegistry {
         Ok((session, player_id))
     }
 
-    /// Resolve a join code â†’ session_id.
+    /// Resolve a join code Ã¢â€ â€™ session_id.
     #[allow(dead_code)]
     pub async fn resolve_code(&self, join_code: &str) -> Option<String> {
         let codes = self.codes.read().await;
@@ -989,8 +1012,9 @@ impl SessionRegistry {
         out
     }
 
-    /// Persist turn state for a session to the registry database.
-    /// Called after combat start/end, join queue, advance turn, etc.
+    /// Persist turn state + rolled initiative for a session to the registry
+    /// database.  Called after combat start/end, join queue, advance turn,
+    /// initiative rolls, etc.
     pub async fn persist_turn_state(&self, session: &Session) {
         let (mode, current, queue) = session.turn_gate.status().await;
         let mode_str = match mode {
@@ -998,18 +1022,22 @@ impl SessionRegistry {
             GameMode::Combat => "combat",
         };
         let queue_json = serde_json::to_string(&queue).unwrap_or_else(|_| "[]".into());
+        let initiative_json = serde_json::to_string(&*session.initiative.read().await)
+            .unwrap_or_else(|_| "[]".into());
         let _ = sqlx::query(
-            "INSERT INTO registry_turn_state (session_id, mode, current_turn, queue_json)
-             VALUES (?, ?, ?, ?)
+            "INSERT INTO registry_turn_state (session_id, mode, current_turn, queue_json, initiative_json)
+             VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(session_id) DO UPDATE SET
                mode = excluded.mode,
                current_turn = excluded.current_turn,
-               queue_json = excluded.queue_json",
+               queue_json = excluded.queue_json,
+               initiative_json = excluded.initiative_json",
         )
         .bind(&session.id)
         .bind(mode_str)
         .bind(&current)
         .bind(&queue_json)
+        .bind(&initiative_json)
         .execute(&self.registry_pool)
         .await;
     }
@@ -1021,7 +1049,7 @@ pub struct SessionSummary {
     pub player_count: usize,
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 /// Generate a 6-character uppercase alphanumeric join code, retrying
 /// on collision (astronomically unlikely but free to check).
@@ -1048,12 +1076,12 @@ fn generate_join_code_raw() -> String {
     code
 }
 
-// â”€â”€ Resync payload builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Resync payload builder Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 use auto_dm_engine::Repository;
 
 /// Build a full materialized-state resync.  This is the server-side
-/// equivalent of `bootstrap()` â€” same data, different transport.
+/// equivalent of `bootstrap()` Ã¢â‚¬â€ same data, different transport.
 pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
     let repo = &session.game.repo;
 
@@ -1072,7 +1100,7 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         repo.list_characters(),
     );
 
-    // Build player_id â†’ character_id mapping from player slots.
+    // Build player_id Ã¢â€ â€™ character_id mapping from player slots.
     let players = session.players.read().await;
     let player_characters: std::collections::HashMap<String, String> = players
         .iter()
@@ -1145,6 +1173,54 @@ mod turn_state_tests {
     }
 
     #[tokio::test]
+    async fn join_rejects_when_session_is_full() {
+        let dir = std::env::temp_dir().join(format!("auto-dm-cap-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let registry =
+            SessionRegistry::new(dir.clone(), "http://localhost:11434".into(), "m".into())
+                .await
+                .unwrap();
+        let (_sid, code, _host_token) = registry.create_session("Full Table").await.unwrap();
+
+        // Fill to the cap (the host occupies slot 1).
+        for i in 1..MAX_PLAYERS_PER_SESSION {
+            registry.join_session(&code, &format!("p{i}")).await.unwrap();
+        }
+        let err = registry.join_session(&code, "overflow").await;
+        assert!(err.is_err(), "cap must reject the 17th player");
+        assert!(err.unwrap_err().contains("full"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn create_session_enforces_global_cap() {
+        let dir = std::env::temp_dir().join(format!("auto-dm-scap-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let registry =
+            SessionRegistry::new(dir.clone(), "http://localhost:11434".into(), "m".into())
+                .await
+                .unwrap();
+
+        // Fill the map to the cap by cloning one real session Arc under
+        // synthetic keys â€” the cap check only reads the map length, and
+        // building 64 genuine sessions (DB + migrations each) is slow.
+        let (_sid, _code, _tok) = registry.create_session("seed").await.unwrap();
+        {
+            let mut sessions = registry.sessions.write().await;
+            let seed = sessions.values().next().unwrap().clone();
+            for i in 1..MAX_SESSIONS {
+                sessions.insert(format!("stub-{i}"), seed.clone());
+            }
+        }
+        let err = registry.create_session("one too many").await;
+        assert!(err.is_err(), "global session cap must reject creation");
+        assert!(err.unwrap_err().contains("Too many"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
     async fn payload_mirrors_gate_status_through_combat_lifecycle() {
         let gate = TurnGate::new();
 
@@ -1161,8 +1237,8 @@ mod turn_state_tests {
         assert_eq!(p.current_turn.as_deref(), Some("alice"));
 
         // Join queue: waiting players listed in FIFO order.
-        gate.join_queue("bob".into()).await;
-        gate.join_queue("carol".into()).await;
+        gate.join_queue("bob").await;
+        gate.join_queue("carol").await;
         let p = TurnStatePayload::from_gate(&gate).await;
         assert_eq!(p.queue, vec!["bob".to_string(), "carol".to_string()]);
 
@@ -1230,7 +1306,7 @@ mod turn_state_tests {
         };
 
         session.turn_gate.start_combat("alice".into()).await;
-        session.turn_gate.join_queue("bob".into()).await;
+        session.turn_gate.join_queue("bob").await;
 
         // Initiative rolled by one client must reach everyone via resync.
         *session.initiative.write().await = vec![

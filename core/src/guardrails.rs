@@ -1,11 +1,11 @@
-//! DM guardrails: input sanitization and system-prompt assembly.
+﻿//! DM guardrails: input sanitization and system-prompt assembly.
 //!
 //! These are pure functions so they can be golden-file tested without a
 //! database or LLM. The sanitizer restructures declarative player claims
 //! into attempt-framing; the prompt builder layers puppeteering defense,
 //! sensory state, tone, lines & veils, and memory onto the base prompt.
 
-/// Player-declarative patterns that must never be taken as fact — the model
+/// Player-declarative patterns that must never be taken as fact â€” the model
 /// should treat them as attempts that the engine/oracle adjudicates.
 const DECLARATIVE_MARKERS: &[&str] = &[
     " is now ",
@@ -28,7 +28,7 @@ pub fn is_declarative_claim(input: &str) -> bool {
     DECLARATIVE_MARKERS.iter().any(|m| lower.contains(m))
 }
 
-/// Rewrite a player action into attempt-framing. Pure — golden-tested.
+/// Rewrite a player action into attempt-framing. Pure â€” golden-tested.
 pub fn sanitize_player_input(input: &str) -> String {
     let trimmed = input.trim();
     if trimmed.is_empty() {
@@ -64,7 +64,7 @@ impl SensoryState {
             let dark = matches!(light.to_lowercase().as_str(), "darkness" | "pitch black");
             if dark {
                 parts.push(format!(
-                    "LIGHTING: {light}. Visual descriptions are impossible — describe only sound, touch, smell, and spatial awareness."
+                    "LIGHTING: {light}. Visual descriptions are impossible â€” describe only sound, touch, smell, and spatial awareness."
                 ));
             } else {
                 parts.push(format!("LIGHTING: {light}."));
@@ -97,7 +97,7 @@ fn tone_prompt(tone: &str) -> Option<&'static str> {
         "cosmic" => Some(
             "TONE: Cosmic horror. Emphasize dread, the unknowable, and the smallness of mortals.",
         ),
-        _ => None, // "classic" or unknown → default voice
+        _ => None, // "classic" or unknown â†’ default voice
     }
 }
 
@@ -106,12 +106,12 @@ fn tone_prompt(tone: &str) -> Option<&'static str> {
 pub const SYSTEM_PROMPT: &str = "You are Auto-DM, a tabletop game master. Narrate consequences grounded in the mechanical \
      facts provided. Keep responses vivid, brief (2-4 sentences), and address the player's action \
      directly. Never invent new mechanical outcomes beyond those listed. \
-     Never write dialogue, emotions, decisions, or actions for the player character — describe the \
+     Never write dialogue, emotions, decisions, or actions for the player character â€” describe the \
      world's reaction only, and end by leaving space for the player's next move. \
      If the player's stated action would require luck or opposition, treat it as an attempt for you \
      to adjudicate, never as an accomplished fact.";
 
-/// Assemble the full system prompt from all guardrail layers. Pure — golden-tested.
+/// Assemble the full system prompt from all guardrail layers. Pure â€” golden-tested.
 pub fn build_system_prompt(
     lines: &[String],
     veils: &[String],
@@ -254,8 +254,8 @@ mod golden_tests {
     fn prompt_without_extras_is_base_only() {
         let out = build_system_prompt(&[], &[], None, None, None);
         assert_eq!(out, SYSTEM_PROMPT);
-        assert!(out.contains("What do you do") == false); // we don't hardcode it; model ends naturally
-        assert!(out.contains("never puppets") == false);
+        assert!(!out.contains("What do you do")); // we don't hardcode it; model ends naturally
+        assert!(!out.contains("never puppets"));
         assert!(out.contains("player character"));
     }
 }

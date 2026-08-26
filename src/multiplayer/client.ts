@@ -18,6 +18,18 @@ const PING_INTERVAL_MS = 30_000;
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
 
+/** DM resolution can legitimately run for minutes (local LLM); everything
+ * else should fail fast instead of spinning a busy flag forever. */
+const RESOLVE_TIMEOUT_MS = 210_000;
+const DEFAULT_TIMEOUT_MS = 45_000;
+
+function fetchSignal(path: string): AbortSignal {
+  const ms = path.startsWith("/resolve")
+    ? RESOLVE_TIMEOUT_MS
+    : DEFAULT_TIMEOUT_MS;
+  return AbortSignal.timeout(ms);
+}
+
 /**
  * Derive a WebSocket URL from a server base URL. Accepts http(s) URLs,
  * bare hosts, or already-correct ws(s) URLs — required so Cloudflare
@@ -253,6 +265,7 @@ export class MultiplayerClient {
         Authorization: `Bearer ${this.token}`,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: fetchSignal(path),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -265,6 +278,7 @@ export class MultiplayerClient {
   async httpGet<T>(path: string): Promise<T> {
     const res = await fetch(`${this.httpBase}/sessions/${this.sessionId}${path}`, {
       headers: { Authorization: `Bearer ${this.token}` },
+      signal: fetchSignal(path),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");

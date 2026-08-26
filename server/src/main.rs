@@ -272,6 +272,15 @@ async fn resolve(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
 
+    // Prompt-size guard: a runaway client (or hostile one) shouldn't be
+    // able to push megabytes of "player action" into a 180 s LLM call.
+    if request.player_action.chars().count() > 8_000 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Player action too long (max 8000 characters)".into(),
+        ));
+    }
+
     // ── Phase A: gate check + context snapshot under the lock, then
     // RELEASE it for the LLM call.  Holding the per-session lock across a
     // generate (up to 180 s) serialized every player's actions behind one
@@ -1643,13 +1652,15 @@ async fn server_combat_initiative(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Persist + broadcast: every client needs the order (their Combat tab
-    // renders it), and reconnectors get it back via resync.
+    // renders it), reconnectors get it back via resync, and a server
+    // restart restores it alongside turn state.
     let entries_json: Vec<Value> =
         serde_json::to_value(&entries).unwrap_or_default().as_array().cloned().unwrap_or_default();
     {
         let _lock = session.session_lock.lock().await;
         *session.initiative.write().await = entries_json.clone();
     }
+    state.registry.persist_turn_state(&session).await;
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
