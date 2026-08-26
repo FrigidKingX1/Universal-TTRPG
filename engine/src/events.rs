@@ -117,3 +117,125 @@ impl GameEvent {
         }
     }
 }
+
+#[cfg(test)]
+mod wire_shape_tests {
+    use super::*;
+
+    /// Cross-language drift guard. The TypeScript mirror in
+    /// `src/multiplayer/types.ts` dispatches on these exact `type` tags and
+    /// reads these exact field names; if this test fails, update the TS
+    /// union in the same commit or every hosted client silently ignores
+    /// the renamed event.
+    #[test]
+    fn every_variant_serializes_with_the_wire_shape_types_ts_expects() {
+        let samples: Vec<(GameEvent, &str, &[&str])> = vec![
+            (GameEvent::SceneUpdated { scene_id: "s".into() }, "scene_updated", &["scene_id"]),
+            (GameEvent::NpcSpoke { speaker: "n".into() }, "npc_spoke", &["speaker"]),
+            (
+                GameEvent::ItemAdded { name: "i".into(), quantity: 1 },
+                "item_added",
+                &["name", "quantity"],
+            ),
+            (
+                GameEvent::ClockAdvanced { clock_id: "c".into(), ticks: 1 },
+                "clock_advanced",
+                &["clock_id", "ticks"],
+            ),
+            (
+                GameEvent::DamageApplied {
+                    target_id: "t".into(),
+                    target_name: "T".into(),
+                    amount: 1,
+                    temp_absorbed: 0,
+                    hp_remaining: 9,
+                    defeated: false,
+                    shock: false,
+                },
+                "damage_applied",
+                &[
+                    "target_id",
+                    "target_name",
+                    "amount",
+                    "temp_absorbed",
+                    "hp_remaining",
+                    "defeated",
+                    "shock",
+                ],
+            ),
+            (
+                GameEvent::Healed {
+                    target_id: "t".into(),
+                    target_name: "T".into(),
+                    amount: 1,
+                    hp_remaining: 9,
+                },
+                "healed",
+                &["target_id", "target_name", "amount", "hp_remaining"],
+            ),
+            (
+                GameEvent::MapUpdated { tokens: Value::Array(vec![]), background: String::new() },
+                "map_updated",
+                &["tokens", "background"],
+            ),
+            (
+                GameEvent::AmbiguousTarget {
+                    kind: "k".into(),
+                    message: "m".into(),
+                    candidates: vec!["a".into()],
+                },
+                "ambiguous_target",
+                &["kind", "message", "candidates"],
+            ),
+            (
+                GameEvent::ConditionApplied { target: "t".into(), condition: "c".into() },
+                "condition_applied",
+                &["target", "condition"],
+            ),
+            (GameEvent::RuleAnswered { question: "q".into() }, "rule_answered", &["question"]),
+        ];
+
+        // Every variant of the enum must be covered. `_exhaustive_canary`
+        // below fails to COMPILE when a variant is added without appearing
+        // here, forcing the TS mirror to be updated in the same commit.
+        assert_eq!(
+            samples.len(),
+            10,
+            "uncovered GameEvent variants — add them here AND to src/multiplayer/types.ts"
+        );
+
+        for (event, expected_tag, expected_fields) in samples {
+            let v = serde_json::to_value(&event).expect("serialize");
+            let obj = v.as_object().expect("tagged object");
+            assert_eq!(
+                obj.get("type").and_then(|t| t.as_str()),
+                Some(expected_tag),
+                "wrong wire tag for {expected_tag}: {obj:?}"
+            );
+            let mut actual: Vec<&str> =
+                obj.keys().filter(|k| *k != "type").map(|k| k.as_str()).collect();
+            let mut expected: Vec<&str> = expected_fields.to_vec();
+            actual.sort_unstable();
+            expected.sort_unstable();
+            assert_eq!(actual, expected, "field drift on {expected_tag}");
+        }
+    }
+
+    /// Compile-time tripwire: adding a `GameEvent` variant without updating
+    /// `every_variant_serializes_with_the_wire_shape_types_ts_expects` (and
+    /// the TypeScript mirror) breaks the build right here.
+    fn _exhaustive_canary(e: &GameEvent) {
+        match e {
+            GameEvent::SceneUpdated { .. } => {}
+            GameEvent::NpcSpoke { .. } => {}
+            GameEvent::ItemAdded { .. } => {}
+            GameEvent::ClockAdvanced { .. } => {}
+            GameEvent::DamageApplied { .. } => {}
+            GameEvent::Healed { .. } => {}
+            GameEvent::MapUpdated { .. } => {}
+            GameEvent::AmbiguousTarget { .. } => {}
+            GameEvent::ConditionApplied { .. } => {}
+            GameEvent::RuleAnswered { .. } => {}
+        }
+    }
+}

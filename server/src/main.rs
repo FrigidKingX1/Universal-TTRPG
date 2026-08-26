@@ -463,6 +463,10 @@ async fn start_combat(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
     let _lock = session.session_lock.lock().await;
+    // Host authority: re-starting combat resets whose turn it is, and
+    // ending it wipes everyone's initiative — both are griefing vectors
+    // in hostile hands, so only the table's host may invoke them.
+    require_host(&session, &player_id).await?;
     session.turn_gate.start_combat(player_id.clone()).await;
     state.registry.persist_turn_state(&session).await;
     broadcast_turn_state(&session).await;
@@ -476,12 +480,14 @@ async fn end_combat(
     headers: axum::http::header::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let token = extract_token(&headers)?;
-    let (session, _) =
+    let (session, player_id) =
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
     let _lock = session.session_lock.lock().await;
+    // Host authority: ending combat wipes everyone's turn state mid-fight.
+    require_host(&session, &player_id).await?;
     session.turn_gate.end_combat().await;
     state.registry.persist_turn_state(&session).await;
     broadcast_turn_state(&session).await;

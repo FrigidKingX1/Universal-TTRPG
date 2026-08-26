@@ -14,13 +14,6 @@ import type {
 
 export type GameMode = "exploration" | "combat";
 
-// ── Turn check (from /combat/skip error or client-side gating) ───────
-
-export type TurnCheck =
-  | { status: "allowed" }
-  | { status: "waiting"; position: number }
-  | { status: "not_in_queue" };
-
 // ── WsMessage envelope ───────────────────────────────────────────────
 
 export type WsMessage =
