@@ -1027,13 +1027,6 @@ impl SessionRegistry {
         Ok((session, player_id))
     }
 
-    /// Resolve a join code ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ session_id.
-    #[allow(dead_code)]
-    pub async fn resolve_code(&self, join_code: &str) -> Option<String> {
-        let codes = self.codes.read().await;
-        codes.get(join_code).cloned()
-    }
-
     /// List all sessions (for admin/debug).
     pub async fn list_sessions(&self) -> Vec<SessionSummary> {
         let sessions = self.sessions.read().await;
@@ -1113,9 +1106,23 @@ fn generate_join_code_raw() -> String {
 
 use auto_dm_engine::Repository;
 
-/// Build a full materialized-state resync.  This is the server-side
-/// equivalent of `bootstrap()` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â same data, different transport.
+/// Build a full materialized-state resync under the session lock.
+///
+/// The lock matters for two reasons: it prevents torn snapshots when a
+/// concurrent resolve is mid-mutation, and it makes `last_event_seq`
+/// exact — the snapshot is guaranteed to reflect every event stamped at
+/// or below that bound, which is what the client's exactly-once replay
+/// filter assumes.
+///
+/// Handlers that already hold the session lock must call
+/// [`build_resync_under_lock`] instead (tokio mutexes are not reentrant).
 pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
+    let _lock = session.session_lock.lock().await;
+    build_resync_under_lock(session).await
+}
+
+/// Snapshot builder for callers already holding the session lock.
+pub async fn build_resync_under_lock(session: &Session) -> Box<ResyncPayload> {
     let repo = &session.game.repo;
 
     let scene = repo.active_scene().await.ok().flatten();

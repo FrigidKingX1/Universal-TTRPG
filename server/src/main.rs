@@ -1,4 +1,4 @@
-﻿use auto_dm_engine::{
+use auto_dm_engine::{
     apply_session_effects, tick_idle_clocks, CampaignExport, LogEntry, Repository,
 };
 use axum::{
@@ -723,7 +723,7 @@ async fn equip_item(
         }
     }
 
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
 
     Ok(Json(json!({ "character": profile })))
@@ -767,7 +767,7 @@ async fn use_item(
         }
     }
 
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
 
     Ok(Json(json!({ "character": profile })))
@@ -1472,7 +1472,7 @@ async fn server_combat_attack(
     }
 
     // Broadcast resync so all clients get updated combatant state.
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     Ok(Json(serde_json::to_value(&outcome).unwrap_or_default()))
@@ -1559,7 +1559,7 @@ async fn server_combat_heal(
     }
 
     // Broadcast resync.
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     Ok(Json(json!({
@@ -1613,7 +1613,7 @@ async fn server_combat_condition(
     }
 
     // Broadcast resync.
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     let conditions = session.combatant_conditions.read().await;
@@ -1692,7 +1692,7 @@ async fn server_combat_initiative(
         *session.initiative.write().await = entries_json.clone();
     }
     state.registry.persist_turn_state(&session).await;
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     Ok(Json(serde_json::to_value(&entries).unwrap_or_default()))
@@ -1747,7 +1747,7 @@ async fn handle_socket(
     let mut rx = session.event_tx.subscribe();
     let resync = {
         let _lock = session.session_lock.lock().await;
-        session::build_resync(&session).await
+        session::build_resync_under_lock(&session).await
     };
     let msg = WsMessage::Resync(resync);
     if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
@@ -1795,7 +1795,9 @@ async fn handle_socket(
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged Ã¢â‚¬â€ resync");
+                        tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged — resync");
+                        // No lock held in this branch — the auto-locking
+                        // wrapper is required here.
                         let resync = session::build_resync(&session).await;
                         let msg = WsMessage::Resync(resync);
                         if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {

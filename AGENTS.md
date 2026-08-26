@@ -10,6 +10,18 @@ frontend, content library in `src/presets/`. `mcp-server` crate exposes
 deterministic core tools over stdio (rmcp 3.x) so external MCP clients
 can drive dice/oracle/intent/presets/recall.
 
+### Hosted-server concurrency contract
+
+- `build_resync(&Session)` **acquires the session lock** — use it from
+  handlers that don't already hold it. Inside a handler holding
+  `session_lock`, call `build_resync_under_lock` instead (tokio mutexes
+  are not reentrant; nesting deadlocks).
+- The lock guarantees two things: snapshots are never torn mid-resolve,
+  and `last_event_seq` exactly bounds the events the snapshot reflects —
+  which the client's exactly-once replay filter depends on.
+- All state-mutating broadcasts must go through `Session::send_event`
+  (stamps the seq); never send `WsMessage::Event` via `event_tx` directly.
+
 ### MCP server notes (rmcp 3.1.x)
 
 - Feature is `transport-io` (NOT `transport-stdio`); error type is
