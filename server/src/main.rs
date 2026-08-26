@@ -1426,21 +1426,43 @@ async fn server_combat_attack(
     actor.conditions = req.attacker_conditions.unwrap_or_default();
     victim.conditions = req.target_conditions.unwrap_or_default();
 
-    // Server-authoritative target state: the caller's snapshot may be
-    // seconds stale, and trusting its HP lets laggy clients resurrect
-    // damage already applied by someone else. When the roster knows this
-    // id, its copy wins; the client's condition overlay still applies.
+    // Server-authoritative roster resolution for BOTH sides: a stale or
+    // hostile client must not resurrect old HP on the target, nor fabricate
+    // a ghost attacker or self-declare advantage conditions ("Invisible")
+    // it doesn't actually have. Roster copies win when present; the client
+    // condition overlay applies only to ids the roster doesn't know yet.
     {
         let combatants = session.combatants.read().await;
-        if let Some(current) = combatants
+        let resolve_side = |id: &str| {
+            combatants
+                .iter()
+                .find(|c| c.get("id").and_then(|v| v.as_str()) == Some(id))
+                .and_then(|c| auto_dm_engine::combatant_from_value(c).ok())
+        };
+        if let Some(authoritative) = resolve_side(&actor.id) {
+            let conditions = actor.conditions.clone();
+            actor = authoritative;
+            actor.conditions = conditions;
+        }
+        if let Some(authoritative) = resolve_side(&victim.id) {
+            let conditions = victim.conditions.clone();
+            victim = authoritative;
+            victim.conditions = conditions;
+        }
+
+        // Ghost rejection: both sides must exist on the server roster.
+        let attacker_known = combatants
             .iter()
-            .find(|c| c.get("id").and_then(|v| v.as_str()) == Some(victim.id.as_str()))
-        {
-            if let Ok(authoritative) = auto_dm_engine::combatant_from_value(current) {
-                let conditions = victim.conditions.clone();
-                victim = authoritative;
-                victim.conditions = conditions;
-            }
+            .any(|c| c.get("id").and_then(|v| v.as_str()) == Some(actor.id.as_str()));
+        let victim_known = combatants
+            .iter()
+            .any(|c| c.get("id").and_then(|v| v.as_str()) == Some(victim.id.as_str()));
+        if !attacker_known || !victim_known {
+            let ghost = if attacker_known { &victim.id } else { &actor.id };
+            return Err((
+                StatusCode::NOT_FOUND,
+                format!("Combatant `{ghost}` is not in this combat"),
+            ));
         }
     }
 
@@ -1662,6 +1684,20 @@ async fn server_combat_condition(
         return Err((StatusCode::BAD_REQUEST, "Invalid condition".into()));
     }
 
+    // Target must be on the roster — no ghost entries keyed by junk ids.
+    {
+        let combatants = session.combatants.read().await;
+        let known = combatants
+            .iter()
+            .any(|c| c.get("id").and_then(|v| v.as_str()) == Some(req.target_id.as_str()));
+        if !known {
+            return Err((
+                StatusCode::NOT_FOUND,
+                format!("Combatant `{}` is not in this combat", req.target_id),
+            ));
+        }
+    }
+
     {
         let mut conditions = session.combatant_conditions.write().await;
         let entry = conditions.entry(req.target_id.clone()).or_default();
@@ -1781,12 +1817,7 @@ async fn ws_handler(
     let result = state.registry.authenticate(&query.token).await;
     match result {
         Ok((session, player_id)) if session.id == session_id => {
-            {
-                let mut players = session.players.write().await;
-                if let Some(p) = players.iter_mut().find(|p| p.id == player_id) {
-                    p.connected = true;
-                }
-            }
+            session.socket_opened(&player_id).await;
             ws.on_upgrade(move |socket| handle_socket(state, session, player_id, socket))
         }
         _ => (StatusCode::UNAUTHORIZED, "Invalid token or session mismatch").into_response(),
@@ -1816,7 +1847,9 @@ async fn handle_socket(
     };
     let msg = WsMessage::Resync(resync);
     if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
-        mark_disconnected(&state, &session, &player_id).await;
+        if session.socket_closed(&player_id).await {
+            mark_disconnected(&state, &session, &player_id).await;
+        }
         return;
     }
     let mut ping_interval = tokio::time::interval(PING_INTERVAL);
@@ -1922,7 +1955,12 @@ async fn handle_socket(
         }
     }
 
-    mark_disconnected(&state, &session, &player_id).await;
+    // Multi-tab aware: only run disconnect cleanup (gate advance, roster
+    // flag, TurnState broadcast) when this was the player's LAST socket.
+    // A second tab staying open must not mark them offline.
+    if session.socket_closed(&player_id).await {
+        mark_disconnected(&state, &session, &player_id).await;
+    }
     tracing::info!(session = %session.id, player = %player_id, "WebSocket disconnected");
 }
 
