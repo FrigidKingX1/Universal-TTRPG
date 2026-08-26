@@ -263,6 +263,19 @@ describe("scoped mapDragGuard", () => {
     expect(main.snapshot().doomClocks[0].current).toBe(1);
   });
 
+  it("_handleTurnState mirrors the server push into the store", () => {
+    useMultiplayerStore.getState()._handleTurnState({
+      mode: "combat",
+      current_turn: "carol",
+      queue: ["alice", "bob"],
+    });
+
+    const mp = useMultiplayerStore.getState();
+    expect(mp.gameMode).toBe("combat");
+    expect(mp.currentTurn).toBe("carol");
+    expect(mp.turnQueue).toEqual(["alice", "bob"]);
+  });
+
   it("resync hydrates the live roster so presence stays accurate", () => {
     const main = makeMainStore();
     initMultiplayerBridge(main.get, main.set as any);

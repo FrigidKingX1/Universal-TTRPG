@@ -382,10 +382,16 @@ async fn resolve(
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Logs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
+#[derive(Deserialize)]
+struct ListLogsQuery {
+    limit: Option<usize>,
+}
+
 async fn list_logs(
     AxumState(state): AxumState<Arc<AppState>>,
     Path(session_id): Path<String>,
     headers: axum::http::header::HeaderMap,
+    Query(query): Query<ListLogsQuery>,
 ) -> Result<Json<Vec<LogEntry>>, (StatusCode, String)> {
     let token = extract_token(&headers)?;
     let (session, _) =
@@ -393,6 +399,9 @@ async fn list_logs(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Honor the client's limit (the scrollback asks for 200) with a sane
+    // clamp so a hostile `limit=100000000` can't allocate huge vectors.
+    let limit = query.limit.unwrap_or(200).clamp(1, 500) as i64;
     let scene_id = session
         .game
         .repo
@@ -404,7 +413,7 @@ async fn list_logs(
     let logs = session
         .game
         .repo
-        .list_logs(&scene_id, 100)
+        .list_logs(&scene_id, limit)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(logs))
@@ -1417,6 +1426,24 @@ async fn server_combat_attack(
     actor.conditions = req.attacker_conditions.unwrap_or_default();
     victim.conditions = req.target_conditions.unwrap_or_default();
 
+    // Server-authoritative target state: the caller's snapshot may be
+    // seconds stale, and trusting its HP lets laggy clients resurrect
+    // damage already applied by someone else. When the roster knows this
+    // id, its copy wins; the client's condition overlay still applies.
+    {
+        let combatants = session.combatants.read().await;
+        if let Some(current) = combatants
+            .iter()
+            .find(|c| c.get("id").and_then(|v| v.as_str()) == Some(victim.id.as_str()))
+        {
+            if let Ok(authoritative) = auto_dm_engine::combatant_from_value(current) {
+                let conditions = victim.conditions.clone();
+                victim = authoritative;
+                victim.conditions = conditions;
+            }
+        }
+    }
+
     let action = session
         .game
         .repo
@@ -1502,9 +1529,16 @@ async fn server_map_update(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
 
+    // Griefing guard: tokens ride every resync and render as DOM nodes on
+    // every peer; a hostile client must not flood the board with thousands.
+    let token_array = req.tokens.as_array().cloned().unwrap_or_default();
+    if token_array.len() > 512 {
+        return Err((StatusCode::BAD_REQUEST, "Too many tokens (max 512)".into()));
+    }
+
     {
         let mut tokens = session.map_tokens.write().await;
-        *tokens = req.tokens.as_array().cloned().unwrap_or_default();
+        *tokens = token_array;
     }
     {
         let mut bg = session.map_background.write().await;
@@ -1544,6 +1578,30 @@ async fn server_combat_heal(
     let amount = req.amount.max(0);
     let mut victim = auto_dm_engine::combatant_from_value(&req.target)
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    // Server-authoritative target state, same as the attack handler. A
+    // target absent from the roster is a hard error — silently "succeeding"
+    // without persisting anything would mislead the healer.
+    {
+        let combatants = session.combatants.read().await;
+        match combatants
+            .iter()
+            .find(|c| c.get("id").and_then(|v| v.as_str()) == Some(victim.id.as_str()))
+        {
+            Some(current) => {
+                if let Ok(authoritative) = auto_dm_engine::combatant_from_value(current) {
+                    victim = authoritative;
+                }
+            }
+            None => {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    format!("Target `{}` is not in this combat", victim.id),
+                ));
+            }
+        }
+    }
+
     let healed = auto_dm_core::engine::apply_healing(&mut victim, amount);
 
     // Update server-authoritative combatant state.
