@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useStore } from "../store";
+﻿import { useState } from "react";
+import { useStore, parseNum } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { playCombatSfx } from "../sound";
 import { findPresetAction } from "../presets/actions";
@@ -107,7 +107,7 @@ export function Combat() {
   const grantTempHp = (entity: CharacterProfile | EncounterStatBlock, amount: number) => {
     if (!("resource_pools" in entity) || !entity.resource_pools.hp) return;
     const pool = entity.resource_pools.hp;
-    // 5e RAW: temp HP doesn't stack — take the higher value.
+    // 5e RAW: temp HP doesn't stack â€” take the higher value.
     const next = Math.max(pool.temporary ?? 0, amount);
     void saveCharacter({
       ...entity,
@@ -117,7 +117,7 @@ export function Combat() {
   };
 
   // Get actions available to the selected attacker.
-  // Resolve against the local vault first, then bundled presets — hosted
+  // Resolve against the local vault first, then bundled presets â€” hosted
   // clients may not have the server's seeded actions mirrored locally.
   const resolveActionDef = (id: string) =>
     actions.find((a) => a.id === id) ?? findPresetAction(id);
@@ -285,7 +285,7 @@ export function Combat() {
           <div className="tracker-info">
             <span className="tracker-round">Round {currentRound}</span>
             <span className="tracker-turn muted">
-              Current: {initiativeOrder[currentTurnIndex]?.name ?? "—"}
+              Current: {initiativeOrder[currentTurnIndex]?.name ?? "â€”"}
             </span>
           </div>
           <div className="tracker-actions">
@@ -314,10 +314,10 @@ export function Combat() {
                 {concentration[e.value.id] && (
                   <button
                     className="badge conc-badge"
-                    title="Click to end concentration voluntarily — Ends if the caster takes damage and fails a CON save"
+                    title="Click to end concentration voluntarily â€” Ends if the caster takes damage and fails a CON save"
                     onClick={() => useStore.getState().dropConcentration(e.value.id)}
                   >
-                    ◎ {concentration[e.value.id]} ✕
+                    â—Ž {concentration[e.value.id]} âœ•
                   </button>
                 )}
               </div>
@@ -330,7 +330,7 @@ export function Combat() {
                   <button
                     className="muted"
                     style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem" }}
-                    title="Grant temporary HP (doesn't stack — takes higher)"
+                    title="Grant temporary HP (doesn't stack â€” takes higher)"
                     onClick={() => grantTempHp(e.value, 5)}
                     aria-label={`Grant 5 temporary HP to ${e.name}`}
                   >
@@ -356,10 +356,10 @@ export function Combat() {
                     <span
                       key={c}
                       className="condition-badge"
-                      title={`${CONDITION_DESC[c] ?? c}\n${effects ? "\nEffects:\n• " + effects.join("\n• ") : ""}`}
+                      title={`${CONDITION_DESC[c] ?? c}\n${effects ? "\nEffects:\nâ€¢ " + effects.join("\nâ€¢ ") : ""}`}
                       onClick={() => toggleCondition(e.value.id, c)}
                     >
-                      {c} ×
+                      {c} Ã—
                     </span>
                   );
                 })}
@@ -398,7 +398,7 @@ export function Combat() {
         <label>
           Target
           <select value={customHpTarget} onChange={(e) => setCustomHpTarget(e.currentTarget.value)}>
-            <option value="">—</option>
+            <option value="">â€”</option>
             {entities.map((e) => (
               <option key={e.key} value={e.key}>{e.name}</option>
             ))}
@@ -409,8 +409,8 @@ export function Combat() {
           <input
             type="number"
             value={customHpAmount}
-            onChange={(e) => setCustomHpAmount(Number(e.currentTarget.value))}
-            placeholder="± amount"
+            onChange={(e) => setCustomHpAmount(parseNum(e.currentTarget.value))}
+            placeholder="Â± amount"
             style={{ width: "5rem" }}
           />
         </label>
@@ -437,8 +437,8 @@ export function Combat() {
           <input
             type="number"
             value={batchHpAmount}
-            onChange={(e) => setBatchHpAmount(Number(e.currentTarget.value))}
-            placeholder="± amount"
+            onChange={(e) => setBatchHpAmount(parseNum(e.currentTarget.value))}
+            placeholder="Â± amount"
             style={{ width: "5rem" }}
           />
         </label>
@@ -457,7 +457,7 @@ export function Combat() {
         <label>
           Attacker
           <select value={attackerKey} onChange={(e) => { setAttackerKey(e.currentTarget.value); setActionId(""); }}>
-            <option value="">—</option>
+            <option value="">â€”</option>
             {entities.map((e) => {
               const hp = hpInfo(e.value);
               return (
@@ -471,7 +471,7 @@ export function Combat() {
         <label>
           Target
           <select value={targetKey} onChange={(e) => setTargetKey(e.currentTarget.value)}>
-            <option value="">—</option>
+            <option value="">â€”</option>
             {entities.map((e) => {
               const hp = hpInfo(e.value);
               return (
@@ -485,7 +485,7 @@ export function Combat() {
         <label>
           Action
           <select value={actionId} onChange={(e) => setActionId(e.currentTarget.value)}>
-            <option value="">—</option>
+            <option value="">â€”</option>
             {attackerActions.map((a) => {
               const cost = slotGate.isChar ? a.slot_cost : undefined;
               const attacker = cost ? resolve(attackerKey) : undefined;
@@ -496,7 +496,7 @@ export function Combat() {
               return (
                 <option key={a.id} value={a.id}>
                   {a.name}
-                  {cost ? ` · ${pool ? `${pool.current}/${pool.maximum}` : "0"} ${cost.pool.replace(/_/g, " ")}` : ""}
+                  {cost ? ` Â· ${pool ? `${pool.current}/${pool.maximum}` : "0"} ${cost.pool.replace(/_/g, " ")}` : ""}
                 </option>
               );
             })}
@@ -509,7 +509,7 @@ export function Combat() {
           disabled={busy || !slotGate.ok}
           title={!slotGate.ok ? `No ${slotGate.poolName} left (needs ${slotGate.required})` : undefined}
         >
-          {busy ? "Rolling…" : !slotGate.ok ? "No slots" : "Attack"}
+          {busy ? "Rollingâ€¦" : !slotGate.ok ? "No slots" : "Attack"}
         </button>
         <button onClick={initiative}>Roll Initiative</button>
       </div>
@@ -566,13 +566,13 @@ export function Combat() {
                 type="number"
                 min={1}
                 value={lootQty}
-                onChange={(e) => setLootQty(Math.max(1, Number(e.currentTarget.value)))}
+                onChange={(e) => setLootQty(Math.max(1, parseNum(e.currentTarget.value)))}
                 style={{ width: "4rem" }}
               />
               <label>
                 Source
                 <select value={lootSource} onChange={(e) => setLootSource(e.currentTarget.value)}>
-                  <option value="">—</option>
+                  <option value="">â€”</option>
                   {entities.map((en) => (
                     <option key={en.key} value={en.key}>{en.name}</option>
                   ))}
@@ -589,7 +589,7 @@ export function Combat() {
               <div className="loot-list">
                 {loot.map((l) => (
                   <div key={l.id} className="card-row loot-entry">
-                    <span>{l.quantity}× {l.name}</span>
+                    <span>{l.quantity}Ã— {l.name}</span>
                     {l.sourceEntity && <span className="muted">from {entities.find((e) => e.key === l.sourceEntity)?.name ?? "?"}</span>}
                     {l.assignedTo ? (
                       <span className="badge">{characters.find((c) => c.id === l.assignedTo)?.identity.name ?? "assigned"}</span>
@@ -598,7 +598,7 @@ export function Combat() {
                         value=""
                         onChange={(e) => { if (e.currentTarget.value) assignLoot(l.id, e.currentTarget.value); }}
                       >
-                        <option value="">Assign to…</option>
+                        <option value="">Assign toâ€¦</option>
                         {characters.map((c) => (
                           <option key={c.id} value={c.id}>{c.identity.name}</option>
                         ))}
@@ -645,19 +645,19 @@ function CombatLogEntry({ outcome }: { outcome: EngineOutcome }) {
         <span className="muted"> vs AC {outcome.target_ac})</span>
       )}
       {outcome.damage_dealt > 0 && (
-        <span> — <strong>{outcome.damage_dealt} dmg</strong>
+        <span> â€” <strong>{outcome.damage_dealt} dmg</strong>
           {outcome.damage_type && <span className="muted"> [{outcome.damage_type}]</span>}
           {outcome.damage_modifier && <span className={outcome.damage_modifier === "immune" ? "exceptional" : outcome.damage_modifier === "vulnerable" ? "fury" : "muted"}> ({outcome.damage_modifier})</span>}
         </span>
       )}
       {(outcome.heal_amount ?? 0) > 0 && (
-        <span className="heal-text"> — <strong>+{outcome.heal_amount} HP</strong></span>
+        <span className="heal-text"> â€” <strong>+{outcome.heal_amount} HP</strong></span>
       )}
       {outcome.damage_dealt === 0 && outcome.damage_modifier === "immune" && (
-        <span className="exceptional"> — immune!</span>
+        <span className="exceptional"> â€” immune!</span>
       )}
       {outcome.target_hp_remaining <= 0 && (
-        <span className="exceptional"> — defeated!</span>
+        <span className="exceptional"> â€” defeated!</span>
       )}
     </div>
   );
@@ -718,8 +718,8 @@ function CombatResult({ outcome }: { outcome: EngineOutcome }) {
           <span className="muted"> [{outcome.damage_type}]</span>
         )}
         {outcome.damage_modifier && <span className={outcome.damage_modifier === "immune" ? "exceptional" : outcome.damage_modifier === "vulnerable" ? "fury" : "muted"}> ({outcome.damage_modifier})</span>}
-        {" · "}Target HP:{" "}
-        <strong>{outcome.target_hp_remaining}</strong> · Status:{" "}
+        {" Â· "}Target HP:{" "}
+        <strong>{outcome.target_hp_remaining}</strong> Â· Status:{" "}
         <strong>{outcome.target_status}</strong>
       </p>
       {outcome.applied_status && (

@@ -1057,6 +1057,26 @@ mod tests {
     }
 
     #[test]
+    fn temp_hp_absorbs_before_real_hp_and_never_goes_negative() {
+        let mut target = make_combatant("warded");
+        target.max_hit_points = 20;
+        target.hit_points = 15;
+        target.temp_hp = 6;
+
+        // Partial absorption: 4 damage eats temp first, real HP untouched.
+        let r1 = apply_damage(&mut target, 4);
+        assert_eq!(r1.temp_absorbed, 4);
+        assert_eq!(target.temp_hp, 2);
+        assert_eq!(target.hit_points, 15);
+
+        // Overflow: 5 damage drains the last 2 temp, then 3 from real HP.
+        let r2 = apply_damage(&mut target, 5);
+        assert_eq!(r2.temp_absorbed, 2);
+        assert_eq!(target.temp_hp, 0);
+        assert_eq!(target.hit_points, 12);
+    }
+
+    #[test]
     fn systemic_shock_on_massive_hit() {
         let mut target = make_combatant("tank");
         target.max_hit_points = 20;

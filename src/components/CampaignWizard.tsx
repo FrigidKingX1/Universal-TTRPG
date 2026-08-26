@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { useStore } from "../store";
+﻿import { useState, useCallback } from "react";
+import { useStore, parseNum } from "../store";
 import "../App.css";
 
 export function CampaignWizard() {
@@ -137,7 +137,7 @@ export function CampaignWizard() {
                   min={1}
                   max={6}
                   value={sceneCount}
-                  onChange={(e) => setSceneCount(Number(e.target.value))}
+                  onChange={(e) => setSceneCount(parseNum(e.target.value))}
                 />
               </div>
             </div>

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useStore, newStatBlock } from "../store";
+﻿import { useState } from "react";
+import { useStore, newStatBlock, parseNum } from "../store";
 import { backend } from "../backend";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { PRESET_MONSTERS } from "../presets/bestiary";
@@ -32,7 +32,7 @@ function TagChips({ options, selected, onToggle }: {
           onClick={() => onToggle(o)}
           type="button"
         >
-          {selected.includes(o) ? "✓ " : ""}{o}
+          {selected.includes(o) ? "âœ“ " : ""}{o}
         </button>
       ))}
     </div>
@@ -67,7 +67,7 @@ function TraitListEditor({ title, items, onChange }: {
             <div key={idx} className="card-row" style={{ gap: "0.4rem", marginBottom: "0.25rem", alignItems: "flex-start" }}>
               <span style={{ whiteSpace: "nowrap" }}><strong>{t.name}.</strong></span>
               <span className="muted" style={{ flex: 1 }}>{t.description}</span>
-              <button className="danger" onClick={() => onChange(items.filter((_, i) => i !== idx))} style={{ fontSize: "0.7rem" }}>×</button>
+              <button className="danger" onClick={() => onChange(items.filter((_, i) => i !== idx))} style={{ fontSize: "0.7rem" }}>Ã—</button>
             </div>
           ))}
         </div>
@@ -95,7 +95,7 @@ export function Bestiary() {
   const [query, setQuery] = useState("");
 
   // Filtered + capped card list: 376 entries render fine but a wall of
-  // cards is useless to scan — search narrows, and the cap keeps the DOM
+  // cards is useless to scan â€” search narrows, and the cap keeps the DOM
   // light until the user refines.
   const RENDER_CAP = 60;
   const visible = statBlocks.filter((b) => {
@@ -185,7 +185,7 @@ export function Bestiary() {
       <div className="row">
         <button onClick={create}>New Monster</button>
         <select value={presetKey} onChange={(e) => setPresetKey(e.currentTarget.value)}>
-          <option value="">Add preset…</option>
+          <option value="">Add presetâ€¦</option>
           {PRESET_MONSTERS.filter((p) => !statBlocks.some((b) => b.name === p.name)).map((p) => (
             <option key={p.key} value={p.key}>{p.name} (CR {p.challenge_rating})</option>
           ))}
@@ -206,7 +206,7 @@ export function Bestiary() {
             <input
               value={query}
               onChange={(e) => setQuery(e.currentTarget.value)}
-              placeholder="Search name, type, or CR (e.g. dragon, undead, 5)…"
+              placeholder="Search name, type, or CR (e.g. dragon, undead, 5)â€¦"
               aria-label="Search bestiary"
               style={{ flex: 1 }}
             />
@@ -218,7 +218,7 @@ export function Bestiary() {
           </div>
         )}
         {visible.length > RENDER_CAP && (
-          <p className="muted">Showing first {RENDER_CAP} — refine the search to narrow further.</p>
+          <p className="muted">Showing first {RENDER_CAP} â€” refine the search to narrow further.</p>
         )}
         {shown.map((b) => (
           <li key={b.id} className="card">
@@ -244,7 +244,7 @@ export function Bestiary() {
               </span>
               {(b.resistances?.length || b.immunities?.length || b.vulnerabilities?.length) ? (
                 <span className="muted" title={`Resists: ${(b.resistances ?? []).join(", ")} | Immune: ${(b.immunities ?? []).join(", ")}`}>
-                  ⛨
+                  â›¨
                 </span>
               ) : null}
               <button onClick={() => setEditingId(editingId === b.id ? null : b.id)}>
@@ -282,8 +282,8 @@ export function Bestiary() {
       )}
       {statBlocks.length === 0 && (
         <div className="fantasy-empty" role="status">
-          <span className="fantasy-empty-icon" aria-hidden="true">🐉</span>
-          <span>No monsters yet — the bestiary awaits.</span>
+          <span className="fantasy-empty-icon" aria-hidden="true">ðŸ‰</span>
+          <span>No monsters yet â€” the bestiary awaits.</span>
         </div>
       )}
       {dialog}
@@ -382,7 +382,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
         </label>
         <label className="attr">
           <span>CR</span>
-          <input type="number" min={0} step={0.25} value={cr} onChange={(e) => setCr(Number(e.currentTarget.value))} />
+          <input type="number" min={0} step={0.25} value={cr} onChange={(e) => setCr(parseNum(e.currentTarget.value))} />
         </label>
         <label className="attr">
           <span>Size</span>
@@ -404,15 +404,15 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
       <div className="attr-grid">
         <label className="attr">
           <span>AC</span>
-          <input type="number" min={0} value={ac} onChange={(e) => setAc(Number(e.currentTarget.value))} />
+          <input type="number" min={0} value={ac} onChange={(e) => setAc(parseNum(e.currentTarget.value))} />
         </label>
         <label className="attr">
           <span>HP</span>
-          <input type="number" min={0} value={hp} onChange={(e) => setHp(Number(e.currentTarget.value))} />
+          <input type="number" min={0} value={hp} onChange={(e) => setHp(parseNum(e.currentTarget.value))} />
         </label>
         <label className="attr">
           <span>Max HP</span>
-          <input type="number" min={1} value={maxHp} onChange={(e) => setMaxHp(Number(e.currentTarget.value))} />
+          <input type="number" min={1} value={maxHp} onChange={(e) => setMaxHp(parseNum(e.currentTarget.value))} />
         </label>
         <label className="attr">
           <span>Formula</span>
@@ -430,7 +430,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
         )}
         <label className="attr">
           <span>Speed</span>
-          <input type="number" min={0} value={speed} onChange={(e) => setSpeed(Number(e.currentTarget.value))} />
+          <input type="number" min={0} value={speed} onChange={(e) => setSpeed(parseNum(e.currentTarget.value))} />
         </label>
       </div>
       <div className="hp-bar">
@@ -445,7 +445,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
         {Object.entries(attrs).map(([k, v]) => (
           <label key={k} className="attr">
             <span>{k}</span>
-            <input type="number" value={v} onChange={(e) => setAttrs({ ...attrs, [k]: Number(e.currentTarget.value) })} />
+            <input type="number" value={v} onChange={(e) => setAttrs({ ...attrs, [k]: parseNum(e.currentTarget.value) })} />
           </label>
         ))}
       </div>
@@ -503,7 +503,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
       <textarea
         value={description}
         onChange={(e) => setDescription(e.currentTarget.value)}
-        placeholder="Flavor text and lore…"
+        placeholder="Flavor text and loreâ€¦"
         rows={3}
         style={{ width: "100%" }}
       />
@@ -537,7 +537,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
             className={actions.includes(a.id) ? "" : "muted"}
             onClick={() => toggleAction(a.id)}
           >
-            {actions.includes(a.id) ? "✓ " : ""}{a.name}
+            {actions.includes(a.id) ? "âœ“ " : ""}{a.name}
           </button>
         ))}
         {allActions.length === 0 && <p className="muted">Create actions in the Characters tab first.</p>}
@@ -549,9 +549,9 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
           {lootTable.map((entry, idx) => (
             <div key={idx} className="card-row" style={{ gap: "0.4rem", marginBottom: "0.25rem" }}>
               <span>{entry.name}</span>
-              <span className="muted">×{entry.quantity_formula}</span>
+              <span className="muted">Ã—{entry.quantity_formula}</span>
               <span className="muted">{entry.chance}%</span>
-              <button className="danger" onClick={() => removeLootEntry(idx)} style={{ fontSize: "0.7rem" }}>×</button>
+              <button className="danger" onClick={() => removeLootEntry(idx)} style={{ fontSize: "0.7rem" }}>Ã—</button>
             </div>
           ))}
         </div>
@@ -559,7 +559,7 @@ function StatBlockEditor({ block, allActions }: { block: EncounterStatBlock; all
       <div className="row" style={{ marginTop: "0.25rem" }}>
         <input value={newLootName} onChange={(e) => setNewLootName(e.currentTarget.value)} placeholder="Item name" />
         <input value={newLootQty} onChange={(e) => setNewLootQty(e.currentTarget.value)} placeholder="Qty formula" style={{ width: "5rem" }} />
-        <input type="number" min={0} max={100} value={newLootChance} onChange={(e) => setNewLootChance(Number(e.currentTarget.value))} style={{ width: "4rem" }} />
+        <input type="number" min={0} max={100} value={newLootChance} onChange={(e) => setNewLootChance(parseNum(e.currentTarget.value))} style={{ width: "4rem" }} />
         <button onClick={addLootEntry} disabled={!newLootName.trim()}>Add</button>
       </div>
       <p className="muted">Quantity formula (e.g. "2d6"), drop chance % (0-100).</p>

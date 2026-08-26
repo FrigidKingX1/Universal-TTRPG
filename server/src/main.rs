@@ -1,4 +1,6 @@
-use auto_dm_engine::{apply_session_effects, CampaignExport, LogEntry, Repository};
+﻿use auto_dm_engine::{
+    apply_session_effects, tick_idle_clocks, CampaignExport, LogEntry, Repository,
+};
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -15,7 +17,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-// Reuse the library's modules — one compilation, no dead-code warnings
+// Reuse the library's modules â€” one compilation, no dead-code warnings
 // for items only the lib's external consumers (mcp-server) exercise.
 use auto_dm_server::{presets, session};
 use session::{broadcast_turn_state, GameMode, SessionRegistry, TurnCheck, WsMessage};
@@ -91,7 +93,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-/// Embedded-library sizes, parsed once — /health may be probed often.
+/// Embedded-library sizes, parsed once â€” /health may be probed often.
 fn preset_counts() -> (usize, usize) {
     static COUNTS: std::sync::OnceLock<(usize, usize)> = std::sync::OnceLock::new();
     *COUNTS.get_or_init(|| (presets::preset_actions().len(), presets::preset_stat_blocks().len()))
@@ -108,7 +110,7 @@ async fn health() -> Json<Value> {
     }))
 }
 
-// â”€â”€ Ollama configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Ollama configuration Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 #[derive(Deserialize)]
 struct ConfigureOllamaRequest {
@@ -187,7 +189,7 @@ async fn list_ollama_models(
     Ok(Json(json!({ "models": models })))
 }
 
-// â”€â”€ Bearer token extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Bearer token extraction Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 fn extract_token(headers: &axum::http::header::HeaderMap) -> Result<String, (StatusCode, String)> {
     let auth = headers
@@ -199,7 +201,7 @@ fn extract_token(headers: &axum::http::header::HeaderMap) -> Result<String, (Sta
         .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Invalid Authorization format".into()))
 }
 
-// â”€â”€ Session management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Session management Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 #[derive(Deserialize)]
 struct CreateSessionRequest {
@@ -249,7 +251,7 @@ async fn list_sessions(
     headers: axum::http::header::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     // Authenticated, and join codes stay server-side: the code IS the table
-    // password — handing the full list to anyone scanning the tunnel URL
+    // password â€” handing the full list to anyone scanning the tunnel URL
     // would let them join every session on the host.
     let token = extract_token(&headers)?;
     state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
@@ -257,7 +259,7 @@ async fn list_sessions(
     Ok(Json(json!(sessions)))
 }
 
-// â”€â”€ Resolve â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Resolve Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 async fn resolve(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -281,7 +283,7 @@ async fn resolve(
         ));
     }
 
-    // ── Phase A: gate check + context snapshot under the lock, then
+    // â”€â”€ Phase A: gate check + context snapshot under the lock, then
     // RELEASE it for the LLM call.  Holding the per-session lock across a
     // generate (up to 180 s) serialized every player's actions behind one
     // request; in exploration mode the table froze on whoever typed last.
@@ -292,7 +294,7 @@ async fn resolve(
             TurnCheck::Waiting { position } => {
                 return Err((
                     StatusCode::CONFLICT,
-                    format!("Not your turn — you are #{position} in the queue"),
+                    format!("Not your turn â€” you are #{position} in the queue"),
                 ));
             }
             TurnCheck::NotInQueue => {
@@ -313,7 +315,7 @@ async fn resolve(
                 request.memory_context = Some(mem.to_context(20));
             }
         }
-    } // lock released — LLM runs unlocked
+    } // lock released â€” LLM runs unlocked
 
     let pipeline = {
         let dm = session.game.dm.lock().await;
@@ -327,7 +329,7 @@ async fn resolve(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // ── Phase B: re-validate and apply atomically.  The gate verdict is
+    // â”€â”€ Phase B: re-validate and apply atomically.  The gate verdict is
     // re-checked because combat may have started/ended (or the holder may
     // have skipped) while we were generating.  Apply + broadcast + advance
     // stay under one lock so event order matches state order.
@@ -337,14 +339,14 @@ async fn resolve(
         _ => {
             return Err((
                 StatusCode::CONFLICT,
-                "Turn changed while resolving — action not applied".into(),
+                "Turn changed while resolving â€” action not applied".into(),
             ));
         }
     }
 
-    let events = apply_session_effects(&session.game, &request, &mut response).await;
+    let mut events = apply_session_effects(&session.game, &request, &mut response).await;
 
-    // Broadcast WHILE session lock held — order guarantee.
+    // Broadcast WHILE session lock held â€” order guarantee.
     for event in &events {
         let _ = session.event_tx.send(WsMessage::Event { event: event.clone() });
     }
@@ -361,11 +363,24 @@ async fn resolve(
         );
     }
 
+    // Idle doom clocks: mirror the desktop resolve path â€” if the log tail
+    // shows N consecutive idle entries, advance all active clocks. Without
+    // this, doom clocks never move in hosted play.
+    if let Some(ref scene_id) = request.scene_id {
+        let idle_events = tick_idle_clocks(&session.game, scene_id).await;
+        if !idle_events.is_empty() {
+            for e in &idle_events {
+                response.mechanical_events.push(e.describe());
+            }
+            events.extend(idle_events);
+        }
+    }
+
     tracing::info!(session = %session_id, events = events.len(), "Resolved");
     Ok(Json(response))
 }
 
-// â”€â”€ Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Logs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 async fn list_logs(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -395,7 +410,7 @@ async fn list_logs(
     Ok(Json(logs))
 }
 
-// â”€â”€ Campaign import (host uploads campaign data to session DB) â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Campaign import (host uploads campaign data to session DB) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 async fn import_campaign(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -434,7 +449,7 @@ async fn import_campaign(
     Ok(Json(json!({ "ok": true })))
 }
 
-// â”€â”€ Combat management (C4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Combat management (C4) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 async fn start_combat(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -539,7 +554,7 @@ async fn combat_status(
     Ok(Json(json!({ "mode": mode, "current_turn": current, "queue": queue })))
 }
 
-// â”€â”€ Character management (player actions) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Character management (player actions) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 async fn list_characters(
     AxumState(state): AxumState<Arc<AppState>>,
@@ -827,7 +842,7 @@ async fn rest_character(
     Ok(Json(json!({ "character": profile })))
 }
 
-// â”€â”€ Scene management (DM world-building) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Scene management (DM world-building) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 #[derive(Deserialize)]
 struct CreateSceneRequest {
@@ -922,7 +937,7 @@ async fn update_scene(
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
-    // Note: title update not directly supported by repo â€” summary + chaos are the main DM controls.
+    // Note: title update not directly supported by repo Ã¢â‚¬â€ summary + chaos are the main DM controls.
 
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
@@ -988,7 +1003,7 @@ async fn delete_scene(
     Ok(Json(json!({ "ok": true })))
 }
 
-// â”€â”€ NPC management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ NPC management Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 #[derive(Deserialize)]
 struct CreateNpcRequest {
@@ -1158,7 +1173,7 @@ async fn delete_npc(
     Ok(Json(json!({ "ok": true })))
 }
 
-// â”€â”€ Doom clock management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Doom clock management Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 #[derive(Deserialize)]
 struct CreateClockRequest {
@@ -1312,7 +1327,7 @@ async fn delete_clock(
 }
 
 /// Check if the player is the host (first player in session).
-/// NOTE: This peeks without locking â€” safe because callers already authenticated
+/// NOTE: This peeks without locking Ã¢â‚¬â€ safe because callers already authenticated
 /// and session.players is only mutated on join/leave (rare).
 async fn require_host(
     session: &session::Session,
@@ -1327,7 +1342,7 @@ async fn require_host(
     }
 }
 
-// ── Combat actions (server-authoritative) ────────────────────────────
+// â”€â”€ Combat actions (server-authoritative) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /// Patch a combatant JSON value in-place with updated HP and status from a
 /// resolved `Combatant`.  Handles both `CharacterProfile` (resource_pools.hp.current)
@@ -1437,7 +1452,7 @@ async fn server_combat_attack(
         let _ = session.event_tx.send(WsMessage::Event { event });
     }
 
-    // Heal actions restore HP instead — broadcast the restoration.
+    // Heal actions restore HP instead â€” broadcast the restoration.
     if outcome.heal_amount > 0 {
         let event = auto_dm_engine::GameEvent::Healed {
             target_id: victim.id.clone(),
@@ -1565,7 +1580,7 @@ async fn server_combat_condition(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
-    // Read-modify-write on the shared condition map — keep it atomic
+    // Read-modify-write on the shared condition map â€” keep it atomic
     // against attacks/heals running under the same lock.
     let _lock = session.session_lock.lock().await;
 
@@ -1666,7 +1681,7 @@ async fn server_combat_initiative(
 
     Ok(Json(serde_json::to_value(&entries).unwrap_or_default()))
 }
-// â”€â”€ WebSocket â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ WebSocket Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const PING_INTERVAL: Duration = Duration::from_secs(30);
 const PONG_TIMEOUT: Duration = Duration::from_secs(90);
@@ -1713,7 +1728,7 @@ async fn handle_socket(
     let mut ping_interval = tokio::time::interval(PING_INTERVAL);
     let mut last_activity = tokio::time::Instant::now();
 
-    // Initial resync â€” materialized state, not raw logs.
+    // Initial resync Ã¢â‚¬â€ materialized state, not raw logs.
     let resync = session::build_resync(&session).await;
     let msg = WsMessage::Resync(resync);
     if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
@@ -1723,7 +1738,7 @@ async fn handle_socket(
 
     loop {
         tokio::select! {
-            // â”€â”€ Broadcast events â†’ forward to client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Broadcast events Ã¢â€ â€™ forward to client Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             result = rx.recv() => {
                 last_activity = tokio::time::Instant::now();
                 match result {
@@ -1747,7 +1762,7 @@ async fn handle_socket(
                     }
                     Ok(WsMessage::Resync(_)) => {}
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged â€” resync");
+                        tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged Ã¢â‚¬â€ resync");
                         let resync = session::build_resync(&session).await;
                         let msg = WsMessage::Resync(resync);
                         if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
@@ -1757,11 +1772,11 @@ async fn handle_socket(
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
             }
-            // â”€â”€ Ping every 30s, check pong timeout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Ping every 30s, check pong timeout Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             _ = ping_interval.tick() => {
                 // Send ping.
                 if socket.send(Message::Ping(vec![].into())).await.is_err() {
-                    break; // send failed â†’ connection dead
+                    break; // send failed Ã¢â€ â€™ connection dead
                 }
                 // Check if we've heard nothing in PONG_TIMEOUT.
                 if last_activity.elapsed() > PONG_TIMEOUT {
@@ -1769,12 +1784,12 @@ async fn handle_socket(
                         session = %session.id,
                         player = %player_id,
                         idle = ?last_activity.elapsed(),
-                        "No pong within timeout â€” closing dead connection"
+                        "No pong within timeout Ã¢â‚¬â€ closing dead connection"
                     );
                     break;
                 }
             }
-            // â”€â”€ Read from socket (pongs, close frames) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Read from socket (pongs, close frames) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             msg = socket.recv() => {
                 match msg {
                     Some(Ok(Message::Pong(_))) => {
@@ -1782,7 +1797,7 @@ async fn handle_socket(
                     }
                     // App-level keepalive from browsers (they cannot send
                     // protocol ping frames, and never see ours). Reply so
-                    // the client's idle watchdog sees traffic — otherwise
+                    // the client's idle watchdog sees traffic â€” otherwise
                     // quiet tables get disconnected every ~90s.
                     Some(Ok(Message::Text(text))) => {
                         last_activity = tokio::time::Instant::now();
@@ -1824,7 +1839,7 @@ async fn mark_disconnected(state: &AppState, session: &session::Session, player_
             session = %session.id,
             disconnected = %player_id,
             next_turn = ?next_turn,
-            "Player disconnected during combat — turn advanced"
+            "Player disconnected during combat â€” turn advanced"
         );
     }
     broadcast_turn_state(session).await;

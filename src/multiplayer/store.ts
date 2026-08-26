@@ -1,4 +1,4 @@
-// Multiplayer Zustand store — manages session state, player list,
+﻿// Multiplayer Zustand store â€” manages session state, player list,
 // combat queue, connection status, and DM action routing through the server.
 
 import { create } from "zustand";
@@ -40,7 +40,7 @@ function clearPersistedSession() {
 }
 
 // While the local user is dragging token X, incoming boards must not
-// clobber *that* token's in-flight position — but updates from other
+// clobber *that* token's in-flight position â€” but updates from other
 // players (dragging different tokens) must still land, so the guard is
 // scoped to the dragged id rather than a blanket time window.
 export const mapDragGuard: { until: number; tokenId: string | null } = {
@@ -51,7 +51,7 @@ export const mapDragGuard: { until: number; tokenId: string | null } = {
 /**
  * Merge an authoritative remote board into local state. If a local drag
  * is active on token T, T keeps its local position while every other
- * token takes the remote value — simultaneous drags stay live for both.
+ * token takes the remote value â€” simultaneous drags stay live for both.
  */
 function mergeRemoteMap(
   setState: MainStoreSet | null,
@@ -74,7 +74,7 @@ function mergeRemoteMap(
 }
 
 export interface MultiplayerState {
-  // ── Connection ────────────────────────────────────────────────────
+  // â”€â”€ Connection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   connected: boolean;
   serverUrl: string;
   sessionId: string | null;
@@ -82,16 +82,16 @@ export interface MultiplayerState {
   playerId: string | null;
   isHost: boolean;
 
-  // ── Session ───────────────────────────────────────────────────────
+  // â”€â”€ Session â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   joinCode: string | null;
   players: PlayerInfo[];
 
-  // ── Combat ────────────────────────────────────────────────────────
+  // â”€â”€ Combat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   gameMode: GameMode;
   currentTurn: string | null;
   turnQueue: string[];
 
-  // ── Resync state ──────────────────────────────────────────────────
+  // â”€â”€ Resync state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   scene: ResyncPayload["scene"];
   sceneSummary: string;
   doomClocks: ResyncPayload["doom_clocks"];
@@ -103,12 +103,12 @@ export interface MultiplayerState {
   mapTokens: unknown[];
   mapBackground: string;
 
-  // ── UI state ──────────────────────────────────────────────────────
+  // â”€â”€ UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   lobbyOpen: boolean;
   setLobbyOpen: (open: boolean) => void;
   setServerUrl: (url: string) => void;
 
-  // ── Actions ───────────────────────────────────────────────────────
+  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   createSession: (title: string) => Promise<void>;
   joinSession: (joinCode: string, playerName: string) => Promise<void>;
   leaveSession: () => void;
@@ -116,19 +116,19 @@ export interface MultiplayerState {
   disconnect: () => void;
   restoreSession: () => boolean;
 
-  // ── DM resolve (routed through server) ────────────────────────────
+  // â”€â”€ DM resolve (routed through server) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   resolveAction: (request: DmRequest) => Promise<DmResponse>;
   importCampaign: (data: any) => Promise<void>;
   fetchLogs: () => Promise<void>;
 
-  // ── Combat actions (via server) ───────────────────────────────────
+  // â”€â”€ Combat actions (via server) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   startCombat: () => Promise<void>;
   endCombat: () => Promise<void>;
   joinCombatQueue: () => Promise<void>;
   skipTurn: () => Promise<void>;
   fetchCombatStatus: () => Promise<void>;
 
-  // ── Internal ──────────────────────────────────────────────────────
+  // â”€â”€ Internal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   _handleResync: (payload: ResyncPayload) => void;
   _handleEvent: (event: GameEvent) => void;
   _handleConnection: (connected: boolean) => void;
@@ -151,7 +151,7 @@ export function isInMultiplayerSession(): boolean {
 }
 
 export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
-  // ── Initial state ───────────────────────────────────────────────
+  // â”€â”€ Initial state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   connected: false,
   serverUrl: localStorage.getItem(SERVER_URL_KEY) ?? "http://localhost:3000",
   sessionId: null,
@@ -181,7 +181,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     set({ serverUrl: url });
   },
 
-  // ── Restore persisted session (auto-rejoin on app restart) ──────
+  // â”€â”€ Restore persisted session (auto-rejoin on app restart) â”€â”€â”€â”€â”€â”€
   restoreSession: () => {
     const persisted = loadPersistedSession();
     if (!persisted) return false;
@@ -199,13 +199,14 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     return true;
   },
 
-  // ── Create session (host) ───────────────────────────────────────
+  // â”€â”€ Create session (host) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   createSession: async (title) => {
     const { serverUrl } = get();
     const res = await fetch(`${serverUrl}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
+      signal: AbortSignal.timeout(45_000),
     });
     if (!res.ok) throw new Error(`Create session failed: ${res.status}`);
     const data = await res.json();
@@ -230,13 +231,14 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     get().connect();
   },
 
-  // ── Join session (player) ───────────────────────────────────────
+  // â”€â”€ Join session (player) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   joinSession: async (joinCode, playerName) => {
     const { serverUrl } = get();
     const res = await fetch(`${serverUrl}/sessions/${joinCode}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_name: playerName }),
+      signal: AbortSignal.timeout(45_000),
     });
     if (!res.ok) throw new Error(`Join session failed: ${res.status}`);
     const data = await res.json();
@@ -262,7 +264,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     get().connect();
   },
 
-  // ── Leave session ───────────────────────────────────────────────
+  // â”€â”€ Leave session â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   leaveSession: () => {
     get().disconnect();
     clearPersistedSession();
@@ -287,7 +289,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     });
   },
 
-  // ── Connect WebSocket ───────────────────────────────────────────
+  // â”€â”€ Connect WebSocket â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   connect: () => {
     const { serverUrl, sessionId, playerToken } = get();
     if (!sessionId || !playerToken) return;
@@ -305,7 +307,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     client.connect();
   },
 
-  // ── Turn-gate push (C4 closeout) ────────────────────────────────
+  // â”€â”€ Turn-gate push (C4 closeout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   _handleTurnState: (state) => {
     set({
       gameMode: state.mode,
@@ -314,26 +316,26 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     });
   },
 
-  // ── Disconnect ──────────────────────────────────────────────────
+  // â”€â”€ Disconnect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   disconnect: () => {
     client?.disconnect();
     client = null;
     set({ connected: false });
   },
 
-  // ── DM resolve (POST to server /resolve) ────────────────────────
+  // â”€â”€ DM resolve (POST to server /resolve) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   resolveAction: async (request) => {
     if (!client) throw new Error("Not connected to multiplayer server");
     return client.resolve(request);
   },
 
-  // ── Campaign import (host uploads campaign data to session) ─────
+  // â”€â”€ Campaign import (host uploads campaign data to session) â”€â”€â”€â”€â”€
   importCampaign: async (data) => {
     if (!client) throw new Error("Not connected to multiplayer server");
     await client.httpPost("/campaign", data);
   },
 
-  // ── Fetch logs from server ──────────────────────────────────────
+  // â”€â”€ Fetch logs from server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   fetchLogs: async () => {
     if (!client) return;
     try {
@@ -348,7 +350,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     } catch { /* best-effort */ }
   },
 
-  // ── Combat actions ──────────────────────────────────────────────
+  // â”€â”€ Combat actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   startCombat: async () => {
     if (!client) return;
     const data = await client.httpPost<{ mode: GameMode; current_turn: string }>("/combat/start");
@@ -404,7 +406,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     } catch { /* best-effort */ }
   },
 
-  // ── Internal: Resync handler ────────────────────────────────────
+  // â”€â”€ Internal: Resync handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   _handleResync: (payload) => {
     set({
       scene: payload.scene,
@@ -430,7 +432,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     _syncResyncToMainStore(payload);
   },
 
-  // ── Internal: Event handler ─────────────────────────────────────
+  // â”€â”€ Internal: Event handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Pure forwarder: all state application (including drag-aware map
   // merging) happens in _dispatchEventToMainStore. The previous local
   // switch here maintained a second, unread copy of clocks/map state.
@@ -443,7 +445,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
   },
 }));
 
-// ── Bridge: push multiplayer events/resync into the main store ────────
+// â”€â”€ Bridge: push multiplayer events/resync into the main store â”€â”€â”€â”€â”€â”€â”€â”€
 // Avoids circular static imports. Bridge is initialized once at app startup.
 
 type MainStoreGet = () => any;

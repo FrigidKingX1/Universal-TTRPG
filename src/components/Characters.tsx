@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { backend } from "../backend";
-import { useStore } from "../store";
+import { useStore, parseNum } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { PRESET_CLASSES, findClassByArchetype, growPoolsOnLevelUp } from "../presets/classes";
 import { EQUIPMENT_CATALOG, findEquipment } from "../presets/equipment";
@@ -136,7 +136,7 @@ export function CharacterList() {
             </div>
             <div className="card-row">
               {activeCharacterId === c.id ? (
-                <span className="badge">⭐ Active</span>
+                <span className="badge">â­ Active</span>
               ) : (
                 <button onClick={() => selectActiveCharacter(c.id)} title="Use this character in Tabletop mode">
                   Set Active
@@ -162,8 +162,8 @@ export function CharacterList() {
       </ul>
       {characters.length === 0 && (
         <div className="fantasy-empty" role="status">
-          <span className="fantasy-empty-icon" aria-hidden="true">⚔️</span>
-          <span>No characters yet — forge your first hero.</span>
+          <span className="fantasy-empty-icon" aria-hidden="true">âš”ï¸</span>
+          <span>No characters yet â€” forge your first hero.</span>
         </div>
       )}
       {dialog}
@@ -182,7 +182,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const [attrs, setAttrs] = useState(profile.attributes);
   const [hp, setHp] = useState(profile.resource_pools.hp?.current ?? 10);
   const [maxHp, setMaxHp] = useState(profile.resource_pools.hp?.maximum ?? 10);
-  // Non-HP resource pools (spell slots, rage uses…), edited via level-up/rests.
+  // Non-HP resource pools (spell slots, rage usesâ€¦), edited via level-up/rests.
   const [extraPools, setExtraPools] = useState(() =>
     Object.fromEntries(Object.entries(profile.resource_pools).filter(([k]) => k !== "hp")));
   const [inventory, setInventory] = useState<InventoryItem[]>(profile.inventory);
@@ -324,7 +324,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
         </label>
         <label className="attr">
           <span>Level</span>
-          <input type="number" min={1} value={level} onChange={(e) => setLevel(Number(e.currentTarget.value))} />
+          <input type="number" min={1} value={level} onChange={(e) => setLevel(parseNum(e.currentTarget.value))} />
         </label>
         <div className="attr level-up-group">
           <button
@@ -335,7 +335,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
               return tpl ? `d${tpl.hit_die} avg + ${conBonus} CON` : `5 + ${conBonus} CON`;
             })()})`}
           >
-            ⬆ Level Up
+            â¬† Level Up
           </button>
         </div>
         <label className="attr">
@@ -412,7 +412,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
               type="number"
               value={v.base_value}
               onChange={(e) =>
-                setAttrs({ ...attrs, [k]: { ...v, base_value: Number(e.currentTarget.value) } })
+                setAttrs({ ...attrs, [k]: { ...v, base_value: parseNum(e.currentTarget.value) } })
               }
             />
             <span className="muted">({mod(v.base_value)})</span>
@@ -424,11 +424,11 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
       <div className="attr-grid">
         <label className="attr">
           <span>Current</span>
-          <input type="number" min={0} value={hp} onChange={(e) => setHp(Number(e.currentTarget.value))} />
+          <input type="number" min={0} value={hp} onChange={(e) => setHp(parseNum(e.currentTarget.value))} />
         </label>
         <label className="attr">
           <span>Max</span>
-          <input type="number" min={1} value={maxHp} onChange={(e) => setMaxHp(Number(e.currentTarget.value))} />
+          <input type="number" min={1} value={maxHp} onChange={(e) => setMaxHp(parseNum(e.currentTarget.value))} />
         </label>
       </div>
       <div className="hp-bar">
@@ -446,7 +446,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
               <span
                 key={name}
                 className={`pool-chip ${p.current === 0 ? "pool-empty" : ""}`}
-                title={`${p.current}/${p.maximum} — resets on ${String(p.reset_condition).replace(/_/g, " ")}`}
+                title={`${p.current}/${p.maximum} â€” resets on ${String(p.reset_condition).replace(/_/g, " ")}`}
               >
                 {name.replace(/_/g, " ")}: <strong>{p.current}/{p.maximum}</strong>
               </span>
@@ -466,7 +466,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
             <span className={item.state === "equipped" ? "" : "muted"}>{item.name}</span>
             {item.state === "equipped" && <span className="badge">equipped</span>}
             <span className="qty-controls">
-              <button onClick={() => adjustQuantity(item.id, -1)} aria-label={`Decrease ${item.name} quantity`}>−</button>
+              <button onClick={() => adjustQuantity(item.id, -1)} aria-label={`Decrease ${item.name} quantity`}>âˆ’</button>
               <span>{item.quantity}</span>
               <button onClick={() => adjustQuantity(item.id, 1)} aria-label={`Increase ${item.name} quantity`}>+</button>
             </span>
@@ -476,14 +476,14 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
                 min={0}
                 step={0.1}
                 value={item.weight}
-                onChange={(e) => setItemWeight(item.id, Number(e.currentTarget.value))}
+                onChange={(e) => setItemWeight(item.id, parseNum(e.currentTarget.value))}
                 aria-label={`${item.name} weight`}
               />
               <span className="muted">lbs</span>
             </label>
             <button
               onClick={() => void dropItemToScene(profile.id, item)}
-              title="Drop on the ground — anyone at this scene can pick it up"
+              title="Drop on the ground â€” anyone at this scene can pick it up"
             >
               Drop
             </button>
@@ -497,7 +497,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
         ))}
         {inventory.length === 0 && (
           <div className="fantasy-empty" style={{ padding: "0.8rem" }}>
-            <span>Empty pack — gather your gear.</span>
+            <span>Empty pack â€” gather your gear.</span>
           </div>
         )}
       </div>
@@ -511,7 +511,7 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
         />
         <datalist id="equipment-catalog-options">
           {EQUIPMENT_CATALOG.map((e) => (
-            <option key={e.name} value={e.name}>{e.notes ?? `${e.category} · ${e.weight} lb`}</option>
+            <option key={e.name} value={e.name}>{e.notes ?? `${e.category} Â· ${e.weight} lb`}</option>
           ))}
         </datalist>
         <button onClick={addItem}>Add Item</button>
@@ -603,7 +603,7 @@ export function ActionList() {
       </ul>
       {actions.length === 0 && (
         <div className="fantasy-empty" style={{ padding: "0.7rem" }}>
-          <span>No actions yet — forge your first technique.</span>
+          <span>No actions yet â€” forge your first technique.</span>
         </div>
       )}
       {dialog}

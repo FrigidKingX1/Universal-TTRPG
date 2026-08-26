@@ -280,6 +280,17 @@ export function newCharacter(name: string): CharacterProfile {
 export const entityName = (e: CharacterProfile | EncounterStatBlock): string =>
   "identity" in e ? e.identity.name : e.name;
 
+/**
+ * Parse a numeric input value, mapping NaN (mid-edit "-", "e", empty in
+ * some browsers) to a safe fallback. Without this, clearing an editor
+ * field persists JSON `null` where the Rust side expects i32/f32 and the
+ * save 400s with a cryptic deserialization error.
+ */
+export const parseNum = (raw: string, fallback = 0): number => {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 /** Shared concentration-clearing logic (voluntary drop / toggle-off). */
 function dropConcentrationRecord(
   entityId: string,
