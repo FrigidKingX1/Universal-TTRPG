@@ -433,7 +433,11 @@ async fn import_campaign(
         return Err((StatusCode::FORBIDDEN, "Only the host can import campaign data".into()));
     }
 
-    // Import into the session's database.
+    // Import into the session's database, atomically against live play:
+    // import_campaign is multi-statement, and an interleaved resolve could
+    // apply effects on top of half-replaced campaign state. The lock also
+    // makes the resync's seq bound exact for the replay filter.
+    let _lock = session.session_lock.lock().await;
     session
         .game
         .repo
@@ -442,7 +446,7 @@ async fn import_campaign(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Import failed: {e}")))?;
 
     // Broadcast resync so all connected clients pick up the new data.
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     tracing::info!(session = %session_id, scenes = data.scenes.len(), "Campaign imported");
@@ -1641,11 +1645,14 @@ async fn server_combat_sync(
     }
     require_host(&session, &player_id).await?;
 
+    // Whole-roster replace under the session lock: without it, a concurrent
+    // resolve's combatant patch could be interleaved and lost, and the
+    // snapshot below could be torn relative to live state.
+    let _lock = session.session_lock.lock().await;
     *session.combatants.write().await = req.combatants;
     *session.combatant_conditions.write().await = req.conditions;
 
-    // Broadcast resync.
-    let resync = session::build_resync(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     Ok(Json(json!({ "ok": true })))

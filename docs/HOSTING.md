@@ -67,6 +67,9 @@ both processes for you when `cloudflared` is on PATH.
 
 ## Security model
 
+- **Resource caps**: at most 64 active sessions per server and 16 players
+  per session (both return clear errors past the limit) so a scanner
+  hitting the public URL can't fill the disk or bloat a roster.
 - Session join codes + per-player bearer tokens gate every HTTP route and
   the WebSocket handshake (`?token=` query param) — a public URL does not
   expose sessions by itself.
