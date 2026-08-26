@@ -137,6 +137,8 @@ export interface MultiplayerState {
     current_turn: string | null;
     queue: string[];
   }) => void;
+  /** Internal/test hook: clears exactly-once replay state (new session). */
+  _resetReplayState: () => void;
 }
 
 let client: MultiplayerClient | null = null;
@@ -301,6 +303,11 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
   connect: () => {
     const { serverUrl, sessionId, playerToken } = get();
     if (!sessionId || !playerToken) return;
+
+    // Fresh session ⇒ fresh sequence space. Without this, connecting to a
+    // new session kept the previous one's high seq and the grace filter
+    // swallowed the new session's low-numbered events after every resync.
+    get()._resetReplayState();
 
     client?.disconnect();
     client = new MultiplayerClient({
@@ -474,6 +481,11 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
       lastAppliedEventSeq = Math.max(lastAppliedEventSeq, seq);
     }
     _dispatchEventToMainStore(event);
+  },
+
+  _resetReplayState: () => {
+    lastAppliedEventSeq = 0;
+    lastResyncAt = 0;
   },
 
   _handleConnection: (connected) => {

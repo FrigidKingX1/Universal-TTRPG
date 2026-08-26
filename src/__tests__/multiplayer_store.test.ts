@@ -276,6 +276,56 @@ describe("scoped mapDragGuard", () => {
     expect(mp.turnQueue).toEqual(["alice", "bob"]);
   });
 
+  it("_resetReplayState lets a NEW session's low-seq events apply", () => {
+    const main = makeMainStore();
+    initMultiplayerBridge(main.get, main.set as any);
+    main.set(() => ({
+      doomClocks: [
+        { id: "old", name: "Old", current: 0, max: 6, consequence: "", active: true },
+        { id: "new-clock", name: "Fresh", current: 0, max: 6, consequence: "", active: true },
+      ],
+    }));
+
+    // Old session climbed to seq 50 before ending.
+    useMultiplayerStore.getState()._handleEvent(
+      { type: "clock_advanced", clock_id: "old", ticks: 1 },
+      50,
+    );
+    expect(main.snapshot().doomClocks[0].current).toBe(1); // applied pre-reset
+
+    // Switch sessions: connect() resets replay state.
+    useMultiplayerStore.getState()._resetReplayState();
+
+    // New session's board has its own clock.
+    main.set(() => ({
+      doomClocks: [
+        { id: "old", name: "Old", current: 0, max: 6, consequence: "", active: true },
+        { id: "new-clock", name: "Fresh", current: 0, max: 6, consequence: "", active: true },
+      ],
+    }));
+
+    // New session's resync has no last_event_seq (fresh counter at 0), and
+    // its first event arrives with seq 1 — must NOT be swallowed by the
+    // previous session's high-water mark.
+    useMultiplayerStore.getState()._handleResync({
+      scene: null,
+      scene_summary: "",
+      doom_clocks: [
+        { id: "new-clock", name: "Fresh", current: 0, max: 6, consequence: "", active: true },
+      ],
+      npcs: [], loot: [], threads: [], summaries: [], combat_state: null,
+      characters: [], player_characters: {}, combatants: [],
+      combatant_conditions: {}, recent_logs: [], map_tokens: [],
+      map_background: "", turn: null,
+    } as any);
+
+    useMultiplayerStore.getState()._handleEvent(
+      { type: "clock_advanced", clock_id: "new-clock", ticks: 3 },
+      1,
+    );
+    expect(main.snapshot().doomClocks[0].current).toBe(3);
+  });
+
   it("resync hydrates the live roster so presence stays accurate", () => {
     const main = makeMainStore();
     initMultiplayerBridge(main.get, main.set as any);

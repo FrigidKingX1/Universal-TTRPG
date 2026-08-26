@@ -645,9 +645,19 @@ async fn create_character(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Roster hygiene, matching join_session: no blank or oversized names.
+    let mut profile = req.profile;
+    let name = profile.identity.name.trim().to_string();
+    if name.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Character name cannot be empty".into()));
+    }
+    if name.len() > 64 {
+        return Err((StatusCode::BAD_REQUEST, "Character name too long (max 64)".into()));
+    }
+    profile.identity.name = name;
     let profile = state
         .registry
-        .create_character_for_player(&session, &player_id, req.profile)
+        .create_character_for_player(&session, &player_id, profile)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
@@ -1817,7 +1827,6 @@ async fn ws_handler(
     let result = state.registry.authenticate(&query.token).await;
     match result {
         Ok((session, player_id)) if session.id == session_id => {
-            session.socket_opened(&player_id).await;
             ws.on_upgrade(move |socket| handle_socket(state, session, player_id, socket))
         }
         _ => (StatusCode::UNAUTHORIZED, "Invalid token or session mismatch").into_response(),
@@ -1836,6 +1845,10 @@ async fn handle_socket(
     player_id: String,
     mut socket: WebSocket,
 ) {
+    // Count the open socket only once the upgrade has actually completed —
+    // counting in ws_handler would leak a ref when the HTTP connection dies
+    // before upgrading, leaving the player permanently "connected".
+    session.socket_opened(&player_id).await;
     // Initial resync — materialized state, not raw logs.  Built under the
     // session lock so the recorded last_event_seq is exactly the bound of
     // what the snapshot reflects; queued frames above that seq are genuinely
