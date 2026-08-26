@@ -1781,7 +1781,19 @@ async fn handle_socket(
                             break;
                         }
                     }
-                    Ok(WsMessage::Resync(_)) => {}
+                    // Full-state broadcasts (character/NPC/thread edits,
+                    // linking, equips, imports) MUST reach peers — dropping
+                    // them here left every other client stale until they
+                    // reconnected. The client dedupes via last_event_seq.
+                    Ok(WsMessage::Resync(resync)) => {
+                        let json = match serde_json::to_string(&WsMessage::Resync(resync)) {
+                            Ok(j) => j,
+                            Err(_) => continue,
+                        };
+                        if socket.send(Message::Text(json.into())).await.is_err() {
+                            break;
+                        }
+                    }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!(session = %session.id, player = %player_id, missed = n, "Lagged Ã¢â‚¬â€ resync");
                         let resync = session::build_resync(&session).await;

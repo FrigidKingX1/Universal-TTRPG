@@ -262,4 +262,38 @@ describe("scoped mapDragGuard", () => {
     ); // no seq — legacy server
     expect(main.snapshot().doomClocks[0].current).toBe(1);
   });
+
+  it("resync hydrates the live roster so presence stays accurate", () => {
+    const main = makeMainStore();
+    initMultiplayerBridge(main.get, main.set as any);
+
+    useMultiplayerStore.getState()._handleResync({
+      scene: null,
+      scene_summary: "",
+      doom_clocks: [],
+      npcs: [],
+      loot: [],
+      threads: [],
+      summaries: [],
+      combat_state: null,
+      characters: [],
+      player_characters: {},
+      combatants: [],
+      combatant_conditions: {},
+      recent_logs: [],
+      map_tokens: [],
+      map_background: "",
+      turn: null,
+      players: [
+        { id: "host", name: "Host", connected: true, character_id: null },
+        { id: "p2", name: "Remote", connected: false, character_id: "c2" },
+      ],
+    } as any);
+
+    const mp = useMultiplayerStore.getState();
+    expect(mp.players).toEqual([
+      { id: "host", name: "Host", connected: true },
+      { id: "p2", name: "Remote", connected: false },
+    ]);
+  });
 });

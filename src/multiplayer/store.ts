@@ -441,6 +441,17 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
         turnQueue: payload.turn.queue,
       });
     }
+    // Live roster + presence: TurnIndicator/CombatQueue names and the
+    // connected dots otherwise only refresh on a full reconnect.
+    if (payload.players) {
+      set({
+        players: payload.players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          connected: p.connected,
+        })),
+      });
+    }
 
     // Sync resync data into the main store so the UI reflects server state.
     _syncResyncToMainStore(payload);

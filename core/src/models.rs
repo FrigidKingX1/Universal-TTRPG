@@ -463,6 +463,27 @@ pub fn roll_loot_table(
     result
 }
 
+#[cfg(test)]
+mod loot_chance_tests {
+    use super::*;
+
+    fn entry(chance: i32) -> LootTableEntry {
+        LootTableEntry { name: "gold".into(), quantity_formula: "1".into(), chance }
+    }
+
+    #[test]
+    fn chance_zero_never_drops_and_chance_hundred_always_drops() {
+        let table = vec![entry(0), entry(100)];
+        for seed in 1..50u64 {
+            let mut dice = crate::dice::DiceEngine::with_seed(seed);
+            let rolled = roll_loot_table(&mut dice, &table);
+            // Exactly the 100% entry drops, regardless of the d100.
+            assert_eq!(rolled.len(), 1, "seed {seed}: {rolled:?}");
+            assert_eq!(rolled[0].quantity, 1);
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Size {

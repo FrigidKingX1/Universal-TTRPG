@@ -94,6 +94,8 @@ export interface ResyncPayload {
   initiative?: Array<{ combatant_id: string; name: string; roll: number; modifier: number }>;
   /** Highest event sequence reflected in this snapshot (exactly-once replay). */
   last_event_seq?: number;
+  /** Live roster with presence, hydrated into the mp store on every resync. */
+  players?: PlayerInfo[];
 }
 
 // ── REST response types ──────────────────────────────────────────────
