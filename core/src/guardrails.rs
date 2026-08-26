@@ -181,10 +181,7 @@ mod golden_tests {
             "The dragon dies instantly",
             "Everyone immediately obeys my command",
         ] {
-            assert!(
-                is_declarative_claim(claim),
-                "should detect claim: {claim}"
-            );
+            assert!(is_declarative_claim(claim), "should detect claim: {claim}");
             assert!(sanitize_player_input(claim).starts_with("The player attempts"));
         }
     }
@@ -220,8 +217,7 @@ mod golden_tests {
 
     #[test]
     fn prompt_assembles_all_layers() {
-        let sensory =
-            SensoryState { light_level: Some("darkness".into()), active_senses: vec![] };
+        let sensory = SensoryState { light_level: Some("darkness".into()), active_senses: vec![] };
         let out = build_system_prompt(
             &["torture".to_string()],
             &["romance".to_string()],
@@ -229,7 +225,9 @@ mod golden_tests {
             Some("cosmic"),
             Some("[Player]: I kick the door"),
         );
-        assert!(out.contains("Never write dialogue, emotions, decisions, or actions for the player"));
+        assert!(
+            out.contains("Never write dialogue, emotions, decisions, or actions for the player")
+        );
         assert!(out.contains("HARD SAFETY LINES"));
         assert!(out.contains("torture"));
         assert!(out.contains("VEILS"));

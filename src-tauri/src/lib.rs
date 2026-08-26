@@ -191,7 +191,8 @@ pub fn run() {
             // Resolve against what's ACTUALLY pulled so a fresh install with
             // any model works instead of 404-looping on an absent default.
             let effective_model = tauri::async_runtime::block_on(async {
-                match auto_dm_core::ollama::list_models_at(auto_dm_core::ollama::DEFAULT_URL).await {
+                match auto_dm_core::ollama::list_models_at(auto_dm_core::ollama::DEFAULT_URL).await
+                {
                     Ok(installed) => {
                         if installed.is_empty() {
                             log::warn!("Ollama reachable but no models are pulled");
@@ -206,15 +207,16 @@ pub fn run() {
                                     "Configured model '{persisted_model}' is not pulled; \
                                      falling back to '{m}' (installed: {installed:?})"
                                 );
-                                let _ =
-                                    repo.set_setting("ollama_model", m).await;
+                                let _ = repo.set_setting("ollama_model", m).await;
                             }
                             None => log::info!("Ollama model '{persisted_model}' available"),
                         }
                         chosen.unwrap_or(persisted_model)
                     }
                     Err(e) => {
-                        log::warn!("Could not list Ollama models ({e}); keeping '{persisted_model}'");
+                        log::warn!(
+                            "Could not list Ollama models ({e}); keeping '{persisted_model}'"
+                        );
                         persisted_model
                     }
                 }

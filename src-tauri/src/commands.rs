@@ -1,7 +1,3 @@
-use auto_dm_engine::{
-    apply_session_effects, combatant_from_value, remember, tick_idle_clocks, GameState, Repository,
-};
-use auto_dm_engine::crew::run_crew_turn;
 use auto_dm_core::agents::CrewOrchestrator;
 use auto_dm_core::dice::DiceEngine;
 use auto_dm_core::engine::{
@@ -11,6 +7,10 @@ use auto_dm_core::llm::{DmRequest, DmResponse};
 use auto_dm_core::models::{ActionDefinition, CharacterProfile, EncounterStatBlock};
 use auto_dm_core::oracle::{
     EnrichedEvent, EventMeaning, MythicOracle, NpcRef, Odds, OracleContext, ThreadRef,
+};
+use auto_dm_engine::crew::run_crew_turn;
+use auto_dm_engine::{
+    apply_session_effects, combatant_from_value, remember, tick_idle_clocks, GameState, Repository,
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -805,14 +805,14 @@ pub async fn dm_resolve(
     }
     let pipeline = {
         let dm = state.dm.lock().await;
-        dm.as_ref()
-            .cloned()
-            .ok_or_else(|| "DM backend not initialized".to_string())?
+        dm.as_ref().cloned().ok_or_else(|| "DM backend not initialized".to_string())?
     };
     // Try the 5-agent crew first (offline-first, same Ollama binary); fall
     // back to the single-agent pipeline if the crew fails for any reason.
     let mut response = {
-        let crew_orch = CrewOrchestrator::new(pipeline.backend().as_ref() as &dyn auto_dm_core::llm::LlmBackend);
+        let crew_orch = CrewOrchestrator::new(
+            pipeline.backend().as_ref() as &dyn auto_dm_core::llm::LlmBackend
+        );
         match run_crew_turn(&crew_orch, &state, &request).await {
             Ok(out) => {
                 if !out.lore_used.is_empty() {
@@ -1119,9 +1119,7 @@ pub async fn generate_campaign(
     let raw = {
         let pipeline = {
             let dm = state.dm.lock().await;
-            dm.as_ref()
-                .cloned()
-                .ok_or_else(|| "DM backend not initialized".to_string())?
+            dm.as_ref().cloned().ok_or_else(|| "DM backend not initialized".to_string())?
         };
         pipeline
             .backend()
@@ -1136,9 +1134,7 @@ pub async fn generate_campaign(
     let repaired = auto_dm_core::intent::repair_campaign_json(cleaned);
     let result: CampaignGenerationResult = serde_json::from_str(&repaired).map_err(|e| {
         let snippet: String = repaired.chars().take(300).collect();
-        format!(
-            "Failed to parse campaign JSON from LLM: {e}\n— model output began: {snippet}"
-        )
+        format!("Failed to parse campaign JSON from LLM: {e}\n— model output began: {snippet}")
     })?;
 
     if result.scenes.is_empty() {
@@ -1273,17 +1269,12 @@ pub async fn process_dm_intent(
     // so a webview crash mid-generation can be recovered without re-querying.
     let app_for_tokens = app.clone();
     let repo_for_checkpoint = state.repo.clone();
-    let checkpoint_id = req
-        .scene_id
-        .clone()
-        .unwrap_or_else(|| "global".to_string());
+    let checkpoint_id = req.scene_id.clone().unwrap_or_else(|| "global".to_string());
     let mut token_buffer = String::new();
     let mut token_count = 0usize;
     let pipeline = {
         let dm = state.dm.lock().await;
-        dm.as_ref()
-            .cloned()
-            .ok_or_else(|| "DM backend not initialized".to_string())?
+        dm.as_ref().cloned().ok_or_else(|| "DM backend not initialized".to_string())?
     };
     let response = pipeline
         .resolve_action_streaming(&req, None, &mut |token: &str| {
@@ -1304,10 +1295,7 @@ pub async fn process_dm_intent(
         .map_err(|e| e.to_string())?;
 
     // Clear the checkpoint now that the full response is in hand.
-    let _ = state
-        .repo
-        .clear_stream_checkpoint(&checkpoint_id)
-        .await;
+    let _ = state.repo.clear_stream_checkpoint(&checkpoint_id).await;
 
     let mut response = response;
     let events = apply_session_effects(&state, &req, &mut response).await;
@@ -1347,8 +1335,6 @@ pub async fn get_random_encounter(
     Ok(format!("[{}] d100={}: {}", difficulty.to_uppercase(), total, table[idx]))
 }
 
-
-
 // ---------- Ollama integration ------------------------------------------
 
 /// List installed Ollama model names.
@@ -1377,9 +1363,7 @@ pub async fn set_ollama_model(state: State<'_, GameState>, model: String) -> Cmd
     let backend: Box<dyn auto_dm_core::llm::LlmBackend> =
         Box::new(auto_dm_core::ollama::OllamaLlmBackend::new(Some(model)));
     let mut dm = state.dm.lock().await;
-    *dm = Some(std::sync::Arc::new(auto_dm_core::llm::DmPipeline::new(
-        backend,
-    )));
+    *dm = Some(std::sync::Arc::new(auto_dm_core::llm::DmPipeline::new(backend)));
     Ok(())
 }
 
@@ -1399,23 +1383,14 @@ pub async fn set_ollama_num_predict(state: State<'_, GameState>, n: u32) -> CmdR
     if let Ok(mut cur) = state.current_num_predict.lock() {
         *cur = clamped;
     }
-    let _ = state
-        .repo
-        .set_setting("ollama_num_predict", &clamped.to_string())
-        .await;
+    let _ = state.repo.set_setting("ollama_num_predict", &clamped.to_string()).await;
     Ok(())
 }
 
 /// Push a campaign event into the local memory log (best-effort).
 #[tauri::command]
 pub async fn get_tone(state: State<'_, GameState>) -> CmdResult<String> {
-    Ok(state
-        .repo
-        .get_setting("tone")
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| "classic".to_string()))
+    Ok(state.repo.get_setting("tone").await.ok().flatten().unwrap_or_else(|| "classic".to_string()))
 }
 
 #[tauri::command]
@@ -1438,7 +1413,9 @@ pub async fn ingest_memory(
 
 /// Export the full campaign data as JSON.
 #[tauri::command]
-pub async fn export_campaign(state: State<'_, GameState>) -> CmdResult<auto_dm_engine::CampaignExport> {
+pub async fn export_campaign(
+    state: State<'_, GameState>,
+) -> CmdResult<auto_dm_engine::CampaignExport> {
     state.repo.export_campaign().await.map_err(err)
 }
 
@@ -1605,7 +1582,9 @@ pub async fn update_thread_status(
 
 /// List all plot threads.
 #[tauri::command]
-pub async fn list_threads(state: State<'_, GameState>) -> CmdResult<Vec<auto_dm_engine::ThreadRow>> {
+pub async fn list_threads(
+    state: State<'_, GameState>,
+) -> CmdResult<Vec<auto_dm_engine::ThreadRow>> {
     state.repo.list_threads().await.map_err(err)
 }
 
@@ -1725,11 +1704,7 @@ pub async fn summarize_scene(
     state: State<'_, GameState>,
     scene_id: String,
 ) -> CmdResult<auto_dm_engine::EpisodicSummary> {
-    let logs = state
-        .repo
-        .list_logs(&scene_id, 500)
-        .await
-        .map_err(err)?;
+    let logs = state.repo.list_logs(&scene_id, 500).await.map_err(err)?;
 
     if logs.is_empty() {
         return Err("No log entries to summarize.".into());
@@ -1750,16 +1725,11 @@ pub async fn summarize_scene(
 
     let pipeline = {
         let dm = state.dm.lock().await;
-        dm.as_ref()
-            .cloned()
-            .ok_or_else(|| "DM backend not initialized".to_string())?
+        dm.as_ref().cloned().ok_or_else(|| "DM backend not initialized".to_string())?
     };
 
-    let summary_text = pipeline
-        .backend()
-        .complete(system, &log_text, Some(512))
-        .await
-        .map_err(err)?;
+    let summary_text =
+        pipeline.backend().complete(system, &log_text, Some(512)).await.map_err(err)?;
 
     let record = state
         .repo
@@ -1776,11 +1746,7 @@ pub async fn list_episodic_summaries(
     state: State<'_, GameState>,
     scene_id: String,
 ) -> CmdResult<Vec<auto_dm_engine::EpisodicSummary>> {
-    state
-        .repo
-        .list_episodic_summaries(&scene_id)
-        .await
-        .map_err(err)
+    state.repo.list_episodic_summaries(&scene_id).await.map_err(err)
 }
 
 /// Check whether an episodic summary is stale (its last_log_id was deleted).
@@ -1790,11 +1756,7 @@ pub async fn check_summary_stale(
     scene_id: String,
     last_log_id: String,
 ) -> CmdResult<bool> {
-    let logs = state
-        .repo
-        .list_logs(&scene_id, 10_000)
-        .await
-        .map_err(err)?;
+    let logs = state.repo.list_logs(&scene_id, 10_000).await.map_err(err)?;
     let ids: Vec<String> = logs.into_iter().map(|l| l.id).collect();
     Ok(auto_dm_engine::is_summary_stale(&last_log_id, &ids))
 }
@@ -1807,7 +1769,5 @@ pub async fn rewind_to_log(
     scene_id: String,
     target_log_id: String,
 ) -> CmdResult<Vec<String>> {
-    auto_dm_engine::rewind_to_log(&state, &scene_id, &target_log_id)
-        .await
-        .map_err(err)
+    auto_dm_engine::rewind_to_log(&state, &scene_id, &target_log_id).await.map_err(err)
 }

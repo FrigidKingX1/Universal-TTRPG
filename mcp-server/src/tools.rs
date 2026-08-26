@@ -6,14 +6,14 @@
 use crate::McpServerError;
 use auto_dm_core::{
     dice::DiceEngine,
-    intent::{GameIntent, campaign_json_schema, repair_campaign_json},
+    intent::{campaign_json_schema, repair_campaign_json, GameIntent},
     memory_vec::hybrid_recall,
     oracle::{MythicOracle, Odds},
 };
 use auto_dm_server::{all_preset_actions, find_preset_action, find_preset_monster};
 use rmcp::model::{CallToolResult, ContentBlock, JsonObject, Tool};
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 /// Convert a json! object into the Arc<JsonObject> Tool::new expects.
 fn schema(value: Value) -> std::sync::Arc<JsonObject> {

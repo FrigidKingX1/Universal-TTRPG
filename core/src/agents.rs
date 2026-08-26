@@ -11,7 +11,7 @@
 //!   → Npc Actor (if NPC targeted) → Narrator (weave final prose)
 
 use crate::llm::{LlmBackend, LlmError};
-use crate::memory_vec::{Embedder, OllamaEmbedder, recall_from_memory_async};
+use crate::memory_vec::{recall_from_memory_async, Embedder, OllamaEmbedder};
 
 /// Shared handoff between agents in a single turn.
 #[derive(Debug, Clone, Default)]
@@ -76,17 +76,11 @@ pub struct CrewOrchestrator<B: LlmBackend> {
 
 impl<B: LlmBackend> CrewOrchestrator<B> {
     pub fn new(backend: B) -> Self {
-        Self {
-            backend,
-            embedder: Box::new(OllamaEmbedder::new(None, None)),
-        }
+        Self { backend, embedder: Box::new(OllamaEmbedder::new(None, None)) }
     }
 
     pub fn with_embedder(backend: B, embedder: impl Embedder + 'static) -> Self {
-        Self {
-            backend,
-            embedder: Box::new(embedder),
-        }
+        Self { backend, embedder: Box::new(embedder) }
     }
 
     /// Run a full turn. Each agent sees the outputs of prior agents via `state`.
@@ -147,7 +141,11 @@ impl<B: LlmBackend> CrewOrchestrator<B> {
                 AgentRole::Narrator.system_prompt(),
                 &format!(
                     "Intent: {:?}\nLore: {}\nRules: {}\nPlayer: {}\nScene: {}",
-                    state.intent, state.memory_slice, rule_out, state.player_input, state.engine_snapshot
+                    state.intent,
+                    state.memory_slice,
+                    rule_out,
+                    state.player_input,
+                    state.engine_snapshot
                 ),
                 Some(1024),
             )
@@ -224,7 +222,9 @@ mod tests {
         // Our CrewState carries intent into the Narrator; this test ensures
         // the field survives the handoff.
         let mut s = stub_state();
-        s.intent = Some("DM intends players to make a perception check to find out about the goblins".into());
+        s.intent = Some(
+            "DM intends players to make a perception check to find out about the goblins".into(),
+        );
         assert!(s.intent.as_ref().unwrap().contains("perception"));
     }
 }

@@ -1,12 +1,12 @@
 pub mod agents;
 pub mod dice;
-pub mod memory_vec;
-pub mod vector_store;
-pub mod guardrails;
 pub mod engine;
+pub mod guardrails;
 pub mod intent;
 pub mod llm;
 pub mod memory;
+pub mod memory_vec;
 pub mod models;
 pub mod ollama;
 pub mod oracle;
+pub mod vector_store;

@@ -8,16 +8,14 @@
 //!
 //! Mirrors LoreKit's `server.py` tool surface. Runs over stdio by default.
 
-use auto_dm_core::{
-    dice::DiceError,
-    llm::LlmError,
-};
+use auto_dm_core::{dice::DiceError, llm::LlmError};
 use rmcp::{
     handler::server::ServerHandler,
-    model::{CallToolRequestParams, CallToolResponse, JsonObject,
-            ListToolsResult, PaginatedRequestParams, ServerCapabilities,
-            ServerInfo},
-    service::{RequestContext, RoleServer, serve_server},
+    model::{
+        CallToolRequestParams, CallToolResponse, JsonObject, ListToolsResult,
+        PaginatedRequestParams, ServerCapabilities, ServerInfo,
+    },
+    service::{serve_server, RequestContext, RoleServer},
     transport::stdio,
     ErrorData,
 };
@@ -116,7 +114,8 @@ mod tests {
 
     #[test]
     fn roll_dice_returns_total_and_detail() {
-        let out = block_on(handle_call("roll_dice", serde_json::json!({ "expr": "2d6+3" }))).unwrap();
+        let out =
+            block_on(handle_call("roll_dice", serde_json::json!({ "expr": "2d6+3" }))).unwrap();
         let text = out.content[0].as_text().unwrap().text.clone();
         let v: serde_json::Value = serde_json::from_str(&text).unwrap();
         let total = v["total"].as_i64().unwrap();
@@ -152,8 +151,7 @@ mod tests {
 
     #[test]
     fn preset_action_roundtrip_via_list() {
-        let out =
-            block_on(handle_call("list_preset_actions", serde_json::json!({}))).unwrap();
+        let out = block_on(handle_call("list_preset_actions", serde_json::json!({}))).unwrap();
         let text = out.content[0].as_text().unwrap().text.clone();
         let list: Vec<serde_json::Value> = serde_json::from_str(&text).unwrap();
         assert!(list.len() >= 90, "got {}", list.len());

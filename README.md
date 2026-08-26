@@ -53,17 +53,36 @@ see [AGENTS.md](AGENTS.md).
 ## Architecture
 
 ```
-core/      rules engine: dice, stat blocks, combat resolution (no IO)
-engine/    repositories (SQLite), game state, events, DM pipeline glue
-server/    Axum host: sessions, WebSocket resync, embedded seed content
-src-tauri/ desktop shell + local command bridge
-src/       React frontend (zustand store, components, presets)
+core/        rules engine: dice, stat blocks, combat resolution (no IO)
+engine/      repositories (SQLite), game state, events, DM pipeline glue
+server/      Axum host: sessions, WebSocket resync, embedded seed content
+mcp-server/  stdio MCP server: dice, oracle, intent, presets, recall
+src-tauri/   desktop shell + local command bridge
+src/         React frontend (zustand store, components, presets)
 ```
 
 The content library lives in `src/presets/` and is the single source of
 truth: a build script exports it to JSON which the hosted server embeds
 at compile time, so local and multiplayer play always share the same
 bestiary. See AGENTS.md for the regeneration pipeline and repo gotchas.
+
+## MCP server & remote play
+
+Any MCP client (Claude Desktop, Cursor) can drive the deterministic
+engine over stdio:
+
+```json
+{ "mcpServers": { "auto-dm": { "command": "target/debug/mcp-server.exe" } } }
+```
+
+11 tools ship today: `roll_dice`, `oracle_fate_check`,
+`oracle_random_event`, `scene_test`, `parse_intent`,
+`repair_campaign_json`, `campaign_json_schema`, `list_preset_actions`,
+`get_preset_action`, `get_preset_monster`, `lore_recall`.
+
+To play with friends over the internet without port forwarding, see
+[docs/HOSTING.md](docs/HOSTING.md) (Cloudflare Tunnel + one-command
+launch script).
 
 ## Content & assets
 

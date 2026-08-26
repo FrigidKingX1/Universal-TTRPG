@@ -82,8 +82,7 @@ pub fn resolve_entity_descriptor(descriptor: &str, entities: &[EntityRef]) -> Re
     }
 
     // 1. Exact match (fast path).
-    let exact: Vec<&EntityRef> =
-        entities.iter().filter(|e| normalize(&e.name) == needle).collect();
+    let exact: Vec<&EntityRef> = entities.iter().filter(|e| normalize(&e.name) == needle).collect();
     if exact.len() == 1 {
         return ResolveResult::Resolved(exact[0].clone());
     }
@@ -134,13 +133,8 @@ pub async fn apply_session_effects(
                 return events;
             }
             // Single-row fetch instead of loading all scenes (O(1) vs O(N) parse).
-            let existing = state
-                .repo
-                .get_scene_summary(scene_id)
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_default();
+            let existing =
+                state.repo.get_scene_summary(scene_id).await.ok().flatten().unwrap_or_default();
             // Snapshot: capture the previous summary BEFORE the mutation.
             let previous_summary = existing.clone();
             let mut merged =
@@ -232,7 +226,9 @@ pub async fn apply_session_effects(
             {
                 events.push(GameEvent::ItemAdded { name: name.clone(), quantity: *quantity });
             }
-            response.mechanical_events.push(format!("Item added to scene loot: {quantity}x {name}"));
+            response
+                .mechanical_events
+                .push(format!("Item added to scene loot: {quantity}x {name}"));
         }
         GameIntent::AdvanceClock { clock_id, ticks } => {
             let ticks_u = (*ticks).max(0) as u32;
@@ -284,7 +280,10 @@ pub async fn apply_session_effects(
                                 )
                                 .await;
                         }
-                        events.push(GameEvent::ClockAdvanced { clock_id: cl.id.clone(), ticks: *ticks });
+                        events.push(GameEvent::ClockAdvanced {
+                            clock_id: cl.id.clone(),
+                            ticks: *ticks,
+                        });
                         if current == 0 {
                             response.mechanical_events.push("DOOM CLOCK EXPIRED".to_string());
                         } else {
@@ -330,9 +329,9 @@ pub async fn apply_session_effects(
                             return events;
                         }
                         ResolveResult::NotFound => {
-                            response.mechanical_events.push(format!(
-                                "No NPC matching '{target}' is present."
-                            ));
+                            response
+                                .mechanical_events
+                                .push(format!("No NPC matching '{target}' is present."));
                             return events;
                         }
                     }
@@ -394,11 +393,7 @@ const IDLE_TICK_THRESHOLD: u32 = 3;
 /// entries, advance every active doom clock by 1.  Returns the events
 /// emitted (zero or more `ClockAdvanced`) so the caller can broadcast.
 pub async fn tick_idle_clocks(state: &GameState, scene_id: &str) -> Vec<GameEvent> {
-    let logs = state
-        .repo
-        .list_logs(scene_id, 100)
-        .await
-        .unwrap_or_default();
+    let logs = state.repo.list_logs(scene_id, 100).await.unwrap_or_default();
     let idle = count_idle_trail(&logs) as u32;
     if idle < IDLE_TICK_THRESHOLD {
         return vec![];
@@ -408,9 +403,7 @@ pub async fn tick_idle_clocks(state: &GameState, scene_id: &str) -> Vec<GameEven
     for cl in clocks.iter().filter(|c| c.active) {
         let prev_current = cl.current;
         let prev_max = cl.max;
-        if let Ok(Some((_current, _max))) =
-            state.repo.advance_doom_clock(&cl.id, 1).await
-        {
+        if let Ok(Some((_current, _max))) = state.repo.advance_doom_clock(&cl.id, 1).await {
             let snapshot = serde_json::to_value(&Snapshot::ClockAdvanced {
                 clock_id: cl.id.clone(),
                 previous_current: prev_current,
@@ -446,11 +439,7 @@ pub async fn rewind_to_log(
     target_log_id: &str,
 ) -> Result<Vec<String>, String> {
     // 1. Read ALL logs for the scene to find entries after the target.
-    let all_logs = state
-        .repo
-        .list_logs(scene_id, 10_000)
-        .await
-        .map_err(|e| e.to_string())?;
+    let all_logs = state.repo.list_logs(scene_id, 10_000).await.map_err(|e| e.to_string())?;
 
     // Find the target entry's timestamp.
     let target_entry = all_logs.iter().find(|l| l.id == target_log_id);
@@ -478,11 +467,8 @@ pub async fn rewind_to_log(
     }
 
     // 3. Delete the rewound log entries.
-    let stale_ids = state
-        .repo
-        .delete_logs_after(scene_id, target_log_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let stale_ids =
+        state.repo.delete_logs_after(scene_id, target_log_id).await.map_err(|e| e.to_string())?;
 
     // 4. Invalidate episodic summaries whose last_log_id was deleted.
     let invalidated = state
@@ -542,11 +528,8 @@ mod tests {
 
     #[test]
     fn ambiguous_n_cultists() {
-        let entities = vec![
-            cultist("c1", "Cultist"),
-            cultist("c2", "Cultist"),
-            cultist("c3", "Cultist"),
-        ];
+        let entities =
+            vec![cultist("c1", "Cultist"), cultist("c2", "Cultist"), cultist("c3", "Cultist")];
         match resolve_entity_descriptor("the cultist", &entities) {
             ResolveResult::Ambiguous { candidates } => assert_eq!(candidates.len(), 3),
             other => panic!("expected Ambiguous, got {other:?}"),
@@ -565,10 +548,7 @@ mod tests {
     #[test]
     fn not_found_when_empty() {
         let entities = vec![];
-        assert_eq!(
-            resolve_entity_descriptor("the cultist", &entities),
-            ResolveResult::NotFound
-        );
+        assert_eq!(resolve_entity_descriptor("the cultist", &entities), ResolveResult::NotFound);
     }
 
     // ── Matching subtleties ─────────────────────────────────────────
@@ -665,11 +645,8 @@ mod tests {
 
     #[test]
     fn idle_trail_no_snapshots_counted() {
-        let logs = vec![
-            log_without_snapshot("1"),
-            log_without_snapshot("2"),
-            log_without_snapshot("3"),
-        ];
+        let logs =
+            vec![log_without_snapshot("1"), log_without_snapshot("2"), log_without_snapshot("3")];
         assert_eq!(count_idle_trail(&logs), 3);
     }
 

@@ -207,7 +207,11 @@ pub struct DamageResult {
 
 impl DamageResult {
     pub fn status(&self) -> &'static str {
-        if self.defeated { "DEFEATED" } else { "ALIVE" }
+        if self.defeated {
+            "DEFEATED"
+        } else {
+            "ALIVE"
+        }
     }
 }
 
@@ -239,12 +243,7 @@ pub fn apply_damage(target: &mut Combatant, amount: i32) -> DamageResult {
     } else {
         target.status = None;
     }
-    DamageResult {
-        temp_absorbed,
-        hp_remaining: target.hit_points,
-        defeated,
-        shock,
-    }
+    DamageResult { temp_absorbed, hp_remaining: target.hit_points, defeated, shock }
 }
 
 /// Modify raw damage based on the target's resistances, vulnerabilities, and immunities.
@@ -436,18 +435,14 @@ pub fn execute_attack(
             // Natural 20 always hits (and crits); natural 1 always misses.
             let nat_max = roll.kept_rolls.iter().filter(|r| **r == 20).count() > 0
                 && base.trim_start().starts_with("1d20");
-            let nat_min = roll.kept_rolls.contains(&1)
-                && base.trim_start().starts_with("1d20");
+            let nat_min = roll.kept_rolls.contains(&1) && base.trim_start().starts_with("1d20");
 
             let target_value = if resolution.resolution_type == ResolutionType::OpposedRoll {
                 // Defender contests with the action's primary attribute
                 // (defaulting to DEX), not a hardcoded one.
-                let attr = resolution
-                    .primary_attribute
-                    .clone()
-                    .unwrap_or_else(|| "DEX".to_string());
-                let t_formula =
-                    format!("1d20 + @attributes.{attr}.derived_modifier");
+                let attr =
+                    resolution.primary_attribute.clone().unwrap_or_else(|| "DEX".to_string());
+                let t_formula = format!("1d20 + @attributes.{attr}.derived_modifier");
                 roll_for(dice, target, &t_formula)?.total as i32
             } else {
                 resolve_defense(action, target)?
@@ -514,8 +509,7 @@ pub fn execute_attack(
 
             let nat_max = roll.kept_rolls.iter().filter(|r| **r == 20).count() > 0
                 && base.trim_start().starts_with("1d20");
-            let nat_min = roll.kept_rolls.contains(&1)
-                && base.trim_start().starts_with("1d20");
+            let nat_min = roll.kept_rolls.contains(&1) && base.trim_start().starts_with("1d20");
 
             let hit = if nat_min {
                 false
@@ -863,13 +857,9 @@ mod tests {
         target.conditions = vec!["Prone".into()];
         let action = longsword();
         for _ in 0..25 {
-            let outcome =
-                execute_attack(&mut dice, &attacker, &mut target, &action, None).unwrap();
+            let outcome = execute_attack(&mut dice, &attacker, &mut target, &action, None).unwrap();
             let detail = outcome.attack_detail.clone().unwrap_or_default();
-            assert!(
-                !detail.contains("2d20"),
-                "expected straight 1d20, got {detail}"
-            );
+            assert!(!detail.contains("2d20"), "expected straight 1d20, got {detail}");
         }
     }
     #[test]
@@ -952,8 +942,7 @@ mod tests {
         big_heal.resolution.outcomes.as_mut().unwrap().on_success.as_mut().unwrap().formula =
             Some("100".to_string());
 
-        let outcome =
-            execute_attack(&mut dice, &caster, &mut target, &big_heal, None).unwrap();
+        let outcome = execute_attack(&mut dice, &caster, &mut target, &big_heal, None).unwrap();
         assert_eq!(outcome.heal_amount, target.max_hit_points);
         assert_eq!(outcome.target_hp_remaining, target.max_hit_points);
         assert_eq!(outcome.target_status, "ALIVE");

@@ -79,11 +79,19 @@ struct TagModel {
 
 impl OllamaLlmBackend {
     pub fn new(model: Option<String>) -> Self {
-        Self { client: Client::new(), model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()), base_url: DEFAULT_URL.to_string() }
+        Self {
+            client: Client::new(),
+            model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()),
+            base_url: DEFAULT_URL.to_string(),
+        }
     }
 
     pub fn new_with_url(model: Option<String>, base_url: Option<String>) -> Self {
-        Self { client: Client::new(), model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()), base_url: base_url.unwrap_or_else(|| DEFAULT_URL.to_string()) }
+        Self {
+            client: Client::new(),
+            model: model.unwrap_or_else(|| DEFAULT_MODEL.to_string()),
+            base_url: base_url.unwrap_or_else(|| DEFAULT_URL.to_string()),
+        }
     }
 
     /// Fast TCP reachability probe — does not load a model.
@@ -243,22 +251,19 @@ mod tests {
     }
 }
 
-    #[test]
-    fn resolve_keeps_configured_when_installed() {
-        let installed = vec!["llama3.2".into(), "qwen2.5:7b".into()];
-        assert!(resolve_effective_model("llama3.2", &installed).is_none());
-    }
+#[test]
+fn resolve_keeps_configured_when_installed() {
+    let installed = vec!["llama3.2".into(), "qwen2.5:7b".into()];
+    assert!(resolve_effective_model("llama3.2", &installed).is_none());
+}
 
-    #[test]
-    fn resolve_falls_back_to_first_installed() {
-        let installed = vec!["qwen2.5:7b".into()];
-        assert_eq!(
-            resolve_effective_model("llama3.2", &installed).as_deref(),
-            Some("qwen2.5:7b")
-        );
-    }
+#[test]
+fn resolve_falls_back_to_first_installed() {
+    let installed = vec!["qwen2.5:7b".into()];
+    assert_eq!(resolve_effective_model("llama3.2", &installed).as_deref(), Some("qwen2.5:7b"));
+}
 
-    #[test]
-    fn resolve_keeps_configured_when_nothing_installed() {
-        assert!(resolve_effective_model("llama3.2", &[]).is_none());
-    }
+#[test]
+fn resolve_keeps_configured_when_nothing_installed() {
+    assert!(resolve_effective_model("llama3.2", &[]).is_none());
+}

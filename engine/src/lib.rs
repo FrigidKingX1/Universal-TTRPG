@@ -20,6 +20,6 @@ pub use session::{
 };
 pub use state::{
     backup_before_migrate, is_summary_stale, open_pool, run_migrations, CampaignExport,
-    DoomClockRow, EpisodicSummary, GameState, ExplorationNodeRow, ExplorationZoneRow, LootRow,
-    LogEntry, NpcCharacterRow, NpcNoteRow, Repository, Scene, SqliteRepository, ThreadRow,
+    DoomClockRow, EpisodicSummary, ExplorationNodeRow, ExplorationZoneRow, GameState, LogEntry,
+    LootRow, NpcCharacterRow, NpcNoteRow, Repository, Scene, SqliteRepository, ThreadRow,
 };

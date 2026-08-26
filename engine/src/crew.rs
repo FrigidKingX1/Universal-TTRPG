@@ -69,16 +69,11 @@ where
         fate_target: 0,
         chaos_factor: request.chaos_factor,
         event_meaning: None,
-        intent: auto_dm_core::intent::GameIntent::Narration {
-            text: crew_out.narration.clone(),
-        },
+        intent: auto_dm_core::intent::GameIntent::Narration { text: crew_out.narration.clone() },
         source: "crew".to_string(),
     };
 
-    Ok(CrewTurnOutput {
-        response,
-        lore_used: crew_out.lore_citations,
-    })
+    Ok(CrewTurnOutput { response, lore_used: crew_out.lore_citations })
 }
 
 #[cfg(test)]

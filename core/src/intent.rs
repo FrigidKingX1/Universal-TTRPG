@@ -404,7 +404,10 @@ pub fn repair_campaign_json(input: &str) -> String {
                     let alias = ["name", "scene_title", "scene_name"]
                         .iter()
                         .find_map(|k| o.get(*k).and_then(|x| x.as_str()).map(String::from));
-                    o.insert("title".into(), Value::String(alias.unwrap_or_else(|| format!("Scene {}", i + 1))));
+                    o.insert(
+                        "title".into(),
+                        Value::String(alias.unwrap_or_else(|| format!("Scene {}", i + 1))),
+                    );
                 }
                 if !o.contains_key("chaos_factor") {
                     let cf = o.get("chaos").and_then(|x| x.as_i64()).unwrap_or(5);
@@ -577,7 +580,9 @@ fn salvage_truncated(s: &str) -> Option<String> {
             match b {
                 b'"' => s2_in = true,
                 b'{' | b'[' => stack.push(b),
-                b'}' | b']' => { stack.pop(); }
+                b'}' | b']' => {
+                    stack.pop();
+                }
                 _ => {}
             }
         }
@@ -653,7 +658,7 @@ pub fn campaign_json_schema() -> serde_json::Value {
 
 #[cfg(test)]
 mod llm_json_hardening_tests {
-    use super::{repair_campaign_json, campaign_json_schema};
+    use super::{campaign_json_schema, repair_campaign_json};
 
     #[test]
     fn unwraps_intent_style_payload_envelope() {

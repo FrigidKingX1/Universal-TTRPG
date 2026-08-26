@@ -1,4 +1,4 @@
-﻿//! Preset content library embedded in the server binary.
+//! Preset content library embedded in the server binary.
 //!
 //! The JSON payloads are generated from the frontend's TypeScript preset
 //! library (`src/presets/{actions,bestiary}.ts`) by
@@ -102,8 +102,7 @@ mod tests {
     #[test]
     fn every_monster_action_reference_resolves() {
         let actions = preset_actions();
-        let ids: std::collections::HashSet<&str> =
-            actions.iter().map(|a| a.id.as_str()).collect();
+        let ids: std::collections::HashSet<&str> = actions.iter().map(|a| a.id.as_str()).collect();
         let missing: Vec<String> = preset_stat_blocks()
             .iter()
             .flat_map(|m| m.actions.iter().map(move |a| (m.name.clone(), a.clone())))
@@ -122,9 +121,11 @@ mod tests {
             for l in &m.loot_table {
                 assert!(!l.name.is_empty(), "{} loot name", m.name);
                 assert!(
-                    l.quantity_formula
-                        .chars()
-                        .all(|c| c.is_ascii_digit() || c == 'd' || c == '+' || c == '-' || c == ' '),
+                    l.quantity_formula.chars().all(|c| c.is_ascii_digit()
+                        || c == 'd'
+                        || c == '+'
+                        || c == '-'
+                        || c == ' '),
                     "{} bad formula {}",
                     m.name,
                     l.quantity_formula

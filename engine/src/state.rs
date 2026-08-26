@@ -12,7 +12,6 @@ use uuid::Uuid;
 /// Error type lives in `crate::error` (thiserror); aliased for back-compat.
 pub use crate::error::{DbError, EngineError};
 
-
 /// A campaign scene (the spec's `campaign_scenes` row).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Scene {
@@ -140,7 +139,10 @@ pub trait Repository: Send + Sync {
         summary: &str,
         last_log_id: &str,
     ) -> Result<EpisodicSummary, DbError>;
-    async fn list_episodic_summaries(&self, scene_id: &str) -> Result<Vec<EpisodicSummary>, DbError>;
+    async fn list_episodic_summaries(
+        &self,
+        scene_id: &str,
+    ) -> Result<Vec<EpisodicSummary>, DbError>;
     async fn delete_episodic_summary(&self, id: &str) -> Result<bool, DbError>;
 
     // Plot Threads
@@ -226,10 +228,18 @@ pub trait Repository: Send + Sync {
     async fn set_scene_summary(&self, scene_id: &str, summary: &str) -> Result<(), DbError>;
     /// Delete all log entries for a scene with timestamp > target_log's timestamp.
     /// Returns the deleted log IDs (for episodic summary staleness checks).
-    async fn delete_logs_after(&self, scene_id: &str, target_log_id: &str) -> Result<Vec<String>, DbError>;
+    async fn delete_logs_after(
+        &self,
+        scene_id: &str,
+        target_log_id: &str,
+    ) -> Result<Vec<String>, DbError>;
     /// Delete episodic summaries whose last_log_id appears in the given set.
     /// Returns the IDs of deleted summaries.
-    async fn invalidate_stale_summaries(&self, scene_id: &str, stale_log_ids: &[String]) -> Result<Vec<String>, DbError>;
+    async fn invalidate_stale_summaries(
+        &self,
+        scene_id: &str,
+        stale_log_ids: &[String],
+    ) -> Result<Vec<String>, DbError>;
 
     async fn save_exploration_zone(
         &self,
@@ -1484,21 +1494,42 @@ impl Repository for SqliteRepository {
         .bind(&created_at)
         .execute(&self.pool)
         .await?;
-        Ok(EpisodicSummary { id, scene_id: scene_id.to_string(), summary: summary.to_string(), last_log_id: last_log_id.to_string(), created_at })
+        Ok(EpisodicSummary {
+            id,
+            scene_id: scene_id.to_string(),
+            summary: summary.to_string(),
+            last_log_id: last_log_id.to_string(),
+            created_at,
+        })
     }
 
-    async fn list_episodic_summaries(&self, scene_id: &str) -> Result<Vec<EpisodicSummary>, DbError> {
+    async fn list_episodic_summaries(
+        &self,
+        scene_id: &str,
+    ) -> Result<Vec<EpisodicSummary>, DbError> {
         let rows: Vec<(String, String, String, String, String)> = sqlx::query_as(
             "SELECT id, scene_id, summary, last_log_id, created_at FROM episodic_summaries WHERE scene_id = ? ORDER BY created_at ASC",
         )
         .bind(scene_id)
         .fetch_all(&self.pool)
         .await?;
-        Ok(rows.into_iter().map(|(id, scene_id, summary, last_log_id, created_at)| EpisodicSummary { id, scene_id, summary, last_log_id, created_at }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|(id, scene_id, summary, last_log_id, created_at)| EpisodicSummary {
+                id,
+                scene_id,
+                summary,
+                last_log_id,
+                created_at,
+            })
+            .collect())
     }
 
     async fn delete_episodic_summary(&self, id: &str) -> Result<bool, DbError> {
-        let r = sqlx::query("DELETE FROM episodic_summaries WHERE id = ?").bind(id).execute(&self.pool).await?;
+        let r = sqlx::query("DELETE FROM episodic_summaries WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         Ok(r.rows_affected() > 0)
     }
 
@@ -1909,7 +1940,11 @@ impl Repository for SqliteRepository {
         Ok(())
     }
 
-    async fn delete_logs_after(&self, scene_id: &str, target_log_id: &str) -> Result<Vec<String>, DbError> {
+    async fn delete_logs_after(
+        &self,
+        scene_id: &str,
+        target_log_id: &str,
+    ) -> Result<Vec<String>, DbError> {
         // Find the timestamp of the target log entry, then delete everything after it.
         let target = sqlx::query("SELECT timestamp FROM log_entries WHERE id = ? AND scene_id = ?")
             .bind(target_log_id)
@@ -1931,24 +1966,32 @@ impl Repository for SqliteRepository {
         .await?;
         let stale_ids: Vec<String> = stale.into_iter().map(|(id,)| id).collect();
         if !stale_ids.is_empty() {
-            sqlx::query("DELETE FROM log_entries WHERE scene_id = ? AND timestamp >= ? AND id != ?")
-                .bind(scene_id)
-                .bind(&target_ts)
-                .bind(target_log_id)
-                .execute(&self.pool)
-                .await?;
+            sqlx::query(
+                "DELETE FROM log_entries WHERE scene_id = ? AND timestamp >= ? AND id != ?",
+            )
+            .bind(scene_id)
+            .bind(&target_ts)
+            .bind(target_log_id)
+            .execute(&self.pool)
+            .await?;
         }
         Ok(stale_ids)
     }
 
-    async fn invalidate_stale_summaries(&self, scene_id: &str, stale_log_ids: &[String]) -> Result<Vec<String>, DbError> {
+    async fn invalidate_stale_summaries(
+        &self,
+        scene_id: &str,
+        stale_log_ids: &[String],
+    ) -> Result<Vec<String>, DbError> {
         let mut deleted = Vec::new();
         for log_id in stale_log_ids {
-            let r = sqlx::query("DELETE FROM episodic_summaries WHERE scene_id = ? AND last_log_id = ?")
-                .bind(scene_id)
-                .bind(log_id)
-                .execute(&self.pool)
-                .await?;
+            let r = sqlx::query(
+                "DELETE FROM episodic_summaries WHERE scene_id = ? AND last_log_id = ?",
+            )
+            .bind(scene_id)
+            .bind(log_id)
+            .execute(&self.pool)
+            .await?;
             if r.rows_affected() > 0 {
                 deleted.push(log_id.clone());
             }

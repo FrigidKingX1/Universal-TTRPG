@@ -183,20 +183,10 @@ pub fn hybrid_recall(query: &str, docs: &[String], k: usize) -> Vec<(usize, f32)
 }
 
 /// Convenience: recall over a CampaignMemory's last `n` events.
-pub fn recall_from_memory(
-    query: &str,
-    memory_context: &str,
-    k: usize,
-) -> Vec<String> {
-    let docs: Vec<String> = memory_context
-        .lines()
-        .map(|l| l.to_string())
-        .filter(|l| !l.trim().is_empty())
-        .collect();
-    hybrid_recall(query, &docs, k)
-        .into_iter()
-        .map(|(idx, _)| docs[idx].clone())
-        .collect()
+pub fn recall_from_memory(query: &str, memory_context: &str, k: usize) -> Vec<String> {
+    let docs: Vec<String> =
+        memory_context.lines().map(|l| l.to_string()).filter(|l| !l.trim().is_empty()).collect();
+    hybrid_recall(query, &docs, k).into_iter().map(|(idx, _)| docs[idx].clone()).collect()
 }
 
 /// Async hybrid: semantic cosine (nomic-embed-text) blended with TF-IDF.
@@ -264,11 +254,8 @@ pub async fn recall_from_memory_async<E: Embedder + ?Sized>(
     k: usize,
     embedder: &E,
 ) -> Vec<String> {
-    let docs: Vec<String> = memory_context
-        .lines()
-        .map(|l| l.to_string())
-        .filter(|l| !l.trim().is_empty())
-        .collect();
+    let docs: Vec<String> =
+        memory_context.lines().map(|l| l.to_string()).filter(|l| !l.trim().is_empty()).collect();
     hybrid_recall_async(query, &docs, k, embedder)
         .await
         .into_iter()
@@ -337,12 +324,8 @@ mod tests {
             "Bob betrayed the party in Chapter 3".to_string(),
             "The tavern serves ale".to_string(),
         ];
-        let hits = futures_test_block_on(hybrid_recall_async(
-            "Bob betrayal",
-            &docs,
-            1,
-            &StubEmbedder,
-        ));
+        let hits =
+            futures_test_block_on(hybrid_recall_async("Bob betrayal", &docs, 1, &StubEmbedder));
         assert_eq!(hits.len(), 1);
     }
 
@@ -351,12 +334,8 @@ mod tests {
         // Query with no lexical overlap still gets no results (TF-IDF zero,
         // stub embedding may give weak cosine but hybrid filters <1e-6)
         let docs = vec!["xyz abc".to_string()];
-        let hits = futures_test_block_on(hybrid_recall_async(
-            "dragon hoard",
-            &docs,
-            3,
-            &StubEmbedder,
-        ));
+        let hits =
+            futures_test_block_on(hybrid_recall_async("dragon hoard", &docs, 3, &StubEmbedder));
         // May be empty — just ensure it doesn't panic and respects k
         assert!(hits.len() <= 1);
     }

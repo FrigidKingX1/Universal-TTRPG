@@ -291,9 +291,7 @@ impl<B: LlmBackend> DmPipeline<B> {
             );
             let num_predict = request.num_predict.map(|n| n.clamp(64, 2048));
             let raw = if let Some(cb) = on_token {
-                self.backend
-                    .complete_streaming(&sys, &prompt, num_predict, cb)
-                    .await?
+                self.backend.complete_streaming(&sys, &prompt, num_predict, cb).await?
             } else {
                 self.backend.complete(&sys, &prompt, num_predict).await?
             };

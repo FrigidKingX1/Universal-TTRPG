@@ -14,10 +14,20 @@ pub const GAME_EVENT_SCHEMA_VERSION: u32 = 1;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GameEvent {
-    SceneUpdated { scene_id: String },
-    NpcSpoke { speaker: String },
-    ItemAdded { name: String, quantity: i32 },
-    ClockAdvanced { clock_id: String, ticks: i32 },
+    SceneUpdated {
+        scene_id: String,
+    },
+    NpcSpoke {
+        speaker: String,
+    },
+    ItemAdded {
+        name: String,
+        quantity: i32,
+    },
+    ClockAdvanced {
+        clock_id: String,
+        ticks: i32,
+    },
     /// Emitted for every combat HP mutation (from core's DamageResult).
     DamageApplied {
         target_id: String,
@@ -49,8 +59,13 @@ pub enum GameEvent {
         message: String,
         candidates: Vec<String>,
     },
-    ConditionApplied { target: String, condition: String },
-    RuleAnswered { question: String },
+    ConditionApplied {
+        target: String,
+        condition: String,
+    },
+    RuleAnswered {
+        question: String,
+    },
 }
 
 /// Versioned envelope — the actual wire format for broadcasts/audit records.
