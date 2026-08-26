@@ -1,4 +1,4 @@
-﻿//! C2+C3+C4 Ã¢â‚¬â€ Session model: per-session isolation, player-identity
+//! C2+C3+C4 Ã¢â‚¬â€ Session model: per-session isolation, player-identity
 //! tokens, materialized resync, and turn concurrency policy.
 //!
 //! The turn gate switches between free-form (exploration) and queued
@@ -237,8 +237,26 @@ pub struct Session {
     pub map_background: RwLock<String>,
     /// Rolled initiative order (roll_initiative entries as JSON).  Without
     /// this, only the client that rolled ever sees the order and every
-    /// reconnect loses it Ã¢â‚¬â€ resync carries it back to everyone.
+    /// reconnect loses it — resync carries it back to everyone.
     pub initiative: RwLock<Vec<Value>>,
+    /// Monotonic sequence for state-mutating events.  Resync records the
+    /// current value so clients can drop queued frames they've already
+    /// absorbed via the snapshot (prevents double-applied clock ticks).
+    pub event_seq: std::sync::atomic::AtomicU64,
+}
+
+impl Session {
+    /// Stamp-and-send one state-mutating event.  Always use this instead of
+    /// touching `event_tx` directly so every Event carries a comparable seq.
+    pub fn send_event(&self, event: auto_dm_engine::GameEvent) {
+        let seq = self.event_seq.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let _ = self.event_tx.send(WsMessage::Event { event, seq });
+    }
+
+    /// Current highest assigned sequence (inclusive upper bound for resync).
+    pub fn current_event_seq(&self) -> u64 {
+        self.event_seq.load(std::sync::atomic::Ordering::SeqCst)
+    }
 }
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ WsMessage Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -279,6 +297,10 @@ pub struct ResyncPayload {
     /// same turn order as whoever rolled it.
     #[serde(default)]
     pub initiative: Vec<Value>,
+    /// Highest event sequence reflected in this snapshot.  Clients drop
+    /// queued events with `seq <= last_event_seq` (exactly-once replay).
+    #[serde(default)]
+    pub last_event_seq: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -286,6 +308,9 @@ pub struct ResyncPayload {
 pub enum WsMessage {
     Event {
         event: auto_dm_engine::GameEvent,
+        /// Monotonic per-session sequence; clients drop events whose seq is
+        /// already covered by the resync snapshot they just applied.
+        seq: u64,
     },
     Resync(Box<ResyncPayload>),
     /// Pushed after any turn-gate mutation so every peer's turn UI
@@ -539,6 +564,7 @@ impl SessionRegistry {
                 map_tokens: RwLock::new(Vec::new()),
                 map_background: RwLock::new(String::new()),
                 initiative: RwLock::new(restored_initiative),
+                event_seq: std::sync::atomic::AtomicU64::new(0),
             });
 
             // Populate in-memory maps.
@@ -890,6 +916,7 @@ impl SessionRegistry {
             map_tokens: RwLock::new(Vec::new()),
             map_background: RwLock::new(String::new()),
             initiative: RwLock::new(Vec::new()),
+            event_seq: std::sync::atomic::AtomicU64::new(0),
         });
 
         // Register session + token in memory.
@@ -1126,6 +1153,7 @@ pub async fn build_resync(session: &Session) -> Box<ResyncPayload> {
         recent_logs: logs.unwrap_or_default(),
         turn: Some(TurnStatePayload::from_gate(&session.turn_gate).await),
         initiative: session.initiative.read().await.clone(),
+        last_event_seq: session.current_event_seq(),
     })
 }
 
@@ -1303,6 +1331,7 @@ mod turn_state_tests {
             map_tokens: Default::default(),
             map_background: Default::default(),
             initiative: Default::default(),
+            event_seq: std::sync::atomic::AtomicU64::new(0),
         };
 
         session.turn_gate.start_combat("alice".into()).await;

@@ -348,7 +348,7 @@ async fn resolve(
 
     // Broadcast WHILE session lock held â€” order guarantee.
     for event in &events {
-        let _ = session.event_tx.send(WsMessage::Event { event: event.clone() });
+        session.send_event(event.clone());
     }
 
     // Advance turn if in combat mode.
@@ -795,7 +795,9 @@ async fn add_item(
     let item = auto_dm_core::models::InventoryItem {
         id: uuid::Uuid::new_v4().to_string(),
         name: req.name,
-        quantity: req.quantity,
+        // Griefing guard: negative/zero quantities corrupt inventory math
+        // and absurd counts bloat every resync.
+        quantity: req.quantity.clamp(1, 999),
         state: auto_dm_core::models::ItemState::Stowed,
         weight: 0.0,
         tags: req.tags,
@@ -1449,7 +1451,7 @@ async fn server_combat_attack(
             defeated: dr.defeated,
             shock: dr.shock,
         };
-        let _ = session.event_tx.send(WsMessage::Event { event });
+        session.send_event(event);
     }
 
     // Heal actions restore HP instead â€” broadcast the restoration.
@@ -1460,7 +1462,7 @@ async fn server_combat_attack(
             amount: outcome.heal_amount,
             hp_remaining: victim.hit_points,
         };
-        let _ = session.event_tx.send(WsMessage::Event { event });
+        session.send_event(event);
     }
 
     // Broadcast resync so all clients get updated combatant state.
@@ -1501,7 +1503,7 @@ async fn server_map_update(
 
     let event =
         auto_dm_engine::GameEvent::MapUpdated { tokens: req.tokens, background: req.background };
-    let _ = session.event_tx.send(WsMessage::Event { event });
+    session.send_event(event);
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -1584,15 +1586,23 @@ async fn server_combat_condition(
     // against attacks/heals running under the same lock.
     let _lock = session.session_lock.lock().await;
 
+    // Griefing guard: conditions render as UI chips and flow into every
+    // resync; a hostile client must not inject huge or empty tags into
+    // everyone's board state.
+    let condition = req.condition.trim();
+    if condition.is_empty() || condition.len() > 64 {
+        return Err((StatusCode::BAD_REQUEST, "Invalid condition".into()));
+    }
+
     {
         let mut conditions = session.combatant_conditions.write().await;
         let entry = conditions.entry(req.target_id.clone()).or_default();
         if req.add {
-            if !entry.contains(&req.condition) {
-                entry.push(req.condition.clone());
+            if !entry.contains(&condition.to_string()) {
+                entry.push(condition.to_string());
             }
         } else {
-            entry.retain(|c| c != &req.condition);
+            entry.retain(|c| c != condition);
         }
     }
 
@@ -1724,17 +1734,22 @@ async fn handle_socket(
     player_id: String,
     mut socket: WebSocket,
 ) {
+    // Initial resync — materialized state, not raw logs.  Built under the
+    // session lock so the recorded last_event_seq is exactly the bound of
+    // what the snapshot reflects; queued frames above that seq are genuinely
+    // new and get applied by the client (exactly-once replay).
     let mut rx = session.event_tx.subscribe();
-    let mut ping_interval = tokio::time::interval(PING_INTERVAL);
-    let mut last_activity = tokio::time::Instant::now();
-
-    // Initial resync Ã¢â‚¬â€ materialized state, not raw logs.
-    let resync = session::build_resync(&session).await;
+    let resync = {
+        let _lock = session.session_lock.lock().await;
+        session::build_resync(&session).await
+    };
     let msg = WsMessage::Resync(resync);
     if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
         mark_disconnected(&state, &session, &player_id).await;
         return;
     }
+    let mut ping_interval = tokio::time::interval(PING_INTERVAL);
+    let mut last_activity = tokio::time::Instant::now();
 
     loop {
         tokio::select! {
@@ -1742,8 +1757,8 @@ async fn handle_socket(
             result = rx.recv() => {
                 last_activity = tokio::time::Instant::now();
                 match result {
-                    Ok(WsMessage::Event { event }) => {
-                        let json = match serde_json::to_string(&WsMessage::Event { event }) {
+                    Ok(WsMessage::Event { event, seq }) => {
+                        let json = match serde_json::to_string(&WsMessage::Event { event, seq }) {
                             Ok(j) => j,
                             Err(_) => continue,
                         };

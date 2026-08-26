@@ -5,7 +5,7 @@
 import type { CharacterProfile, DmRequest, DmResponse } from "../types";
 import type { GameEvent, ResyncPayload, WsMessage } from "./types";
 
-export type WsEventHandler = (event: GameEvent) => void;
+export type WsEventHandler = (event: GameEvent, seq?: number) => void;
 export type ResyncHandler = (payload: ResyncPayload) => void;
 export type ConnectionHandler = (connected: boolean) => void;
 export type TurnStateHandler = (state: {
@@ -110,7 +110,7 @@ export class MultiplayerClient {
       try {
         const msg: WsMessage = JSON.parse(ev.data);
         if (msg.type === "event") {
-          this.onEvent(msg.event);
+          this.onEvent(msg.event, msg.seq);
         } else if (msg.type === "resync") {
           this.onResync(msg.payload);
         } else if (msg.type === "turn_state") {

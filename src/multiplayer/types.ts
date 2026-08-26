@@ -24,7 +24,7 @@ export type TurnCheck =
 // ── WsMessage envelope ───────────────────────────────────────────────
 
 export type WsMessage =
-  | { type: "event"; event: GameEvent }
+  | { type: "event"; event: GameEvent; /** Monotonic per-session sequence (server ≥ v10). */ seq?: number }
   | { type: "resync"; payload: ResyncPayload }
   /** Pushed after any turn-gate mutation (C4 closeout) */
   | { type: "turn_state"; mode: GameMode; current_turn: string | null; queue: string[] };
@@ -99,6 +99,8 @@ export interface ResyncPayload {
   turn?: { mode: GameMode; current_turn: string | null; queue: string[] } | null;
   /** Rolled initiative order, so reconnectors keep the turn order. */
   initiative?: Array<{ combatant_id: string; name: string; roll: number; modifier: number }>;
+  /** Highest event sequence reflected in this snapshot (exactly-once replay). */
+  last_event_seq?: number;
 }
 
 // ── REST response types ──────────────────────────────────────────────

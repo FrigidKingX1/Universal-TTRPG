@@ -130,7 +130,7 @@ export interface MultiplayerState {
 
   // â”€â”€ Internal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   _handleResync: (payload: ResyncPayload) => void;
-  _handleEvent: (event: GameEvent) => void;
+  _handleEvent: (event: GameEvent, seq?: number) => void;
   _handleConnection: (connected: boolean) => void;
   _handleTurnState: (state: {
     mode: "exploration" | "combat";
@@ -140,6 +140,14 @@ export interface MultiplayerState {
 }
 
 let client: MultiplayerClient | null = null;
+
+// Exactly-once replay state (R10). lastAppliedEventSeq tracks the highest
+// event seq applied locally; lastResyncAt timestamps the most recent resync
+// so the filter only suppresses the replay burst right after connecting —
+// a stale seq must never swallow fresh events hours later.
+let lastAppliedEventSeq = 0;
+let lastResyncAt = 0;
+const RESYNC_GRACE_MS = 10_000;
 
 export function getMultiplayerClient(): MultiplayerClient | null {
   return client;
@@ -408,6 +416,12 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
 
   // â”€â”€ Internal: Resync handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   _handleResync: (payload) => {
+    // Record the snapshot's event bound BEFORE applying anything: queued
+    // frames at or below this seq are already reflected in the payload.
+    if (typeof payload.last_event_seq === "number") {
+      lastAppliedEventSeq = Math.max(lastAppliedEventSeq, payload.last_event_seq);
+    }
+    lastResyncAt = Date.now();
     set({
       scene: payload.scene,
       sceneSummary: payload.scene_summary,
@@ -433,10 +447,21 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
   },
 
   // â”€â”€ Internal: Event handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Pure forwarder: all state application (including drag-aware map
-  // merging) happens in _dispatchEventToMainStore. The previous local
-  // switch here maintained a second, unread copy of clocks/map state.
-  _handleEvent: (event) => {
+  // Pure forwarder with exactly-once replay filtering: after a resync the
+  // snapshot already reflects every effect up to last_event_seq, so queued
+  // frames at or below that bound must be dropped (otherwise doom-clock
+  // deltas double-apply). Events without seq (older servers) pass through.
+  _handleEvent: (event, seq) => {
+    if (
+      seq !== undefined &&
+      seq <= lastAppliedEventSeq &&
+      Date.now() - lastResyncAt < RESYNC_GRACE_MS
+    ) {
+      return;
+    }
+    if (seq !== undefined) {
+      lastAppliedEventSeq = Math.max(lastAppliedEventSeq, seq);
+    }
     _dispatchEventToMainStore(event);
   },
 

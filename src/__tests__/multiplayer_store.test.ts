@@ -198,4 +198,68 @@ describe("scoped mapDragGuard", () => {
     expect(main.snapshot().currentTurnIndex).toBe(1); // Bob's seat
     expect(main.snapshot().currentRound).toBe(1); // fresh order starts at 1
   });
+
+  it("drops queued events already covered by the resync snapshot", () => {
+    const main = makeMainStore();
+    initMultiplayerBridge(main.get, main.set as any);
+
+    useMultiplayerStore.getState()._handleResync({
+      scene: null,
+      scene_summary: "",
+      doom_clocks: [
+        { id: "clock1", name: "Ritual", current: 3, max: 6, consequence: "", active: true },
+      ],
+      npcs: [],
+      loot: [],
+      threads: [],
+      summaries: [],
+      combat_state: null,
+      characters: [],
+      player_characters: {},
+      combatants: [],
+      combatant_conditions: {},
+      recent_logs: [],
+      map_tokens: [],
+      map_background: "",
+      turn: null,
+      last_event_seq: 5, // snapshot reflects effects up to seq 5
+    } as any);
+
+    // Replayed frame from before the snapshot — must be swallowed.
+    useMultiplayerStore.getState()._handleEvent(
+      { type: "clock_advanced", clock_id: "clock1", ticks: 2 },
+      4,
+    );
+    expect(main.snapshot().doomClocks[0].current).toBe(3);
+
+    // Genuinely new event — applies normally.
+    useMultiplayerStore.getState()._handleEvent(
+      { type: "clock_advanced", clock_id: "clock1", ticks: 2 },
+      6,
+    );
+    expect(main.snapshot().doomClocks[0].current).toBe(5);
+  });
+
+  it("applies unsequenced events regardless of resync state (older servers)", () => {
+    const main = makeMainStore();
+    initMultiplayerBridge(main.get, main.set as any);
+
+    useMultiplayerStore.getState()._handleResync({
+      scene: null,
+      scene_summary: "",
+      doom_clocks: [
+        { id: "clock1", name: "Ritual", current: 0, max: 6, consequence: "", active: true },
+      ],
+      npcs: [], loot: [], threads: [], summaries: [], combat_state: null,
+      characters: [], player_characters: {}, combatants: [],
+      combatant_conditions: {}, recent_logs: [], map_tokens: [],
+      map_background: "", turn: null,
+    } as any);
+    // No last_event_seq in payload → lastAppliedEventSeq stays 0.
+
+    useMultiplayerStore.getState()._handleEvent(
+      { type: "clock_advanced", clock_id: "clock1", ticks: 1 },
+    ); // no seq — legacy server
+    expect(main.snapshot().doomClocks[0].current).toBe(1);
+  });
 });
