@@ -196,7 +196,9 @@ pub async fn handle_call(name: &str, args: Value) -> Result<CallToolResult, McpS
         "roll_dice" => {
             let a: ExprArgs = parse_args(args)?;
             if a.expr.len() > 512 {
-                return text_result("error: expression too long (max 512 characters)");
+                return Ok(CallToolResult::error(vec![ContentBlock::text(
+                    "expression too long (max 512 characters)",
+                )]));
             }
             let mut dice = DiceEngine::new();
             let r = dice.evaluate(&a.expr)?;

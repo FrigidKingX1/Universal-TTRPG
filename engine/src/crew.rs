@@ -34,7 +34,7 @@ where
 {
     // Snapshot deterministic state for the crew
     let memory_slice = {
-        let mem = game_state.memory.lock().unwrap();
+        let mem = game_state.memory.lock().unwrap_or_else(|e| e.into_inner());
         mem.to_context(20)
     };
     let engine_snapshot = format!(

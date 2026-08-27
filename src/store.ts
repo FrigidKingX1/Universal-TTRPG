@@ -1097,10 +1097,13 @@ export const useStore = create<AutoDmState>()(
       return !!st && (st.hit_points <= 0 || st.status === "dead");
     };
     let idx = s.currentTurnIndex;
+    let found = false;
     for (let step = 0; step < n; step++) {
       idx = (idx + 1) % n;
-      if (!isDown(s.initiativeOrder[idx].combatant_id)) break;
+      if (!isDown(s.initiativeOrder[idx].combatant_id)) { found = true; break; }
     }
+    // All combatants defeated — stay put, don't inflate the round counter.
+    if (!found) return {};
     // Wrapped past the start → new round.
     const newRound = idx <= s.currentTurnIndex ? s.currentRound + 1 : s.currentRound;
     return { currentTurnIndex: idx, currentRound: newRound };
@@ -1468,7 +1471,13 @@ export const useStore = create<AutoDmState>()(
   },
 
   importCampaign: async (json: string) => {
-    const data = JSON.parse(json);
+    let data: any;
+    try {
+      data = JSON.parse(json);
+    } catch {
+      get().showToast("Invalid campaign JSON", "warning");
+      return;
+    }
     await backend.importCampaign(data);
     await get().bootstrap();
     get().showToast("Campaign imported");

@@ -502,6 +502,7 @@ async fn end_combat(
     // Host authority: ending combat wipes everyone's turn state mid-fight.
     require_host(&session, &player_id).await?;
     session.turn_gate.end_combat().await;
+    session.combatant_conditions.write().await.clear();
     state.registry.persist_turn_state(&session).await;
     broadcast_turn_state(&session).await;
     tracing::info!(session = %session_id, "Combat ended");
@@ -746,7 +747,7 @@ async fn equip_item(
         }
     }
 
-    let resync = session::build_resync_under_lock(&session).await;
+    let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
 
     Ok(Json(json!({ "character": profile })))
@@ -790,7 +791,7 @@ async fn use_item(
         }
     }
 
-    let resync = session::build_resync_under_lock(&session).await;
+    let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
 
     Ok(Json(json!({ "character": profile })))
@@ -1555,11 +1556,12 @@ async fn server_map_update(
     Json(req): Json<MapUpdateRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let token = extract_token(&headers)?;
-    let (session, _player_id) =
+    let (session, player_id) =
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    require_host(&session, &player_id).await?;
 
     // Griefing guard: tokens ride every resync and render as DOM nodes on
     // every peer; a hostile client must not flood the board with thousands.
@@ -1775,11 +1777,12 @@ async fn server_combat_initiative(
     Json(req): Json<CombatInitiativeRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let token = extract_token(&headers)?;
-    let (session, _player_id) =
+    let (session, player_id) =
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    require_host(&session, &player_id).await?;
 
     let mut dice = auto_dm_core::dice::DiceEngine::new();
     let mut participants = Vec::new();
@@ -1798,12 +1801,9 @@ async fn server_combat_initiative(
     // restart restores it alongside turn state.
     let entries_json: Vec<Value> =
         serde_json::to_value(&entries).unwrap_or_default().as_array().cloned().unwrap_or_default();
-    {
-        let _lock = session.session_lock.lock().await;
-        *session.initiative.write().await = entries_json.clone();
-    }
+    *session.initiative.write().await = entries_json.clone();
     state.registry.persist_turn_state(&session).await;
-    let resync = session::build_resync_under_lock(&session).await;
+    let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(WsMessage::Resync(resync));
 
     Ok(Json(serde_json::to_value(&entries).unwrap_or_default()))

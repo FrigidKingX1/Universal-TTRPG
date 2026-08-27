@@ -658,6 +658,19 @@ function _dispatchEventToMainStore(event: GameEvent) {
       });
       break;
 
+    case "healed":
+      setState((s: any) => {
+        const existing = s.combatantStates[event.target_id];
+        if (!existing) return {};
+        return {
+          combatantStates: {
+            ...s.combatantStates,
+            [event.target_id]: { ...existing, hit_points: event.hp_remaining },
+          },
+        };
+      });
+      break;
+
     case "condition_applied":
       setState((s: any) => {
         const existing = s.combatantConditions[event.target] ?? [];

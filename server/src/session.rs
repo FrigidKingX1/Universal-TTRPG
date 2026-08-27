@@ -147,7 +147,9 @@ impl TurnGate {
         let mut state = self.inner.lock().await;
         state.mode = GameMode::Combat;
         state.current_turn = Some(first_player.clone());
-        // Remove first player from queue ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â they're acting now, not waiting.
+        // Clear any stale queue entries from a prior combat.
+        state.queue.clear();
+        // Remove first player from queue — they're acting now, not waiting.
         state.queue.retain(|id| id != &first_player);
     }
 
@@ -250,7 +252,7 @@ impl Session {
     /// Record a newly opened socket for `player_id` and mark them connected.
     pub async fn socket_opened(&self, player_id: &str) {
         {
-            let mut refs = self.socket_refs.lock().unwrap();
+            let mut refs = self.socket_refs.lock().unwrap_or_else(|e| e.into_inner());
             *refs.entry(player_id.to_string()).or_insert(0) += 1;
         }
         let mut players = self.players.write().await;
@@ -264,7 +266,7 @@ impl Session {
     /// them disconnected in the roster.
     pub async fn socket_closed(&self, player_id: &str) -> bool {
         let last = {
-            let mut refs = self.socket_refs.lock().unwrap();
+            let mut refs = self.socket_refs.lock().unwrap_or_else(|e| e.into_inner());
             let remaining = refs.get_mut(player_id).map(|n| {
                 *n = n.saturating_sub(1);
                 *n
@@ -1186,12 +1188,14 @@ pub async fn build_resync_under_lock(session: &Session) -> Box<ResyncPayload> {
         repo.list_characters(),
     );
 
-    // Build player_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ character_id mapping from player slots.
+    // Build player_id -> character_id mapping and roster view from a single
+    // read guard so they are consistent with each other.
     let players = session.players.read().await;
     let player_characters: std::collections::HashMap<String, String> = players
         .iter()
         .filter_map(|p| p.character_id.as_ref().map(|cid| (p.id.clone(), cid.clone())))
         .collect();
+    let players_view: Vec<PlayerSlotView> = players.iter().map(PlayerSlotView::from).collect();
     drop(players);
 
     Box::new(ResyncPayload {
@@ -1213,10 +1217,7 @@ pub async fn build_resync_under_lock(session: &Session) -> Box<ResyncPayload> {
         turn: Some(TurnStatePayload::from_gate(&session.turn_gate).await),
         initiative: session.initiative.read().await.clone(),
         last_event_seq: session.current_event_seq(),
-        players: {
-            let players = session.players.read().await;
-            players.iter().map(PlayerSlotView::from).collect()
-        },
+        players: players_view,
     })
 }
 

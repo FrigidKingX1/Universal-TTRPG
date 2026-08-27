@@ -215,6 +215,26 @@ describe("Store pure logic", () => {
       // Wrapped all the way around â†’ new round.
       expect(useStore.getState().currentRound).toBe(2);
     });
+
+    it("does not inflate round counter when all combatants are defeated", () => {
+      useStore.setState({
+        initiativeOrder: [
+          { combatant_id: "a", name: "Alice", roll: 18, modifier: 4 },
+          { combatant_id: "b", name: "Bob", roll: 12, modifier: 2 },
+        ],
+        combatantStates: {
+          a: { id: "a", name: "Alice", hit_points: 0, status: "DEFEATED" },
+          b: { id: "b", name: "Bob", hit_points: -5, status: "dead" },
+        },
+        currentRound: 3,
+        currentTurnIndex: 0,
+      });
+      useStore.getState().nextTurn();
+      expect(useStore.getState().currentTurnIndex).toBe(0);
+      expect(useStore.getState().currentRound).toBe(3);
+      useStore.getState().nextTurn();
+      expect(useStore.getState().currentRound).toBe(3);
+    });
   });
 
   describe("endCombat", () => {

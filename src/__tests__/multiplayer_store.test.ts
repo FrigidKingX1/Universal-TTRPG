@@ -359,4 +359,24 @@ describe("scoped mapDragGuard", () => {
       { id: "p2", name: "Remote", connected: false },
     ]);
   });
+
+  it("healed event updates combatant HP on remote clients", () => {
+    const main = makeMainStore();
+    main.set(() => ({
+      combatantStates: {
+        fighter: { hit_points: 10, maxHp: 50, ac: 18, conditions: [] },
+      },
+    }));
+    initMultiplayerBridge(main.get, main.set as any);
+
+    useMultiplayerStore.getState()._handleEvent({
+      type: "healed",
+      target_id: "fighter",
+      target_name: "Fighter",
+      amount: 15,
+      hp_remaining: 25,
+    });
+
+    expect(main.snapshot().combatantStates.fighter.hit_points).toBe(25);
+  });
 });

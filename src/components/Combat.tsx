@@ -82,7 +82,7 @@ export function Combat() {
   const [selectedEntities, setSelectedEntities] = useState<Set<string>>(new Set());
   const [batchHpAmount, setBatchHpAmount] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
-  const [combatSummary, setCombatSummary] = useState<{ damageDealt: number; targetsHit: string[]; defeated: string[] } | null>(null);
+  const [combatSummary, setCombatSummary] = useState<{ damageDealt: number; targetsHit: number; defeated: string[] } | null>(null);
 
   const entities = [
     ...characters.map((c) => ({ key: `char:${c.id}`, name: c.identity.name, value: c as CharacterProfile | EncounterStatBlock })),
@@ -240,7 +240,7 @@ export function Combat() {
       if (h.damage_dealt > 0) hits++;
       if (h.target_status === "DEFEATED") kills++;
     }
-    setCombatSummary({ damageDealt: totalDmg, targetsHit: [`${hits} hit${hits !== 1 ? "s" : ""}`], defeated: [`${kills} defeated`] });
+    setCombatSummary({ damageDealt: totalDmg, targetsHit: hits, defeated: [`${kills} defeated`] });
     setShowSummary(true);
     endCombat();
   };
@@ -621,7 +621,7 @@ export function Combat() {
         <div className="modal" onClick={(e) => e.stopPropagation()}>
           <h3>Combat Summary</h3>
           <p>Total damage dealt: <strong>{combatSummary.damageDealt}</strong></p>
-          <p>Targets hit: <strong>{combatSummary.targetsHit.length}</strong></p>
+          <p>Targets hit: <strong>{combatSummary.targetsHit}</strong></p>
           {combatSummary.defeated.length > 0 && (
             <p className="exceptional">Defeated: {combatSummary.defeated.join(", ")}</p>
           )}

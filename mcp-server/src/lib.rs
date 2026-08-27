@@ -12,8 +12,8 @@ use auto_dm_core::{dice::DiceError, llm::LlmError};
 use rmcp::{
     handler::server::ServerHandler,
     model::{
-        CallToolRequestParams, CallToolResponse, JsonObject, ListToolsResult,
-        PaginatedRequestParams, ServerCapabilities, ServerInfo,
+        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, ErrorCode,
+        JsonObject, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerInfo,
     },
     service::{serve_server, RequestContext, RoleServer},
     transport::stdio,
@@ -79,16 +79,19 @@ impl ServerHandler for TtrpgMcpServer {
 
         match handle_call(&name, serde_json::Value::Object(args)).await {
             Ok(ok) => Ok(CallToolResponse::from(ok)),
-            // Bad arguments and unknown tool names are the CALLER's fault —
-            // report them as invalid params so agents can self-correct,
-            // instead of a generic internal error.
+            // Bad arguments are the CALLER's fault — protocol-level error.
             Err(McpServerError::Json(e)) => {
                 Err(ErrorData::invalid_params(format!("invalid arguments: {e}"), None))
             }
+            // Unknown tool name is a protocol-level method-not-found.
             Err(McpServerError::UnknownTool(t)) => {
-                Err(ErrorData::invalid_params(format!("unknown tool: {t}"), None))
+                Err(ErrorData::new(ErrorCode::METHOD_NOT_FOUND, format!("unknown tool: {t}"), None))
             }
-            Err(e) => Err(ErrorData::internal_error(e.to_string(), None)),
+            // Tool execution failures (dice, LLM) are tool-level errors —
+            // return the message so the caller's MCP client can render it.
+            Err(e) => Ok(CallToolResponse::from(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )]))),
         }
     }
 }
