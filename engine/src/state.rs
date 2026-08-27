@@ -906,6 +906,7 @@ impl Repository for SqliteRepository {
     }
 
     async fn update_scene_chaos_factor(&self, id: &str, chaos_factor: i32) -> Result<(), DbError> {
+        let chaos_factor = chaos_factor.clamp(1, 9);
         sqlx::query("UPDATE campaign_scenes SET chaos_factor = ? WHERE id = ?")
             .bind(chaos_factor)
             .bind(id)
@@ -2566,5 +2567,40 @@ mod tests {
     #[test]
     fn stale_when_log_is_empty() {
         assert!(is_summary_stale("log-1", &[]));
+    }
+
+    #[tokio::test]
+    async fn update_scene_chaos_factor_clamps() {
+        let pool = SqlitePoolOptions::new().connect("sqlite::memory:").await.expect("connect");
+        run_migrations(&pool).await.expect("migrate");
+        let repo = SqliteRepository::new(pool);
+        let s = repo.create_scene("Test", 5).await.expect("create");
+
+        // Below range: should clamp to 1
+        repo.update_scene_chaos_factor(&s.id, 0).await.expect("clamp low");
+        let rows = sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
+            .bind(&s.id)
+            .fetch_one(&repo.pool)
+            .await
+            .unwrap();
+        assert_eq!(rows.0, 1);
+
+        // Above range: should clamp to 9
+        repo.update_scene_chaos_factor(&s.id, 100).await.expect("clamp high");
+        let rows = sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
+            .bind(&s.id)
+            .fetch_one(&repo.pool)
+            .await
+            .unwrap();
+        assert_eq!(rows.0, 9);
+
+        // In range: should pass through
+        repo.update_scene_chaos_factor(&s.id, 7).await.expect("pass through");
+        let rows = sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
+            .bind(&s.id)
+            .fetch_one(&repo.pool)
+            .await
+            .unwrap();
+        assert_eq!(rows.0, 7);
     }
 }

@@ -27,9 +27,11 @@ export function CombatQueue() {
         </div>
         <div className="combat-queue-body">
           <div className="combat-queue-empty">Not in combat</div>
-          <button className="btn btn-sm btn-primary" onClick={startCombat}>
-            Start Combat
-          </button>
+          {isHost && (
+            <button className="btn btn-sm btn-primary" onClick={startCombat}>
+              Start Combat
+            </button>
+          )}
         </div>
       </div>
     );

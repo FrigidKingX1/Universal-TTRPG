@@ -1679,11 +1679,14 @@ async fn server_combat_condition(
     Json(req): Json<CombatConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let token = extract_token(&headers)?;
-    let (session, _player_id) =
+    let (session, player_id) =
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Conditions are DM-authority state - only the host may apply or remove them.
+    require_host(&session, &player_id).await?;
+
     // Read-modify-write on the shared condition map â€” keep it atomic
     // against attacks/heals running under the same lock.
     let _lock = session.session_lock.lock().await;
@@ -1783,6 +1786,10 @@ async fn server_combat_initiative(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
     require_host(&session, &player_id).await?;
+
+    if req.combatants.len() > 128 {
+        return Err((StatusCode::BAD_REQUEST, "Too many combatants (max 128)".into()));
+    }
 
     let mut dice = auto_dm_core::dice::DiceEngine::new();
     let mut participants = Vec::new();

@@ -754,7 +754,9 @@ export function ExplorationPanel() {
       )}
 
       <ul className="card-list" style={{ marginTop: "0.5rem" }}>
-        {zones.map((z) => (
+        {zones.map((z) => {
+          const zNodes = nodes.filter((n) => n.zone_id === z.id);
+          return (
           <li key={z.id} className="card" style={{ padding: "0.5rem 0.6rem" }}>
             <div className="card-row">
               <strong
@@ -772,7 +774,7 @@ export function ExplorationPanel() {
               <div style={{ marginTop: "0.4rem" }}>
                 <ZoneMap
                   zone={z}
-                  nodes={nodes}
+                  nodes={zNodes}
                   currentNodeId={currentNodeId}
                   onTravel={(nid) => void travelToNode(nid)}
                 />
@@ -782,18 +784,18 @@ export function ExplorationPanel() {
                   <button type="submit" disabled={!nodeName.trim()}>Add Node</button>
                 </form>
 
-                {nodes.length === 0 && (
+                {zNodes.length === 0 && (
                   <div className="fantasy-empty" style={{ padding: "0.5rem", fontSize: "0.75rem" }}>
                     <span>No nodes yet — add locations to this zone.</span>
                   </div>
                 )}
 
-                {!currentNodeId && nodes.length > 0 && (
+                {!currentNodeId && zNodes.length > 0 && (
                   <p className="muted" style={{ fontSize: "0.75rem" }}>Click a node to start an expedition.</p>
                 )}
                 {currentNodeId && (
                   <div style={{ fontSize: "0.75rem", margin: "0.3rem 0", padding: "0.3rem 0.5rem", background: "var(--accent-bg, #1a2a3a)", borderRadius: "4px" }}>
-                    <strong>Expedition active</strong> — at: {nodes.find((n) => n.id === currentNodeId)?.name ?? "unknown"}
+                    <strong>Expedition active</strong> — at: {zNodes.find((n) => n.id === currentNodeId)?.name ?? "unknown"}
                     <button style={{ fontSize: "0.7rem", marginLeft: "0.5rem" }} onClick={() => void endExpedition()}>End Expedition</button>
                   </div>
                 )}
@@ -811,7 +813,7 @@ export function ExplorationPanel() {
                 )}
 
                 <ul className="card-list" style={{ marginTop: "0.3rem" }}>
-                  {nodes.map((n) => (
+                  {zNodes.map((n) => (
                     <li key={n.id} className="card" style={{ padding: "0.3rem 0.5rem", border: currentNodeId === n.id ? "1px solid var(--accent, #4a8)" : undefined }}>
                       <div className="card-row">
                         <strong style={{ fontSize: "0.8rem", opacity: n.discovered ? 1 : 0.5 }}>
@@ -819,7 +821,7 @@ export function ExplorationPanel() {
                         </strong>
                         {n.safe && <span className="badge" style={{ fontSize: "0.65rem", background: "#3a3" }}>safe</span>}
                         {!n.safe && <span className="badge" style={{ fontSize: "0.65rem", background: "#a33" }}>danger</span>}
-                        {currentNodeId && currentNodeId !== n.id && nodes.find((c) => c.id === currentNodeId)?.connections.includes(n.id) && (
+                        {currentNodeId && currentNodeId !== n.id && zNodes.find((c) => c.id === currentNodeId)?.connections.includes(n.id) && (
                           <button
                             style={{ fontSize: "0.7rem", fontWeight: "bold" }}
                             onClick={() => void travelToNode(n.id)}
@@ -864,7 +866,7 @@ export function ExplorationPanel() {
                           </label>
                           <div style={{ fontSize: "0.75rem" }}>
                             <span className="muted">Connections: </span>
-                            {nodes.filter((o) => o.id !== n.id).map((o) => (
+                            {zNodes.filter((o) => o.id !== n.id).map((o) => (
                               <label key={o.id} style={{ marginRight: "0.4rem", cursor: "pointer" }}>
                                 <input
                                   type="checkbox"
@@ -907,7 +909,8 @@ export function ExplorationPanel() {
               </div>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
       {dialog}
     </div>

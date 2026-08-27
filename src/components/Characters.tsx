@@ -19,6 +19,7 @@ export function NewCharacterForm() {
         e.preventDefault();
         void createCharacter(name.trim(), classId || undefined, dualClassId || undefined);
         setName("");
+        setDualClassId("");
       }}
     >
       <input

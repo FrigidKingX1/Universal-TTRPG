@@ -151,21 +151,24 @@ export function Combat() {
     };
   })();
 
-  const quickHpAdjust = (entity: CharacterProfile | EncounterStatBlock, isChar: boolean, amount: number) => {    const previousHp = combatantStates[entity.id]?.hit_points ?? (isChar ? (entity as CharacterProfile).resource_pools.hp?.current ?? 0 : (entity as EncounterStatBlock).hit_points.current);
+  const quickHpAdjust = (entity: CharacterProfile | EncounterStatBlock, isChar: boolean, amount: number) => {
+    // Read from store directly to avoid stale render-closure state on rapid clicks.
+    const snap = useStore.getState();
+    const previousHp = snap.combatantStates[entity.id]?.hit_points ?? (isChar ? (entity as CharacterProfile).resource_pools.hp?.current ?? 0 : (entity as EncounterStatBlock).hit_points.current);
     if (isChar) {
-      const c = characters.find((x) => x.id === entity.id);
+      const c = snap.characters.find((x) => x.id === entity.id);
       if (!c) return;
-      const current = combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
+      const current = snap.combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       const max = c.resource_pools.hp?.maximum ?? current;
       const newHp = Math.max(0, Math.min(max, current + amount));
       useStore.setState({
         lastHpChange: { entityId: entity.id, previousHp, newHp },
         combatantStates: {
-          ...combatantStates,
+          ...snap.combatantStates,
           [c.id]: { 
-            ...combatantStates[c.id], 
+            ...snap.combatantStates[c.id], 
             hit_points: newHp, 
-            status: combatantStates[c.id]?.status 
+            status: snap.combatantStates[c.id]?.status 
           },
         },
       });
@@ -177,19 +180,19 @@ export function Combat() {
         },
       });
     } else {
-      const b = statBlocks.find((x) => x.id === entity.id);
+      const b = snap.statBlocks.find((x) => x.id === entity.id);
       if (!b) return;
-      const current = combatantStates[b.id]?.hit_points ?? b.hit_points.current;
+      const current = snap.combatantStates[b.id]?.hit_points ?? b.hit_points.current;
       const max = b.hit_points.maximum;
       const newHp = Math.max(0, Math.min(max, current + amount));
       useStore.setState({
         lastHpChange: { entityId: entity.id, previousHp, newHp },
         combatantStates: {
-          ...combatantStates,
+          ...snap.combatantStates,
           [b.id]: { 
-            ...combatantStates[b.id], 
+            ...snap.combatantStates[b.id], 
             hit_points: newHp, 
-            status: combatantStates[b.id]?.status 
+            status: snap.combatantStates[b.id]?.status 
           },
         },
       });
