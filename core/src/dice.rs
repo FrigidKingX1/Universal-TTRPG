@@ -182,9 +182,15 @@ impl DiceEngine {
                 detail.push(' ');
                 let right_v = self.eval_node(tokens, detail, right, resolve)?;
                 match tokens[*op_pos] {
-                    Tok::Plus => Ok(left_v + right_v),
-                    Tok::Minus => Ok(left_v - right_v),
-                    Tok::Star => Ok(left_v * right_v),
+                    Tok::Plus => left_v
+                        .checked_add(right_v)
+                        .ok_or_else(|| DiceError::Parse("integer overflow".to_string())),
+                    Tok::Minus => left_v
+                        .checked_sub(right_v)
+                        .ok_or_else(|| DiceError::Parse("integer overflow".to_string())),
+                    Tok::Star => left_v
+                        .checked_mul(right_v)
+                        .ok_or_else(|| DiceError::Parse("integer overflow".to_string())),
                     Tok::Slash => {
                         if right_v == 0 {
                             Err(DiceError::Parse("division by zero".to_string()))
@@ -197,7 +203,8 @@ impl DiceEngine {
             }
             Ast::Neg { inner } => {
                 detail.push('-');
-                Ok(-self.eval_node(tokens, detail, inner, resolve)?)
+                let v = self.eval_node(tokens, detail, inner, resolve)?;
+                v.checked_neg().ok_or_else(|| DiceError::Parse("integer overflow".to_string()))
             }
         }
     }
@@ -228,7 +235,10 @@ impl DiceEngine {
             // Kept dice only — crit/fumble detection must not fire on dice
             // that advantage/disadvantage discarded.
             self.kept_rolls.extend_from_slice(&take);
-            let total: i64 = take.iter().sum();
+            let total: i64 = take
+                .iter()
+                .try_fold(0i64, |acc, r| acc.checked_add(*r))
+                .ok_or_else(|| DiceError::Parse("integer overflow".to_string()))?;
             detail.push_str(&format!(
                 "{}[{}]",
                 if k.mode == KeepMode::Highest { "kh" } else { "kl" },
@@ -237,7 +247,10 @@ impl DiceEngine {
             Ok(total)
         } else {
             self.kept_rolls.extend_from_slice(&rolls);
-            let total: i64 = rolls.iter().sum();
+            let total: i64 = rolls
+                .iter()
+                .try_fold(0i64, |acc, r| acc.checked_add(*r))
+                .ok_or_else(|| DiceError::Parse("integer overflow".to_string()))?;
             detail.push('[');
             detail.push_str(&rolls.iter().map(|r| r.to_string()).collect::<Vec<_>>().join(", "));
             detail.push(']');
@@ -562,6 +575,36 @@ mod tests {
         let mut d = DiceEngine::with_seed(1);
         let err = d.evaluate("10 / 0").unwrap_err();
         assert!(matches!(err, DiceError::Parse(ref msg) if msg.contains("division by zero")));
+    }
+
+    #[test]
+    fn arithmetic_overflow_errors_instead_of_panicking() {
+        let mut d = DiceEngine::with_seed(1);
+        // These would panic (debug) or silently wrap (release) on unchecked
+        // arithmetic — they must now return a clean Parse error so the MCP
+        // server doesn't die on a hostile ~20-char expression.
+        for expr in [
+            "9223372036854775807 + 1",
+            "-9223372036854775808 - 1",
+            "9999999999 * 999999999",
+            "2 * (9223372036854775807)",
+            "-(-9223372036854775808)",
+        ] {
+            let err = d.evaluate(expr).unwrap_err();
+            assert!(
+                matches!(&err, DiceError::Parse(ref msg) if msg.contains("overflow")),
+                "expected overflow error for `{expr}`, got {err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn dice_total_overflow_errors() {
+        let mut d = DiceEngine::with_seed(7);
+        // 1000 dice each rolling max sides pushes the summed total far past
+        // i64::MAX and must error, not wrap.
+        let err = d.evaluate("1000d9223372036854775807").unwrap_err();
+        assert!(matches!(&err, DiceError::Parse(ref msg) if msg.contains("overflow")));
     }
 
     #[test]

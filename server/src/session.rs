@@ -759,8 +759,15 @@ impl SessionRegistry {
         &self,
         session: &Arc<Session>,
         player_id: &str,
-        profile: auto_dm_core::models::CharacterProfile,
+        mut profile: auto_dm_core::models::CharacterProfile,
     ) -> Result<auto_dm_core::models::CharacterProfile, String> {
+        // NEVER honor a client-supplied `id`. Character ids are broadcast to
+        // every peer in resyncs, so accepting one on create would let any
+        // player craft a profile whose id overwrites an existing character row
+        // (hijacking another player's character, inventory, and link). Always
+        // mint a fresh id on the server.
+        profile.id = uuid::Uuid::new_v4().to_string();
+
         session
             .game
             .repo

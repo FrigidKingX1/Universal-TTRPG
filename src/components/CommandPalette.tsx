@@ -424,14 +424,19 @@ export function CommandPalette() {
           e.preventDefault();
           setSelectedIndex((i) => Math.max(i - 1, 0));
           break;
-        case "Enter":
+        case "Enter": {
           e.preventDefault();
-          if (filteredCommands[selectedIndex]) {
-            filteredCommands[selectedIndex].action();
+          const cmd = filteredCommands[selectedIndex];
+          // A disabled command isn't actionable — match the click handler's
+          // guard so Enter can't execute e.g. Generate Campaign with Ollama
+          // unreachable.
+          if (cmd && !cmd.disabled) {
+            cmd.action();
             setIsOpen(false);
             setQuery("");
           }
           break;
+        }
         case "Tab":
           e.preventDefault();
           break;

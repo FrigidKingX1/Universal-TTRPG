@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { useStore, parseNum } from "../store";
+import { useStore, parseNum, persistCombat } from "../store";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { playCombatSfx } from "../sound";
 import { findPresetAction } from "../presets/actions";
@@ -118,6 +118,10 @@ export function Combat() {
       ...live,
       resource_pools: { ...live.resource_pools, hp: { ...pool, temporary: next } },
     });
+    // The debounced persistCombat reads live store state and pushes the full
+    // combatant roster to the server in hosted sessions — without it, a manual
+    // temp-HP nudge stays local and is reverted on the next resync.
+    persistCombat();
     showToast(`${live.identity.name} gains ${next} temp HP`);
   };
 
@@ -201,6 +205,7 @@ export function Combat() {
           },
         },
       });
+      persistCombat();
     } else {
       const b = snap.statBlocks.find((x) => x.id === entity.id);
       if (!b) return;
@@ -222,6 +227,7 @@ export function Combat() {
         ...b,
         hit_points: { ...b.hit_points, current: newHp },
       });
+      persistCombat();
     }
   };
 

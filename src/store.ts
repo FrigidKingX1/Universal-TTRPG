@@ -513,6 +513,7 @@ export const useStore = create<AutoDmState>()(
               initiativeOrder: parsed.initiativeOrder ?? [],
               combatantStates: parsed.combatantStates ?? {},
               combatantConditions: parsed.combatantConditions ?? {},
+              concentration: parsed.concentration ?? {},
               currentRound: parsed.currentRound ?? 0,
               currentTurnIndex: parsed.currentTurnIndex ?? 0,
               deathSaves: parsed.deathSaves ?? {},
@@ -677,9 +678,17 @@ export const useStore = create<AutoDmState>()(
   },
 
   saveCharacter: async (profile) => {
-    await backend.saveCharacter(profile);
-    const characters = await backend.listCharacters();
-    set({ characters });
+    try {
+      await backend.saveCharacter(profile);
+      const characters = await backend.listCharacters();
+      set({ characters });
+    } catch (e) {
+      // Surface failures instead of leaving an unhandled rejection (the
+      // caller often fire-and-forgets via `void`); a silent drop would make a
+      // DM think an edit persisted when it didn't.
+      console.error("saveCharacter failed", e);
+      get().showToast?.("Failed to save character", "error");
+    }
   },
 
   deleteCharacter: async (id) => {
@@ -718,8 +727,13 @@ export const useStore = create<AutoDmState>()(
   },
 
   saveStatBlock: async (block) => {
-    await backend.saveStatBlock(block);
-    set({ statBlocks: (await backend.listStatBlocks()) });
+    try {
+      await backend.saveStatBlock(block);
+      set({ statBlocks: (await backend.listStatBlocks()) });
+    } catch (e) {
+      console.error("saveStatBlock failed", e);
+      get().showToast?.("Failed to save monster", "error");
+    }
   },
 
   deleteStatBlock: async (id) => {
@@ -2163,7 +2177,7 @@ function logSpeakerToRole(speaker: string): StoryLogEntry["role"] {
 }
 
 let persistCombatTimer: ReturnType<typeof setTimeout> | null = null;
-function persistCombat() {
+export function persistCombat() {
   if (persistCombatTimer) clearTimeout(persistCombatTimer);
   persistCombatTimer = setTimeout(() => {
     persistCombatTimer = null;
@@ -2174,6 +2188,7 @@ function persistCombat() {
       initiativeOrder: s.initiativeOrder,
       combatantStates: s.combatantStates,
       combatantConditions: s.combatantConditions,
+      concentration: s.concentration,
       currentRound: s.currentRound,
       currentTurnIndex: s.currentTurnIndex,
       deathSaves: s.deathSaves,

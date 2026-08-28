@@ -249,7 +249,13 @@ function SceneCfEditor({ scene }: { scene: { id: string; chaos_factor: number } 
           min={1}
           max={9}
           value={cf}
-          onChange={(e) => setCf(Number(e.currentTarget.value))}
+          onChange={(e) => {
+            // Clamp on input — the number spinner's min/max isn't enforced
+            // for typed values, and saving an out-of-range CF is nonsensical.
+            const v = Number(e.currentTarget.value);
+            const clamped = Number.isFinite(v) ? Math.min(9, Math.max(1, v)) : 1;
+            setCf(clamped);
+          }}
         />
       </label>
       <button onClick={() => void save()} disabled={saving || cf === scene.chaos_factor}>

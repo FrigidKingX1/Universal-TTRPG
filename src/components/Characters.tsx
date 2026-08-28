@@ -189,20 +189,14 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const [inventory, setInventory] = useState<InventoryItem[]>(profile.inventory);
   const [abilities, setAbilities] = useState(profile.abilities);
 
-  // Sync local state when profile prop changes externally (e.g., combat HP update, long rest)
+  // Sync ONLY the live combat-affected fields (HP) when the profile prop
+  // changes externally. The edited fields below (name, attrs, inventory…) are
+  // user-authored; re-syncing ALL of them from the prop on every update would
+  // wipe an in-progress edit the moment a combat HP change or remote sync lands.
   useEffect(() => {
-    setName(profile.identity.name);
-    setAncestry(profile.identity.ancestry ?? "");
-    setArchetype(profile.identity.archetype ?? "");
-    setBackground(profile.identity.background ?? "");
-    setLevel(profile.identity.level_or_rank);
-    setAttrs(profile.attributes);
     setHp(profile.resource_pools.hp?.current ?? 10);
     setMaxHp(profile.resource_pools.hp?.maximum ?? 10);
-    setExtraPools(Object.fromEntries(Object.entries(profile.resource_pools).filter(([k]) => k !== "hp")));
-    setInventory(profile.inventory);
-    setAbilities(profile.abilities);
-  }, [profile]);
+  }, [profile.resource_pools.hp?.current, profile.resource_pools.hp?.maximum]);
 
   const [newItemName, setNewItemName] = useState("");
   const [newAbility, setNewAbility] = useState("");
@@ -210,10 +204,16 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
   const mod = (base: number) => Math.floor((base - 10) / 2);
 
   const save = () => {
+    // Base on the freshest profile from the store, not the render prop: a
+    // stale prop snapshot would clobber a concurrent combat-HP update or
+    // remote sync with older values. Fall back to the prop only if the store
+    // no longer has this character.
+    const latest =
+      useStore.getState().characters.find((c) => c.id === profile.id) ?? profile;
     const updated: CharacterProfile = {
-      ...profile,
+      ...latest,
       identity: {
-        name: name.trim() || profile.identity.name,
+        name: name.trim() || latest.identity.name,
         ancestry: ancestry.trim() || undefined,
         archetype: archetype.trim() || undefined,
         background: background.trim() || undefined,
@@ -226,13 +226,13 @@ export function CharacterSheet({ profile }: { profile: CharacterProfile }) {
         ]),
       ),
       resource_pools: {
-        ...profile.resource_pools,
+        ...latest.resource_pools,
         ...extraPools,
         hp: {
           current: Math.max(0, hp),
           maximum: Math.max(1, maxHp),
-          temporary: profile.resource_pools.hp?.temporary ?? 0,
-          reset_condition: profile.resource_pools.hp?.reset_condition ?? "long_rest",
+          temporary: latest.resource_pools.hp?.temporary ?? 0,
+          reset_condition: latest.resource_pools.hp?.reset_condition ?? "long_rest",
         },
       },
       inventory,

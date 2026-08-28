@@ -377,13 +377,30 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
     }
 
     // Immediately push the full combatant list to the server so all
-    // clients see the same combatants from the start.
+    // clients see the same combatants from the start. Overlay live HP from
+    // combatantStates — a wounded combatant that was already on the board
+    // must not rejoin at full DB HP (same overlay as syncCombatantsToServer).
     try {
       const mainState = _mainStoreGet?.();
       if (mainState) {
+        const states = mainState.combatantStates;
         const combatants = [
-          ...mainState.characters,
-          ...mainState.statBlocks,
+          ...mainState.characters.map((c: any) => {
+            const live = states[c.id];
+            if (!live) return c;
+            return {
+              ...c,
+              resource_pools: {
+                ...c.resource_pools,
+                hp: { ...c.resource_pools.hp, current: live.hit_points },
+              },
+            };
+          }),
+          ...mainState.statBlocks.map((b: any) => {
+            const live = states[b.id];
+            if (!live) return b;
+            return { ...b, hit_points: { ...b.hit_points, current: live.hit_points } };
+          }),
         ];
         await client.combatSync(combatants, mainState.combatantConditions);
       }
@@ -540,7 +557,26 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
   }
 
   if (payload.recent_logs?.length) {
-    setState(() => ({ logs: payload.recent_logs }));
+    // Seed BOTH the raw log array and the tabletop storyLog feed. refreshLogs()
+    // normally derives storyLog from the local Tauri DB, but in a hosted session
+    // the log is server-authoritative (recent_logs) and refreshLogs is
+    // deliberately skipped — without this the story feed stays empty on a
+    // reconnect/join until the next log:new arrives.
+    const storyLog = payload.recent_logs.map((l: any) => ({
+      id: l.id,
+      speaker: l.speaker,
+      role: (() => {
+        const s = String(l.speaker ?? "").toLowerCase();
+        if (s === "player") return "player";
+        if (s === "dungeon master" || s === "dm" || s === "narrator") return "narrator";
+        if (s === "combat") return "combat";
+        if (s === "oracle" || s === "system") return "system";
+        return "npc";
+      })(),
+      content: l.content,
+      timestamp: l.timestamp,
+    }));
+    setState(() => ({ logs: payload.recent_logs, storyLog }));
   }
 
   if (payload.doom_clocks) {
@@ -702,6 +738,25 @@ function _dispatchEventToMainStore(event: GameEvent) {
       setState((s: any) => {
         const existing = s.combatantStates[event.target_id];
         if (!existing) return {};
+        // Mirror HP into the character sheet / monster pool too, matching the
+        // desktop combatant:state handler — otherwise the sheet shows stale
+        // full HP after a hit until a resync.
+        const characters = (s.characters ?? []).map((c: any) =>
+          c.id === event.target_id && c.resource_pools?.hp
+            ? {
+                ...c,
+                resource_pools: {
+                  ...c.resource_pools,
+                  hp: { ...c.resource_pools.hp, current: event.hp_remaining },
+                },
+              }
+            : c,
+        );
+        const statBlocks = (s.statBlocks ?? []).map((b: any) =>
+          b.id === event.target_id
+            ? { ...b, hit_points: { ...b.hit_points, current: event.hp_remaining } }
+            : b,
+        );
         return {
           combatantStates: {
             ...s.combatantStates,
@@ -711,6 +766,8 @@ function _dispatchEventToMainStore(event: GameEvent) {
               status: event.defeated ? "DEFEATED" : existing.status,
             },
           },
+          characters,
+          statBlocks,
         };
       });
       break;
@@ -721,16 +778,34 @@ function _dispatchEventToMainStore(event: GameEvent) {
         if (!existing) return {};
         // Healing above 0 revives: clear a stale DEFEATED overlay so the
         // target isn't stuck "down" on everyone's screen.
+        let nextOverlay: any;
         if (event.hp_remaining > 0 && existing.status === "DEFEATED") {
           const revived: any = { ...existing, hit_points: event.hp_remaining };
           delete revived.status;
-          return { combatantStates: { ...s.combatantStates, [event.target_id]: revived } };
+          nextOverlay = revived;
+        } else {
+          nextOverlay = { ...existing, hit_points: event.hp_remaining };
         }
+        const characters = (s.characters ?? []).map((c: any) =>
+          c.id === event.target_id && c.resource_pools?.hp
+            ? {
+                ...c,
+                resource_pools: {
+                  ...c.resource_pools,
+                  hp: { ...c.resource_pools.hp, current: event.hp_remaining },
+                },
+              }
+            : c,
+        );
+        const statBlocks = (s.statBlocks ?? []).map((b: any) =>
+          b.id === event.target_id
+            ? { ...b, hit_points: { ...b.hit_points, current: event.hp_remaining } }
+            : b,
+        );
         return {
-          combatantStates: {
-            ...s.combatantStates,
-            [event.target_id]: { ...existing, hit_points: event.hp_remaining },
-          },
+          combatantStates: { ...s.combatantStates, [event.target_id]: nextOverlay },
+          characters,
+          statBlocks,
         };
       });
       break;

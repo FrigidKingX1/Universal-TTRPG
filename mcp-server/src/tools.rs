@@ -220,6 +220,15 @@ pub async fn handle_call(name: &str, args: Value) -> Result<CallToolResult, McpS
                     a.odds_rank
                 ))]));
             }
+            // chaos_factor is schema-bound to 1..=9 — reject out-of-range the
+            // same way instead of silently feeding an invalid CF into the
+            // oracle (which scene_test clamps but fate_check previously didn't).
+            if !(1..=9).contains(&a.chaos_factor) {
+                return Ok(CallToolResult::error(vec![ContentBlock::text(format!(
+                    "chaos_factor must be between 1 and 9, got {}",
+                    a.chaos_factor
+                ))]));
+            }
             let odds = Odds::all()
                 .get(a.odds_rank.saturating_sub(1) as usize)
                 .copied()

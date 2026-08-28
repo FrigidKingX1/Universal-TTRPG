@@ -850,6 +850,22 @@ async fn add_item(
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
 
+    // Mid-combat inventory changes (e.g. a healing item or stat-affecting
+    // trinket) must reach the server-authoritative combatant list, or the
+    // next resync's stale snapshot reverts the new item.
+    {
+        let _lock = session.session_lock.lock().await;
+        if let Ok(value) = serde_json::to_value(&profile) {
+            let mut combatants = session.combatants.write().await;
+            for c in combatants.iter_mut() {
+                if c.get("id").and_then(|v| v.as_str()) == Some(profile.id.as_str()) {
+                    *c = value;
+                    break;
+                }
+            }
+        }
+    }
+
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
 
@@ -879,6 +895,22 @@ async fn rest_character(
         .rest(&session, &player_id, req.long)
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    // A rest restores HP/pools / clears conditions; without this patch the
+    // server-authoritative combatant snapshot stays at pre-rest wounds and the
+    // next resync reverts the rest.
+    {
+        let _lock = session.session_lock.lock().await;
+        if let Ok(value) = serde_json::to_value(&profile) {
+            let mut combatants = session.combatants.write().await;
+            for c in combatants.iter_mut() {
+                if c.get("id").and_then(|v| v.as_str()) == Some(profile.id.as_str()) {
+                    *c = value;
+                    break;
+                }
+            }
+        }
+    }
 
     let resync = session::build_resync(&session).await;
     let _ = session.event_tx.send(session::WsMessage::Resync(resync));
@@ -1529,6 +1561,15 @@ async fn server_combat_attack(
                 break;
             }
         }
+        // Mirror any conditions the engine applied (e.g. shock → Prone) into
+        // the enforced combatant_conditions map. That map is the source of
+        // truth for both sides on the next attack/resync — writing only the
+        // combatant JSON would leave the shock-prone shadowed and lost.
+        session
+            .combatant_conditions
+            .write()
+            .await
+            .insert(victim.id.clone(), victim.conditions.clone());
     }
 
     // Broadcast damage event.
@@ -1591,6 +1632,13 @@ async fn server_map_update(
         return Err((StatusCode::BAD_REQUEST, "Too many tokens (max 512)".into()));
     }
 
+    // All other mutating handlers serialize under the session lock. This one
+    // must too: build_resync_under_lock reads map_tokens then stamps
+    // last_event_seq — if the map write and send_event interleave between
+    // those two awaits, the snapshot ships the OLD map while last_event_seq
+    // already covers the new MapUpdated event, and clients (via exactly-once
+    // replay) permanently keep the stale board until some later mutation.
+    let _lock = session.session_lock.lock().await;
     {
         let mut tokens = session.map_tokens.write().await;
         *tokens = token_array;
@@ -1911,6 +1959,13 @@ async fn handle_socket(
         Ok(j) => j,
         Err(e) => {
             tracing::error!(session = %session.id, error = %e, "Failed to serialize initial resync");
+            // We already incremented socket_refs via socket_opened at the top
+            // of this handler; bail out through the same cleanup path or the
+            // ref never reaches zero and the player is stuck "connected" (all
+            // future disconnects short-circuit on last == false).
+            if session.socket_closed(&player_id).await {
+                mark_disconnected(&state, &session, &player_id).await;
+            }
             return;
         }
     };
