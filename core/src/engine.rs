@@ -231,9 +231,10 @@ pub fn apply_damage(target: &mut Combatant, amount: i32) -> DamageResult {
     }
     let defeated = target.hit_points <= 0;
     // Systemic shock: one massive hit (excluding overkill) knocks the actor down.
+    // Compare via halving to avoid i32 overflow on `amount * 2` for huge hits.
     let shock = !defeated
         && amount > 0
-        && amount * 2 > target.max_hit_points
+        && amount > target.max_hit_points / 2
         && !target.conditions.iter().any(|c| c.eq_ignore_ascii_case("Prone"));
     if shock {
         target.conditions.push("Prone".to_string());
@@ -468,7 +469,7 @@ pub fn execute_attack(
                             if nat_max {
                                 damage_dealt *= 2;
                                 attack_detail =
-                                    Some(format!("{} | CRITICAL!", attack_detail.unwrap()));
+                                    attack_detail.take().map(|d| format!("{d} | CRITICAL!"));
                             }
                         }
                         applied_status = s.applied_status.clone();
@@ -531,7 +532,7 @@ pub fn execute_attack(
                             if nat_max {
                                 damage_dealt *= 2;
                                 attack_detail =
-                                    Some(format!("{} | CRITICAL!", attack_detail.unwrap()));
+                                    attack_detail.take().map(|d| format!("{d} | CRITICAL!"));
                             }
                         }
                         applied_status = s.applied_status.clone();
@@ -673,13 +674,21 @@ pub fn roll_initiative(
     let formula = if formula.is_empty() { "1d20 + @bonus.initiative" } else { formula };
     let mut entries: Vec<InitiativeEntry> = Vec::with_capacity(combatants.len());
     for c in combatants {
-        let roll = roll_for(dice, c, formula)?;
-        let modifier = c.resolve_ref("bonus.initiative").unwrap_or(0) as i32;
+        // A combatant need not carry an explicit `bonus.initiative` (statblock
+        // and profile conversions never populate it), so an absent bonus must
+        // degrade to +0 rather than failing the whole initiative roll.
+        let resolver = |path: &str| match c.resolve_ref(path) {
+            Some(v) => Some(v),
+            None if path == "bonus.initiative" => Some(0),
+            None => None,
+        };
+        let total = dice.evaluate_with(formula, &resolver).map_err(EngineError::from)?;
+        let roll = c.resolve_ref("bonus.initiative").unwrap_or(0) as i32;
         entries.push(InitiativeEntry {
             combatant_id: c.id.clone(),
             name: c.name.clone(),
-            roll: roll.total as i32,
-            modifier,
+            roll: total.total as i32,
+            modifier: roll,
         });
     }
     entries.sort_by(|a, b| {
@@ -1025,6 +1034,24 @@ mod tests {
         let entries = roll_initiative(&mut dice, &[a, b], "1d20 + @bonus.initiative").unwrap();
         assert_eq!(entries.len(), 2);
         assert!(entries[0].roll >= entries[1].roll);
+    }
+
+    #[test]
+    fn initiative_succeeds_without_initiative_bonus() {
+        // Neither profile- nor statblock-derived combatants populate
+        // `bonus.initiative`; the default formula must degrade to +0 rather
+        // than failing the whole roll.
+        let mut dice = DiceEngine::with_seed(1);
+        let a = Combatant::from(&profile_with_str("Hero", 16, 14, 20));
+        let b = Combatant::from(&profile_with_str("Rogue", 12, 18, 15));
+        assert_eq!(a.bonuses.get("initiative"), None);
+        assert_eq!(b.bonuses.get("initiative"), None);
+        let entries = roll_initiative(&mut dice, &[a, b], "").unwrap();
+        assert_eq!(entries.len(), 2);
+        for e in &entries {
+            assert!(e.roll >= 1 && e.roll <= 22, "roll {} out of 1..=22", e.roll);
+            assert_eq!(e.modifier, 0);
+        }
     }
 
     #[test]

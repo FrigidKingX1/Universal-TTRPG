@@ -128,11 +128,11 @@ impl RawIntent {
             "ooc" => GameIntent::Ooc { message: get_str(p, "message") },
             "add_item" => GameIntent::AddItem {
                 name: get_str(p, "name"),
-                quantity: get_i32_opt(p, "quantity").unwrap_or(1),
+                quantity: get_i32_opt(p, "quantity").unwrap_or(1).max(1),
             },
             "advance_clock" => GameIntent::AdvanceClock {
                 clock_id: get_opt_str(p, "clock_id"),
-                ticks: get_i32_opt(p, "ticks").unwrap_or(1),
+                ticks: get_i32_opt(p, "ticks").unwrap_or(1).max(1),
             },
             "apply_condition" => GameIntent::ApplyCondition {
                 target: get_str(p, "target"),

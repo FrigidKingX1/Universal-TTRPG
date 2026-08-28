@@ -267,7 +267,7 @@ export function Bestiary() {
                         : "healthy"
                 }`}
                 style={{
-                  transform: `scaleX(${Math.max(0, Math.min(100, (b.hit_points.current / b.hit_points.maximum) * 100)) / 100})`,
+                  transform: `scaleX(${Math.max(0, Math.min(100, (b.hit_points.current / Math.max(1, b.hit_points.maximum)) * 100)) / 100})`,
                 }}
               />
             </div>

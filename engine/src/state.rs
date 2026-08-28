@@ -1048,8 +1048,8 @@ impl Repository for SqliteRepository {
             timestamp,
         })
         .collect();
-        let plot_threads = self.list_threads().await.unwrap_or_default();
-        let npc_characters = self.list_npc_characters().await.unwrap_or_default();
+        let plot_threads = self.list_threads().await?;
+        let npc_characters = self.list_npc_characters().await?;
         Ok(CampaignExport {
             characters,
             actions,
@@ -1222,7 +1222,7 @@ impl Repository for SqliteRepository {
         // Import NPC characters
         for npc in &data.npc_characters {
             sqlx::query(
-                "INSERT INTO npc_characters (id, name, drive, leverage, flaw, flaw_revealed, disposition, alive, location, knows_json, notes, last_seen_scene_id, created_at)
+                "INSERT INTO npc_characters (id, name, disposition, alive, location, knows_json, notes, last_seen_scene_id, drive, leverage, flaw, flaw_revealed, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
                    name = excluded.name,
@@ -2155,6 +2155,7 @@ impl Repository for SqliteRepository {
         chaos_factor: i32,
     ) -> Result<Scene, DbError> {
         let id = Uuid::new_v4().to_string();
+        let chaos_factor = chaos_factor.clamp(1, 9);
         let scene_number = {
             let row: (i64,) =
                 sqlx::query_as("SELECT COALESCE(MAX(scene_number), 0) + 1 FROM campaign_scenes")
@@ -2578,29 +2579,32 @@ mod tests {
 
         // Below range: should clamp to 1
         repo.update_scene_chaos_factor(&s.id, 0).await.expect("clamp low");
-        let rows = sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
-            .bind(&s.id)
-            .fetch_one(&repo.pool)
-            .await
-            .unwrap();
+        let rows =
+            sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
+                .bind(&s.id)
+                .fetch_one(&repo.pool)
+                .await
+                .unwrap();
         assert_eq!(rows.0, 1);
 
         // Above range: should clamp to 9
         repo.update_scene_chaos_factor(&s.id, 100).await.expect("clamp high");
-        let rows = sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
-            .bind(&s.id)
-            .fetch_one(&repo.pool)
-            .await
-            .unwrap();
+        let rows =
+            sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
+                .bind(&s.id)
+                .fetch_one(&repo.pool)
+                .await
+                .unwrap();
         assert_eq!(rows.0, 9);
 
         // In range: should pass through
         repo.update_scene_chaos_factor(&s.id, 7).await.expect("pass through");
-        let rows = sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
-            .bind(&s.id)
-            .fetch_one(&repo.pool)
-            .await
-            .unwrap();
+        let rows =
+            sqlx::query_as::<_, (i32,)>("SELECT chaos_factor FROM campaign_scenes WHERE id = ?")
+                .bind(&s.id)
+                .fetch_one(&repo.pool)
+                .await
+                .unwrap();
         assert_eq!(rows.0, 7);
     }
 }

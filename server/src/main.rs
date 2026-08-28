@@ -346,7 +346,22 @@ async fn resolve(
 
     let mut events = apply_session_effects(&session.game, &request, &mut response).await;
 
-    // Broadcast WHILE session lock held â€” order guarantee.
+    // Idle doom clocks: mirror the desktop resolve path — if the log tail
+    // shows N consecutive idle entries, advance all active clocks. Computed
+    // BEFORE broadcast so the ClockAdvanced events are actually delivered to
+    // peers (otherwise server-authoritative clock state advances but no
+    // client is ever notified).
+    if let Some(ref scene_id) = request.scene_id {
+        let idle_events = tick_idle_clocks(&session.game, scene_id).await;
+        if !idle_events.is_empty() {
+            for e in &idle_events {
+                response.mechanical_events.push(e.describe());
+            }
+            events.extend(idle_events);
+        }
+    }
+
+    // Broadcast WHILE session lock held — order guarantee.
     for event in &events {
         session.send_event(event.clone());
     }
@@ -361,19 +376,6 @@ async fn resolve(
             next_turn = ?next_turn,
             "Turn advanced"
         );
-    }
-
-    // Idle doom clocks: mirror the desktop resolve path â€” if the log tail
-    // shows N consecutive idle entries, advance all active clocks. Without
-    // this, doom clocks never move in hosted play.
-    if let Some(ref scene_id) = request.scene_id {
-        let idle_events = tick_idle_clocks(&session.game, scene_id).await;
-        if !idle_events.is_empty() {
-            for e in &idle_events {
-                response.mechanical_events.push(e.describe());
-            }
-            events.extend(idle_events);
-        }
     }
 
     tracing::info!(session = %session_id, events = events.len(), "Resolved");
@@ -1434,16 +1436,19 @@ async fn server_combat_attack(
     let mut victim = auto_dm_engine::combatant_from_value(&req.target)
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
 
-    actor.conditions = req.attacker_conditions.unwrap_or_default();
-    victim.conditions = req.target_conditions.unwrap_or_default();
+    let client_attacker_conditions = req.attacker_conditions.unwrap_or_default();
+    let client_target_conditions = req.target_conditions.unwrap_or_default();
 
     // Server-authoritative roster resolution for BOTH sides: a stale or
     // hostile client must not resurrect old HP on the target, nor fabricate
-    // a ghost attacker or self-declare advantage conditions ("Invisible")
-    // it doesn't actually have. Roster copies win when present; the client
-    // condition overlay applies only to ids the roster doesn't know yet.
+    // a ghost attacker or self-declare advantage conditions ("Invisible",
+    // "Prone") it doesn't actually have. Roster copies win when present, and
+    // their conditions are taken from the server-authoritative
+    // combatant_conditions map — the client-override conditions apply ONLY
+    // to ids the roster doesn't know yet (ad-hoc/throwaway entries).
     {
         let combatants = session.combatants.read().await;
+        let conditions_map = session.combatant_conditions.read().await;
         let resolve_side = |id: &str| {
             combatants
                 .iter()
@@ -1451,14 +1456,16 @@ async fn server_combat_attack(
                 .and_then(|c| auto_dm_engine::combatant_from_value(c).ok())
         };
         if let Some(authoritative) = resolve_side(&actor.id) {
-            let conditions = actor.conditions.clone();
             actor = authoritative;
-            actor.conditions = conditions;
+            actor.conditions = conditions_map.get(&actor.id).cloned().unwrap_or_default();
+        } else {
+            actor.conditions = client_attacker_conditions;
         }
         if let Some(authoritative) = resolve_side(&victim.id) {
-            let conditions = victim.conditions.clone();
             victim = authoritative;
-            victim.conditions = conditions;
+            victim.conditions = conditions_map.get(&victim.id).cloned().unwrap_or_default();
+        } else {
+            victim.conditions = client_target_conditions;
         }
 
         // Ghost rejection: both sides must exist on the server roster.
@@ -1554,7 +1561,7 @@ async fn server_map_update(
     Path(session_id): Path<String>,
     headers: axum::http::header::HeaderMap,
     Json(req): Json<MapUpdateRequest>,
-) -> Result<StatusCode, (StatusCode, String)> {
+) -> Result<Json<Value>, (StatusCode, String)> {
     let token = extract_token(&headers)?;
     let (session, player_id) =
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
@@ -1583,7 +1590,10 @@ async fn server_map_update(
         auto_dm_engine::GameEvent::MapUpdated { tokens: req.tokens, background: req.background };
     session.send_event(event);
 
-    Ok(StatusCode::NO_CONTENT)
+    // Return 200 with a JSON body — the client's httpPost unconditionally
+    // calls res.json(); a bare 204 No Content throws and is swallowed as a
+    // silent failure.
+    Ok(Json(serde_json::json!({ "ok": true })))
 }
 
 #[derive(Deserialize)]
@@ -1753,6 +1763,20 @@ async fn server_combat_sync(
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
     require_host(&session, &player_id).await?;
+
+    // Griefing guard: the whole roster + condition map rides every resync and
+    // is rendered on every peer, so bound it (mirrors the map-token 512 and
+    // initiative 128 caps elsewhere).
+    if req.combatants.len() > 512 {
+        return Err((StatusCode::BAD_REQUEST, "Too many combatants (max 512)".into()));
+    }
+    if req.conditions.len() > 512 {
+        return Err((StatusCode::BAD_REQUEST, "Too many condition entries (max 512)".into()));
+    }
+    let total_conditions: usize = req.conditions.values().map(|v| v.len()).sum::<usize>();
+    if total_conditions > 4096 {
+        return Err((StatusCode::BAD_REQUEST, "Too many total conditions (max 4096)".into()));
+    }
 
     // Whole-roster replace under the session lock: without it, a concurrent
     // resolve's combatant patch could be interleaved and lost, and the

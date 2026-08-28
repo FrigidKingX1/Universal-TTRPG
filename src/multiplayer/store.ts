@@ -652,7 +652,11 @@ function _dispatchEventToMainStore(event: GameEvent) {
         return {
           combatantStates: {
             ...s.combatantStates,
-            [event.target_id]: { ...existing, hit_points: event.hp_remaining },
+            [event.target_id]: {
+              ...existing,
+              hit_points: event.hp_remaining,
+              status: event.defeated ? "DEFEATED" : existing.status,
+            },
           },
         };
       });

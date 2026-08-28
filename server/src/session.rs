@@ -912,6 +912,9 @@ impl SessionRegistry {
         if title.is_empty() {
             return Err("Session title cannot be empty".into());
         }
+        if title.len() > 64 {
+            return Err("Session title is too long (max 64 characters)".into());
+        }
         if self.sessions.read().await.len() >= MAX_SESSIONS {
             return Err(format!(
                 "Too many active sessions (max {MAX_SESSIONS}) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â end one first"

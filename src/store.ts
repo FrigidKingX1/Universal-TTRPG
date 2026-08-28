@@ -1254,6 +1254,7 @@ export const useStore = create<AutoDmState>()(
   },
 
   toggleCondition: (entityId, condition) => {
+    const wasOn = (get().combatantConditions[entityId] ?? []).includes(condition);
     set((s) => {
       const current = s.combatantConditions[entityId] ?? [];
       const updated = current.includes(condition)
@@ -1262,15 +1263,20 @@ export const useStore = create<AutoDmState>()(
       return { combatantConditions: { ...s.combatantConditions, [entityId]: updated } };
     });
     persistCombat();
-    if (condition === "Concentrating") dropConcentrationRecord(entityId, set);
+    // Only drop the concentration record when toggling concentration OFF.
+    // Toggling it ON must not immediately remove the record (previous logic
+    // net-removed every manual re-apply of "Concentrating").
+    if (condition === "Concentrating" && wasOn) {
+      dropConcentrationRecord(entityId, set);
+    }
     // Fire-and-forget: sync condition to server in multiplayer.
     if (isInMultiplayerSession()) {
-      const current = get().combatantConditions[entityId] ?? [];
-      const add = current.includes(condition);
+      const add = !wasOn;
       (async () => {
         try {
           const client = (await import("./multiplayer")).getMultiplayerClient();
-          await client?.combatCondition(entityId, condition, add);        } catch { /* best-effort */ }
+          await client?.combatCondition(entityId, condition, add);
+        } catch { /* best-effort */ }
       })();
     }
   },

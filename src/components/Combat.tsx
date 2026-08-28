@@ -638,29 +638,28 @@ export function Combat() {
 }
 
 function CombatLogEntry({ outcome }: { outcome: EngineOutcome }) {
+  const attackDetail =
+    outcome.attack_roll != null || outcome.target_ac != null
+      ? `(rolled ${outcome.attack_roll ?? "—"}${outcome.target_ac != null ? ` vs AC ${outcome.target_ac}` : ""})`
+      : null;
   return (
     <div className="combat-log-entry">
       <span className="muted">{outcome.attack_result}</span>
-      {outcome.attack_roll != null && (
-        <span className="muted"> (rolled {outcome.attack_roll}</span>
-      )}
-      {outcome.target_ac != null && (
-        <span className="muted"> vs AC {outcome.target_ac})</span>
-      )}
+      {attackDetail && <span className="muted"> {attackDetail}</span>}
       {outcome.damage_dealt > 0 && (
-        <span> â€” <strong>{outcome.damage_dealt} dmg</strong>
+        <span> — <strong>{outcome.damage_dealt} dmg</strong>
           {outcome.damage_type && <span className="muted"> [{outcome.damage_type}]</span>}
           {outcome.damage_modifier && <span className={outcome.damage_modifier === "immune" ? "exceptional" : outcome.damage_modifier === "vulnerable" ? "fury" : "muted"}> ({outcome.damage_modifier})</span>}
         </span>
       )}
       {(outcome.heal_amount ?? 0) > 0 && (
-        <span className="heal-text"> â€” <strong>+{outcome.heal_amount} HP</strong></span>
+        <span className="heal-text"> — <strong>+{outcome.heal_amount} HP</strong></span>
       )}
       {outcome.damage_dealt === 0 && outcome.damage_modifier === "immune" && (
-        <span className="exceptional"> â€” immune!</span>
+        <span className="exceptional"> — immune!</span>
       )}
       {outcome.target_hp_remaining <= 0 && (
-        <span className="exceptional"> â€” defeated!</span>
+        <span className="exceptional"> — defeated!</span>
       )}
     </div>
   );

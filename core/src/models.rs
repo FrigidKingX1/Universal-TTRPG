@@ -427,8 +427,11 @@ impl DoomClock {
     }
 
     /// Advance the clock by multiple ticks. Returns true if it reached 0.
+    /// A paused (inactive) clock is not advanced, mirroring `tick`.
     pub fn advance(&mut self, ticks: u32) -> bool {
-        self.current = self.current.saturating_sub(ticks);
+        if self.active && self.current > 0 {
+            self.current = self.current.saturating_sub(ticks);
+        }
         self.current == 0
     }
 
@@ -831,6 +834,36 @@ mod tests {
         };
         assert!(!clock.tick());
         assert_eq!(clock.current, 3);
+    }
+
+    #[test]
+    fn doom_clock_inactive_doesnt_advance() {
+        let mut clock = DoomClock {
+            id: "dc4b".into(),
+            label: "Paused".into(),
+            current: 3,
+            max: 6,
+            consequence: "Bad".into(),
+            scene_id: None,
+            active: false,
+            created_at: "".into(),
+        };
+        assert!(!clock.advance(10));
+        assert_eq!(clock.current, 3);
+
+        let mut active = DoomClock {
+            id: "dc4c".into(),
+            label: "Active".into(),
+            current: 3,
+            max: 6,
+            consequence: "Bad".into(),
+            scene_id: None,
+            active: true,
+            created_at: "".into(),
+        };
+        assert!(!active.advance(2));
+        assert_eq!(active.current, 1);
+        assert!(active.advance(1));
     }
 
     #[test]
