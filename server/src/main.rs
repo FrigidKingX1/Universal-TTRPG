@@ -24,6 +24,10 @@ use session::{broadcast_turn_state, GameMode, SessionRegistry, TurnCheck, WsMess
 
 struct AppState {
     registry: Arc<SessionRegistry>,
+    /// Optional server-level credential required to reconfigure the global
+    /// Ollama backend. Set `ADMIN_TOKEN`; when unset, runtime reconfiguration
+    /// is disabled entirely (the deploy sets OLLAMA_URL/OLLAMA_MODEL instead).
+    admin_token: Option<String>,
 }
 
 #[tokio::main]
@@ -36,9 +40,16 @@ async fn main() {
     let ollama_url =
         std::env::var("OLLAMA_URL").unwrap_or_else(|_| "http://localhost:11434".into());
     let ollama_model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3.2".into());
+    let admin_token = std::env::var("ADMIN_TOKEN").ok();
 
     let reachable = auto_dm_core::ollama::OllamaLlmBackend::reachable_url(&ollama_url);
     tracing::info!(url = %ollama_url, model = %ollama_model, reachable, "Ollama config");
+    if admin_token.is_none() {
+        tracing::warn!(
+            "ADMIN_TOKEN not set — /ollama/configure runtime reconfiguration is disabled; \
+             configure OLLAMA_URL/OLLAMA_MODEL at startup instead"
+        );
+    }
 
     let state = Arc::new(AppState {
         registry: Arc::new(
@@ -46,6 +57,7 @@ async fn main() {
                 .await
                 .expect("Failed to initialize session registry"),
         ),
+        admin_token,
     });
 
     let app = Router::new()
@@ -125,14 +137,29 @@ async fn configure_ollama(
     headers: axum::http::header::HeaderMap,
     Json(req): Json<ConfigureOllamaRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    // Host-only, and it must stay that way: this endpoint chooses where the
-    // DM's prompts go. Left open, any session member (or anyone reached via
-    // the tunnel with a stolen join code) could repoint Ollama at a server
-    // they control and harvest every prompt the table sends.
-    let token = extract_token(&headers)?;
-    let (session, player_id) =
-        state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
-    require_host(&session, &player_id).await?;
+    // Previously this endpoint was host-gated, but the Ollama URL/model it
+    // rewrites are SERVER-GLOBAL: set_ollama_url/set_model rebuild the DM
+    // pipeline for every session. That let any one session's host repoint the
+    // shared backend — exfiltrating every table's prompts to a URL they chose,
+    // or DoS'ing all sessions with an unreachable one. Reconfiguration is now
+    // restricted to the deployment operator via ADMIN_TOKEN (server-wide
+    // settings are an operator concern, not a per-session one).
+    match &state.admin_token {
+        Some(expected) => {
+            let provided = extract_token(&headers)?;
+            if provided != *expected {
+                return Err((StatusCode::FORBIDDEN, "Invalid admin credential".into()));
+            }
+        }
+        None => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                "Runtime Ollama reconfiguration is disabled (set ADMIN_TOKEN or \
+                 configure OLLAMA_URL/OLLAMA_MODEL at startup)"
+                    .into(),
+            ));
+        }
+    }
 
     if let Some(url) = req.url {
         state
