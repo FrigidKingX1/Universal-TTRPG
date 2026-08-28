@@ -212,11 +212,15 @@ async fn create_session(
     AxumState(state): AxumState<Arc<AppState>>,
     Json(req): Json<CreateSessionRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let (session_id, join_code, host_token) = state
-        .registry
-        .create_session(&req.title)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let (session_id, join_code, host_token) =
+        state.registry.create_session(&req.title).await.map_err(|e| {
+            let status = match e {
+                session::CreateSessionError::Validation(_) => StatusCode::BAD_REQUEST,
+                session::CreateSessionError::Capacity(_) => StatusCode::SERVICE_UNAVAILABLE,
+                session::CreateSessionError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            (status, e.to_string())
+        })?;
     Ok(Json(json!({
         "session_id": session_id,
         "join_code": join_code,
@@ -504,9 +508,15 @@ async fn end_combat(
     // Host authority: ending combat wipes everyone's turn state mid-fight.
     require_host(&session, &player_id).await?;
     session.turn_gate.end_combat().await;
+    // Clear the whole combat roster + conditions (incl. "Concentrating").
+    // Done server-side and broadcast via resync so every peer — not just the
+    // host — drops lingering concentration/condition tags after the fight.
+    session.combatants.write().await.clear();
     session.combatant_conditions.write().await.clear();
     state.registry.persist_turn_state(&session).await;
     broadcast_turn_state(&session).await;
+    let resync = session::build_resync_under_lock(&session).await;
+    let _ = session.event_tx.send(WsMessage::Resync(resync));
     tracing::info!(session = %session_id, "Combat ended");
     Ok(Json(json!({ "mode": "exploration" })))
 }
@@ -1420,11 +1430,15 @@ async fn server_combat_attack(
     Json(req): Json<CombatAttackRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let token = extract_token(&headers)?;
-    let (session, _player_id) =
+    let (session, player_id) =
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Combatant HP is shared DM-authority state rendered on every peer; direct
+    // damage/heal must be DM-gated (matching condition/sync/initiative) so a
+    // session member can't one-shot enemies or grief party HP.
+    require_host(&session, &player_id).await?;
     // Serialize with other combat mutations: this handler does
     // read-compute-patch on the shared combatant list; unlocked, two
     // concurrent hits on one target can interleave and lose damage.
@@ -1614,6 +1628,9 @@ async fn server_combat_heal(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Same DM-authority gating as server_combat_attack: healing any combatant
+    // to full is a free-resource exploit if an arbitrary member can invoke it.
+    require_host(&session, &_player_id).await?;
     // Same lost-update rationale as the attack handler.
     let _lock = session.session_lock.lock().await;
 
@@ -1890,7 +1907,14 @@ async fn handle_socket(
         session::build_resync_under_lock(&session).await
     };
     let msg = WsMessage::Resync(resync);
-    if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
+    let resync_json = match serde_json::to_string(&msg) {
+        Ok(j) => j,
+        Err(e) => {
+            tracing::error!(session = %session.id, error = %e, "Failed to serialize initial resync");
+            return;
+        }
+    };
+    if socket.send(Message::Text(resync_json.into())).await.is_err() {
         if session.socket_closed(&player_id).await {
             mark_disconnected(&state, &session, &player_id).await;
         }
@@ -1942,7 +1966,11 @@ async fn handle_socket(
                         // wrapper is required here.
                         let resync = session::build_resync(&session).await;
                         let msg = WsMessage::Resync(resync);
-                        if socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.is_err() {
+                        let json = match serde_json::to_string(&msg) {
+                            Ok(j) => j,
+                            Err(_) => continue,
+                        };
+                        if socket.send(Message::Text(json.into())).await.is_err() {
                             break;
                         }
                     }

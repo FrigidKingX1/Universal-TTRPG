@@ -106,14 +106,19 @@ export function Combat() {
 
   const grantTempHp = (entity: CharacterProfile | EncounterStatBlock, amount: number) => {
     if (!("resource_pools" in entity) || !entity.resource_pools.hp) return;
-    const pool = entity.resource_pools.hp;
-    // 5e RAW: temp HP doesn't stack â€” take the higher value.
+    // Read the character from the live store, not the render prop: spreading
+    // a stale render snapshot into saveCharacter could clobber a concurrent
+    // sync/update. Only the temp-HP field is changed.
+    const live = useStore.getState().characters.find((c) => c.id === entity.id);
+    if (!live || !live.resource_pools?.hp) return;
+    const pool = live.resource_pools.hp;
+    // 5e RAW: temp HP doesn't stack — take the higher value.
     const next = Math.max(pool.temporary ?? 0, amount);
     void saveCharacter({
-      ...entity,
-      resource_pools: { ...entity.resource_pools, hp: { ...pool, temporary: next } },
+      ...live,
+      resource_pools: { ...live.resource_pools, hp: { ...pool, temporary: next } },
     });
-    showToast(`${entity.identity.name} gains ${next} temp HP`);
+    showToast(`${live.identity.name} gains ${next} temp HP`);
   };
 
   // Get actions available to the selected attacker.
@@ -160,15 +165,28 @@ export function Combat() {
       if (!c) return;
       const current = snap.combatantStates[c.id]?.hit_points ?? c.resource_pools.hp?.current ?? 0;
       const max = c.resource_pools.hp?.maximum ?? current;
-      const newHp = Math.max(0, Math.min(max, current + amount));
+      const tempCurrent = c.resource_pools.hp?.temporary ?? 0;
+
+      // 5e RAW: temp HP absorbs damage BEFORE real HP. A negative adjustment
+      // first eats the temp pool, only spilling onto real HP once temp is 0.
+      const damage = -amount;
+      let newTemp = tempCurrent;
+      let realDamage = 0;
+      if (damage > 0) {
+        const absorbed = Math.min(tempCurrent, damage);
+        newTemp = tempCurrent - absorbed;
+        realDamage = damage - absorbed;
+      }
+      const newHp = Math.max(0, Math.min(max, current + (amount > 0 ? amount : -realDamage)));
+
       useStore.setState({
         lastHpChange: { entityId: entity.id, previousHp, newHp },
         combatantStates: {
           ...snap.combatantStates,
-          [c.id]: { 
-            ...snap.combatantStates[c.id], 
-            hit_points: newHp, 
-            status: snap.combatantStates[c.id]?.status 
+          [c.id]: {
+            ...snap.combatantStates[c.id],
+            hit_points: newHp,
+            status: snap.combatantStates[c.id]?.status,
           },
         },
       });
@@ -176,7 +194,11 @@ export function Combat() {
         ...c,
         resource_pools: {
           ...c.resource_pools,
-          hp: { ...c.resource_pools.hp!, current: newHp },
+          hp: {
+            ...c.resource_pools.hp!,
+            current: newHp,
+            temporary: newTemp,
+          },
         },
       });
     } else {

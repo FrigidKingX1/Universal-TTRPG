@@ -1,4 +1,4 @@
-﻿//! C2+C3+C4 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Session model: per-session isolation, player-identity
+//! C2+C3+C4 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Session model: per-session isolation, player-identity
 //! tokens, materialized resync, and turn concurrency policy.
 //!
 //! The turn gate switches between free-form (exploration) and queued
@@ -63,6 +63,26 @@ impl From<&PlayerSlot> for PlayerSlotView {
 pub enum GameMode {
     Exploration,
     Combat,
+}
+
+/// Classified failures from `create_session` so the HTTP layer can map
+/// client-correctable problems to 4xx instead of a blanket 500.
+#[derive(Debug, Clone)]
+pub enum CreateSessionError {
+    /// Bad caller input (empty/oversized title) — maps to 400.
+    Validation(String),
+    /// Server resource limit reached — maps to 503.
+    Capacity(String),
+    /// Any genuine internal failure (DB open/migrate/write) — maps to 500.
+    Internal(String),
+}
+
+impl std::fmt::Display for CreateSessionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Validation(m) | Self::Capacity(m) | Self::Internal(m) => write!(f, "{m}"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -907,18 +927,23 @@ impl SessionRegistry {
     }
 
     /// Create a new session and mint the host's player token.
-    pub async fn create_session(&self, title: &str) -> Result<(String, String, String), String> {
+    pub async fn create_session(
+        &self,
+        title: &str,
+    ) -> Result<(String, String, String), CreateSessionError> {
         let title = title.trim();
         if title.is_empty() {
-            return Err("Session title cannot be empty".into());
+            return Err(CreateSessionError::Validation("Session title cannot be empty".into()));
         }
         if title.len() > 64 {
-            return Err("Session title is too long (max 64 characters)".into());
+            return Err(CreateSessionError::Validation(
+                "Session title is too long (max 64 characters)".into(),
+            ));
         }
         if self.sessions.read().await.len() >= MAX_SESSIONS {
-            return Err(format!(
+            return Err(CreateSessionError::Capacity(format!(
                 "Too many active sessions (max {MAX_SESSIONS}) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â end one first"
-            ));
+            )));
         }
         let session_id = uuid::Uuid::new_v4().to_string();
         let join_code = generate_unique_join_code(&self.codes).await;
@@ -927,8 +952,12 @@ impl SessionRegistry {
 
         // Per-session database.
         let db_path = self.data_dir.join(format!("{session_id}.db"));
-        let pool = auto_dm_engine::open_pool(&db_path).await.map_err(|e| e.to_string())?;
-        auto_dm_engine::run_migrations(&pool).await.map_err(|e| e.to_string())?;
+        let pool = auto_dm_engine::open_pool(&db_path)
+            .await
+            .map_err(|e| CreateSessionError::Internal(e.to_string()))?;
+        auto_dm_engine::run_migrations(&pool)
+            .await
+            .map_err(|e| CreateSessionError::Internal(e.to_string()))?;
         let repo = auto_dm_engine::SqliteRepository::new(pool);
 
         // Ship every new session with the full preset bestiary + action vault.
@@ -996,7 +1025,7 @@ impl SessionRegistry {
             .bind(&join_code)
             .execute(&self.registry_pool)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| CreateSessionError::Internal(e.to_string()))?;
         sqlx::query(
             "INSERT INTO registry_players (id, session_id, name, token) VALUES (?, ?, ?, ?)",
         )
@@ -1006,7 +1035,7 @@ impl SessionRegistry {
         .bind(&host_token)
         .execute(&self.registry_pool)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| CreateSessionError::Internal(e.to_string()))?;
 
         Ok((session_id, join_code, host_token))
     }
@@ -1101,7 +1130,7 @@ impl SessionRegistry {
         let queue_json = serde_json::to_string(&queue).unwrap_or_else(|_| "[]".into());
         let initiative_json = serde_json::to_string(&*session.initiative.read().await)
             .unwrap_or_else(|_| "[]".into());
-        let _ = sqlx::query(
+        if let Err(e) = sqlx::query(
             "INSERT INTO registry_turn_state (session_id, mode, current_turn, queue_json, initiative_json)
              VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(session_id) DO UPDATE SET
@@ -1116,7 +1145,14 @@ impl SessionRegistry {
         .bind(&queue_json)
         .bind(&initiative_json)
         .execute(&self.registry_pool)
-        .await;
+        .await
+        {
+            // Turn state is a reconnect aid, not source-of-truth, so a write
+            // failure must not abort the enclosing mutation — but it also
+            // shouldn't pass silently, or a broken registry silently loses
+            // reconnect state forever.
+            tracing::error!(session = %session.id, error = %e, "persist_turn_state failed");
+        }
     }
 }
 
@@ -1268,6 +1304,45 @@ mod turn_state_tests {
     }
 
     #[tokio::test]
+    async fn create_session_classifies_validation_vs_capacity() {
+        let dir = std::env::temp_dir().join(format!("auto-dm-err-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let registry =
+            SessionRegistry::new(dir.clone(), "http://localhost:11434".into(), "m".into())
+                .await
+                .unwrap();
+
+        // Empty title is a validation (client 4xx) error, not 500.
+        match registry.create_session("   ").await {
+            Err(CreateSessionError::Validation(_)) => {}
+            other => panic!("expected Validation, got {other:?}"),
+        }
+
+        // Oversized title is also validation.
+        let long = "x".repeat(65);
+        match registry.create_session(&long).await {
+            Err(CreateSessionError::Validation(_)) => {}
+            other => panic!("expected Validation, got {other:?}"),
+        }
+
+        // Capacity is its own class once the map is full.
+        let (_sid, _code, _tok) = registry.create_session("seed").await.unwrap();
+        {
+            let mut sessions = registry.sessions.write().await;
+            let seed = sessions.values().next().unwrap().clone();
+            for i in 1..MAX_SESSIONS {
+                sessions.insert(format!("stub-{i}"), seed.clone());
+            }
+        }
+        match registry.create_session("one too many").await {
+            Err(CreateSessionError::Capacity(_)) => {}
+            other => panic!("expected Capacity, got {other:?}"),
+        }
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
     async fn join_rejects_when_session_is_full() {
         let dir = std::env::temp_dir().join(format!("auto-dm-cap-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -1310,7 +1385,10 @@ mod turn_state_tests {
         }
         let err = registry.create_session("one too many").await;
         assert!(err.is_err(), "global session cap must reject creation");
-        assert!(err.unwrap_err().contains("Too many"));
+        assert!(
+            err.unwrap_err().to_string().contains("Too many"),
+            "cap error should describe the limit"
+        );
 
         std::fs::remove_dir_all(&dir).ok();
     }

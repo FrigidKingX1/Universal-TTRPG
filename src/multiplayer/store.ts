@@ -368,8 +368,13 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
   // â”€â”€ Combat actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   startCombat: async () => {
     if (!client) return;
-    const data = await client.httpPost<{ mode: GameMode; current_turn: string }>("/combat/start");
-    set({ gameMode: data.mode, currentTurn: data.current_turn });
+    try {
+      const data = await client.httpPost<{ mode: GameMode; current_turn: string }>("/combat/start");
+      set({ gameMode: data.mode, currentTurn: data.current_turn });
+    } catch (e) {
+      console.error("[multiplayer] startCombat failed", e);
+      return;
+    }
 
     // Immediately push the full combatant list to the server so all
     // clients see the same combatants from the start.
@@ -387,7 +392,12 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
 
   endCombat: async () => {
     if (!client) return;
-    await client.httpPost("/combat/end");
+    try {
+      await client.httpPost("/combat/end");
+    } catch (e) {
+      console.error("[multiplayer] endCombat failed", e);
+      return;
+    }
     set({ gameMode: "exploration", currentTurn: null, turnQueue: [] });
     // Clear server combatant state.
     try { await client.combatSync([], {}); } catch { /* best-effort */ }
@@ -395,18 +405,26 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
 
   joinCombatQueue: async () => {
     if (!client) return;
-    const data = await client.httpPost<CombatStatusResponse>("/combat/join");
-    set({
-      gameMode: data.mode,
-      currentTurn: data.current_turn,
-      turnQueue: data.queue,
-    });
+    try {
+      const data = await client.httpPost<CombatStatusResponse>("/combat/join");
+      set({
+        gameMode: data.mode,
+        currentTurn: data.current_turn,
+        turnQueue: data.queue,
+      });
+    } catch (e) {
+      console.error("[multiplayer] joinCombatQueue failed", e);
+    }
   },
 
   skipTurn: async () => {
     if (!client) return;
-    const data = await client.httpPost<{ mode: GameMode; current_turn: string | null }>("/combat/skip");
-    set({ gameMode: data.mode, currentTurn: data.current_turn });
+    try {
+      const data = await client.httpPost<{ mode: GameMode; current_turn: string | null }>("/combat/skip");
+      set({ gameMode: data.mode, currentTurn: data.current_turn });
+    } catch (e) {
+      console.error("[multiplayer] skipTurn failed", e);
+    }
   },
 
   fetchCombatStatus: async () => {
@@ -570,7 +588,9 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
       let status: string | undefined;
       if ("resource_pools" in (c as any)) {
         hp = (c as any).resource_pools?.hp?.current ?? 0;
-        name = (c as any).name ?? id;
+        // CharacterProfile has no top-level `name`; the display name lives at
+        // `identity.name`. Falling back to `id` rendered a bare UUID.
+        name = (c as any).identity?.name ?? (c as any).name ?? id;
       } else if ("hit_points" in (c as any)) {
         const hpObj = (c as any).hit_points;
         hp = typeof hpObj === "object" ? (hpObj.current ?? hpObj) : hpObj;
@@ -587,6 +607,12 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
 
   if (payload.combatant_conditions) {
     setState(() => ({ combatantConditions: payload.combatant_conditions }));
+  }
+
+  // Server-authoritative battle state (round, death saves, turn index) so
+  // reconnectors / late joiners don't reset to round 1 with empty saves.
+  if (typeof (payload as any).combat_state === "string" && (payload as any).combat_state) {
+    _applyCombatStateBlob(setState, (payload as any).combat_state);
   }
 
   // Map state (joiners need the current board without waiting for an event).
@@ -622,6 +648,30 @@ function _syncResyncToMainStore(payload: ResyncPayload) {
   }
 }
 
+function _applyCombatStateBlob(setState: MainStoreSet, raw: string) {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  if (typeof parsed !== "object" || parsed === null) return;
+  const patch: any = {};
+  if (Array.isArray(parsed.initiativeOrder)) patch.initiativeOrder = parsed.initiativeOrder;
+  if (typeof parsed.combatantStates === "object" && parsed.combatantStates !== null) {
+    patch.combatantStates = parsed.combatantStates;
+  }
+  if (typeof parsed.combatantConditions === "object" && parsed.combatantConditions !== null) {
+    patch.combatantConditions = parsed.combatantConditions;
+  }
+  if (typeof parsed.currentRound === "number") patch.currentRound = parsed.currentRound;
+  if (typeof parsed.currentTurnIndex === "number") patch.currentTurnIndex = parsed.currentTurnIndex;
+  if (typeof parsed.deathSaves === "object" && parsed.deathSaves !== null) {
+    patch.deathSaves = parsed.deathSaves;
+  }
+  setState(() => patch);
+}
+
 function _dispatchEventToMainStore(event: GameEvent) {
   const getState = _mainStoreGet;
   const setState = _mainStoreSet;
@@ -629,7 +679,10 @@ function _dispatchEventToMainStore(event: GameEvent) {
 
   switch (event.type) {
     case "scene_updated":
-      void getState().refreshLogs?.();
+      // Do NOT call refreshLogs() here. In a hosted session the combat/story
+      // log is server-authoritative and delivered via resync; refreshLogs()
+      // reads the *local* Tauri DB (empty on remote clients) and would clobber
+      // the authoritative log with stale/empty entries.
       break;
 
     case "clock_advanced":
@@ -666,6 +719,13 @@ function _dispatchEventToMainStore(event: GameEvent) {
       setState((s: any) => {
         const existing = s.combatantStates[event.target_id];
         if (!existing) return {};
+        // Healing above 0 revives: clear a stale DEFEATED overlay so the
+        // target isn't stuck "down" on everyone's screen.
+        if (event.hp_remaining > 0 && existing.status === "DEFEATED") {
+          const revived: any = { ...existing, hit_points: event.hp_remaining };
+          delete revived.status;
+          return { combatantStates: { ...s.combatantStates, [event.target_id]: revived } };
+        }
         return {
           combatantStates: {
             ...s.combatantStates,

@@ -211,6 +211,15 @@ pub async fn handle_call(name: &str, args: Value) -> Result<CallToolResult, McpS
         }
         "oracle_fate_check" => {
             let a: FateArgs = parse_args(args)?;
+            // Reject out-of-range odds_rank (IMPORTANT: 0 is NOT "Impossible";
+            // ranks are 1..=10). Silently mapping 0 to Impossible, or clamping
+            // an out-of-range value to FiftyFifty, hides caller bugs.
+            if !(1..=10).contains(&a.odds_rank) {
+                return Ok(CallToolResult::error(vec![ContentBlock::text(format!(
+                    "odds_rank must be between 1 and 10 (Impossible..A Sure Thing), got {}",
+                    a.odds_rank
+                ))]));
+            }
             let odds = Odds::all()
                 .get(a.odds_rank.saturating_sub(1) as usize)
                 .copied()

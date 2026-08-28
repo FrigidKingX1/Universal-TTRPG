@@ -30,6 +30,10 @@ pub enum Snapshot {
         target: String,
         previous_conditions: Vec<String>,
     },
+    ItemAdded {
+        name: String,
+        quantity: i32,
+    },
     /// Informational events (NpcSpoke, AmbiguousTarget, RuleAnswered)
     /// carry no snapshot — there's nothing to restore.
     None,
@@ -224,6 +228,24 @@ pub async fn apply_session_effects(
                 && !sid.is_empty()
                 && state.repo.save_loot(&sid, name, *quantity, "DM").await.is_ok()
             {
+                // Snapshot as item_added so the idle-clock trail resets: adding
+                // loot is a mechanical mutation, not idle time at the table.
+                if let Some(scene_id) = &request.scene_id {
+                    let snapshot = serde_json::to_value(&Snapshot::ItemAdded {
+                        name: name.clone(),
+                        quantity: *quantity,
+                    })
+                    .ok();
+                    let _ = state
+                        .repo
+                        .append_log(
+                            scene_id,
+                            "system",
+                            &format!("Loot added: {quantity}x {name}"),
+                            snapshot,
+                        )
+                        .await;
+                }
                 events.push(GameEvent::ItemAdded { name: name.clone(), quantity: *quantity });
             }
             response
@@ -339,6 +361,24 @@ pub async fn apply_session_effects(
                 _ => Some(target.clone()),
             };
             let resolved = resolved_name.unwrap();
+            // Snapshot as condition_applied so the idle-clock trail resets;
+            // applying a condition is a mechanical mutation, not idle time.
+            if let Some(scene_id) = &request.scene_id {
+                let snapshot = serde_json::to_value(&Snapshot::ConditionApplied {
+                    target: resolved.clone(),
+                    previous_conditions: Vec::new(),
+                })
+                .ok();
+                let _ = state
+                    .repo
+                    .append_log(
+                        scene_id,
+                        "system",
+                        &format!("Condition '{condition}' marked on {resolved}."),
+                        snapshot,
+                    )
+                    .await;
+            }
             events.push(GameEvent::ConditionApplied {
                 target: resolved.clone(),
                 condition: condition.clone(),

@@ -1868,10 +1868,17 @@ impl Repository for SqliteRepository {
     }
 
     async fn tick_doom_clock(&self, id: &str) -> Result<Option<(u32, u32)>, DbError> {
-        sqlx::query("UPDATE doom_clocks SET tick_current = MAX(0, tick_current - 1) WHERE id = ? AND active = TRUE AND tick_current > 0")
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        // Same no-op guard as advance_doom_clock: already-at-0 or inactive
+        // clocks report Ok(None) rather than a phantom tick.
+        let result = sqlx::query(
+            "UPDATE doom_clocks SET tick_current = MAX(0, tick_current - 1) WHERE id = ? AND active = TRUE AND tick_current > 0",
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        if result.rows_affected() == 0 {
+            return Ok(None);
+        }
         let row = sqlx::query("SELECT tick_current, tick_max FROM doom_clocks WHERE id = ?")
             .bind(id)
             .fetch_optional(&self.pool)
@@ -1888,11 +1895,20 @@ impl Repository for SqliteRepository {
         id: &str,
         ticks: u32,
     ) -> Result<Option<(u32, u32)>, DbError> {
-        sqlx::query("UPDATE doom_clocks SET tick_current = MAX(0, tick_current - ?) WHERE id = ? AND active = TRUE")
-            .bind(ticks as i64)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        // Capture rows_affected: if the UPDATE matched no rows (inactive clock
+        // or already at 0) report Ok(None) so callers don't emit a phantom
+        // ClockAdvanced. The `tick_current > 0` guard is needed because SQLite
+        // counts a matched row as "affected" even if its value doesn't change.
+        let result = sqlx::query(
+            "UPDATE doom_clocks SET tick_current = MAX(0, tick_current - ?) WHERE id = ? AND active = TRUE AND tick_current > 0",
+        )
+        .bind(ticks as i64)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        if result.rows_affected() == 0 {
+            return Ok(None);
+        }
         let row = sqlx::query("SELECT tick_current, tick_max FROM doom_clocks WHERE id = ?")
             .bind(id)
             .fetch_optional(&self.pool)
@@ -2495,6 +2511,31 @@ mod tests {
         assert!(repo.delete_doom_clock("dc1").await.expect("delete"));
         let clocks = repo.list_doom_clocks().await.expect("list");
         assert!(clocks.is_empty());
+    }
+
+    #[tokio::test]
+    async fn doom_clock_noop_returns_none() {
+        let pool = SqlitePoolOptions::new().connect("sqlite::memory:").await.expect("connect");
+        run_migrations(&pool).await.expect("migrate");
+        let repo = SqliteRepository::new(pool);
+
+        // A clock at 0 must not report a phantom tick/advance (would otherwise
+        // keep re-emitting ClockAdvanced forever).
+        repo.save_doom_clock("dc1", "Empty", 1, "consequence", Some("s1"))
+            .await
+            .expect("save clock");
+        assert_eq!(repo.tick_doom_clock("dc1").await.expect("tick"), Some((0, 1)));
+        // Now at 0: further ticks/advance are no-ops.
+        assert_eq!(repo.tick_doom_clock("dc1").await.expect("tick noop"), None);
+        assert_eq!(repo.advance_doom_clock("dc1", 3).await.expect("advance noop"), None);
+
+        // An inactive clock must not advance.
+        repo.reset_doom_clock("dc1").await.expect("reset");
+        sqlx::query("UPDATE doom_clocks SET active = FALSE WHERE id = 'dc1'")
+            .execute(&repo.pool)
+            .await
+            .expect("deactivate");
+        assert_eq!(repo.advance_doom_clock("dc1", 1).await.expect("inactive noop"), None);
     }
 
     #[tokio::test]

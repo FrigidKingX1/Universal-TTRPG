@@ -1116,6 +1116,10 @@ export const useStore = create<AutoDmState>()(
     combatantStates: {},
     combatantConditions: {},
     deathSaves: {},
+    // Ending combat ends any in-progress concentration: leaves the spell
+    // active in the concentration map would keep the "concentrating" banner
+    // and CON-save logic firing after the fight is over.
+    concentration: {},
     lastCombat: null,
   }); persistCombat(); },
 
