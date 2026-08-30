@@ -866,9 +866,11 @@ impl SessionRegistry {
             .await
             .map_err(|e| format!("Character load failed: {e}"))?;
 
-        // Stack with existing item of same name if found.
+        // Stack with existing item of same name if found. Cap the merged
+        // quantity at 999 — otherwise repeated adds of the same-named item
+        // produce an unbounded stack that bloats every resync.
         if let Some(existing) = profile.inventory.iter_mut().find(|i| i.name == item.name) {
-            existing.quantity += item.quantity;
+            existing.quantity = (existing.quantity + item.quantity).min(999);
         } else {
             profile.inventory.push(item);
         }

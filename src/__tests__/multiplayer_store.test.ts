@@ -355,8 +355,8 @@ describe("scoped mapDragGuard", () => {
 
     const mp = useMultiplayerStore.getState();
     expect(mp.players).toEqual([
-      { id: "host", name: "Host", connected: true },
-      { id: "p2", name: "Remote", connected: false },
+      { id: "host", name: "Host", connected: true, character_id: null },
+      { id: "p2", name: "Remote", connected: false, character_id: "c2" },
     ]);
   });
 

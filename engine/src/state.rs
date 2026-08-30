@@ -2227,11 +2227,16 @@ impl Repository for SqliteRepository {
         consequence: &str,
         scene_id: Option<&str>,
     ) -> Result<(), DbError> {
+        // Match interactive doom-clock semantics: a fresh clock starts full
+        // (tick_current = tick_max) and counts DOWN. A campaign-generated
+        // clock born at 0 would be treated as already-expired by the
+        // `tick_current > 0` guards and could never tick.
         sqlx::query(
-            "INSERT OR REPLACE INTO doom_clocks (id, label, tick_current, tick_max, consequence, scene_id, active) VALUES (?, ?, 0, ?, ?, ?, 1)",
+            "INSERT OR REPLACE INTO doom_clocks (id, label, tick_current, tick_max, consequence, scene_id, active) VALUES (?, ?, ?, ?, ?, ?, 1)",
         )
         .bind(id)
         .bind(label)
+        .bind(tick_max as i32)
         .bind(tick_max as i32)
         .bind(consequence)
         .bind(scene_id)

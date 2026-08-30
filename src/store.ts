@@ -812,6 +812,11 @@ export const useStore = create<AutoDmState>()(
   },
 
   refreshLogs: async () => {
+    // In a hosted session the server is the source of truth for logs; the
+    // local Tauri DB is only populated by THIS client. Re-reading it here
+    // would overwrite the authoritative log stream (synced via resync) with
+    // stale local rows — a documented regression source. Solo only.
+    if (isInMultiplayerSession()) return;
     const id = get().activeSceneId;
     if (!id) return;
     const logs = await backend.listLogs(id, 200);

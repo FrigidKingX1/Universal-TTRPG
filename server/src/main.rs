@@ -765,6 +765,26 @@ async fn equip_item(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Mid-combat item changes must respect turn order — otherwise a queued
+    // player could equip/re-position gear (e.g. a shield) while not acting.
+    {
+        let _lock = session.session_lock.lock().await;
+        match session.turn_gate.can_act(&player_id).await {
+            TurnCheck::Allowed => {}
+            TurnCheck::Waiting { position } => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    format!("Not your turn \u{2014} you are #{position} in the queue"),
+                ));
+            }
+            TurnCheck::NotInQueue => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    "Combat is active but you are not in the turn queue".into(),
+                ));
+            }
+        }
+    }
     let profile = state
         .registry
         .equip_item(&session, &player_id, &req.item_id, req.equipped)
@@ -808,6 +828,26 @@ async fn use_item(
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    // Drinking a potion mid-combat is a combat action — enforce turn order so
+    // queued players can't heal out of sequence.
+    {
+        let _lock = session.session_lock.lock().await;
+        match session.turn_gate.can_act(&player_id).await {
+            TurnCheck::Allowed => {}
+            TurnCheck::Waiting { position } => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    format!("Not your turn \u{2014} you are #{position} in the queue"),
+                ));
+            }
+            TurnCheck::NotInQueue => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    "Combat is active but you are not in the turn queue".into(),
+                ));
+            }
+        }
     }
     let profile = state
         .registry
@@ -860,6 +900,25 @@ async fn add_item(
         state.registry.authenticate(&token).await.map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
+    }
+    // Adding inventory mid-combat is a combat action — enforce turn order.
+    {
+        let _lock = session.session_lock.lock().await;
+        match session.turn_gate.can_act(&player_id).await {
+            TurnCheck::Allowed => {}
+            TurnCheck::Waiting { position } => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    format!("Not your turn \u{2014} you are #{position} in the queue"),
+                ));
+            }
+            TurnCheck::NotInQueue => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    "Combat is active but you are not in the turn queue".into(),
+                ));
+            }
+        }
     }
     let item = auto_dm_core::models::InventoryItem {
         id: uuid::Uuid::new_v4().to_string(),
@@ -917,6 +976,26 @@ async fn rest_character(
     if session.id != session_id {
         return Err((StatusCode::FORBIDDEN, "Token belongs to different session".into()));
     }
+    // Resting mid-combat would let a queued player full-heal out of turn;
+    // rest is only possible when the acting player holds the turn.
+    {
+        let _lock = session.session_lock.lock().await;
+        match session.turn_gate.can_act(&player_id).await {
+            TurnCheck::Allowed => {}
+            TurnCheck::Waiting { position } => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    format!("Not your turn \u{2014} you are #{position} in the queue"),
+                ));
+            }
+            TurnCheck::NotInQueue => {
+                return Err((
+                    StatusCode::CONFLICT,
+                    "Combat is active but you are not in the turn queue".into(),
+                ));
+            }
+        }
+    }
     let profile = state
         .registry
         .rest(&session, &player_id, req.long)
@@ -971,10 +1050,15 @@ async fn create_scene(
     }
     require_host(&session, &player_id).await?;
 
+    // Chaos factor is a 1..9 scale (fate-check semantics). Clamp defensively:
+    // an empty/zero value from a client (e.g. `Number("") === 0`) must not
+    // write an out-of-range factor that then rejects valid fate checks.
+    let chaos_factor = req.chaos_factor.clamp(1, 9);
+
     let scene = session
         .game
         .repo
-        .create_scene(&req.title, req.chaos_factor)
+        .create_scene(&req.title, chaos_factor)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

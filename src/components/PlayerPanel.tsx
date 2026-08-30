@@ -27,7 +27,7 @@ export function PlayerPanel() {
 
   // Find which character is linked to this player.
   const myPlayerInfo = players.find((p) => p.id === playerId);
-  const myCharacterId = (myPlayerInfo as any)?.character_id ?? null;
+  const myCharacterId = myPlayerInfo?.character_id ?? null;
 
   // If we have a linked character, use it; otherwise fall back to activeCharacter.
   const character = myCharacterId

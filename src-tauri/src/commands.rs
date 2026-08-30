@@ -739,8 +739,9 @@ pub async fn initiative(
     Ok(entries)
 }
 
-/// Heal a combatant through the engine (max-clamped, revives at >0 HP,
-/// clears conditions). Returns the new HP and status.
+/// Heal a combatant through the engine (max-clamped, revives at >0 HP).
+/// Does not clear conditions — healing restores HP only (use a long rest
+/// or an explicit condition-remove to clear them). Returns the new HP/status.
 #[tauri::command]
 pub async fn combat_heal(
     app: AppHandle,

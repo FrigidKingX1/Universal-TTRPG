@@ -140,4 +140,5 @@ export interface PlayerInfo {
   id: string;
   name: string;
   connected: boolean;
+  character_id: string | null;
 }

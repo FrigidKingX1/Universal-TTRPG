@@ -267,15 +267,18 @@ pub fn modify_damage_for_type(raw: i32, damage_type: &str, target: &Combatant) -
 }
 
 /// Heal a combatant, clamped to its maximum. Healing above 0 HP revives a
-/// defeated combatant and clears any lingering status. Negative amounts
+/// defeated combatant and clears the defeated status. Negative amounts
 /// are clamped to zero — HP reduction is `apply_damage`'s job.
+///
+/// Note: healing does NOT clear active conditions. Per 5e, a potion or
+/// Cure Wounds restores HP but does not cure Poisoned, Stunned, Prone, etc.
+/// Those must be removed explicitly (or via a long rest).
 pub fn apply_healing(target: &mut Combatant, amount: i32) -> i32 {
     let before = target.hit_points;
     let amount = amount.max(0);
     target.hit_points = (target.hit_points + amount).min(target.max_hit_points);
     if target.hit_points > 0 {
         target.status = None;
-        target.conditions.clear();
     }
     target.hit_points - before
 }
@@ -434,9 +437,13 @@ pub fn execute_attack(
             attack_detail = Some(roll.detail.clone());
 
             // Natural 20 always hits (and crits); natural 1 always misses.
-            let nat_max = roll.kept_rolls.iter().filter(|r| **r == 20).count() > 0
-                && base.trim_start().starts_with("1d20");
-            let nat_min = roll.kept_rolls.contains(&1) && base.trim_start().starts_with("1d20");
+            // These check the base d20 pole specifically (kept_rolls.first()):
+            // checking `contains(&1)` across all kept dice misfires when a
+            // bonus die (e.g. `1d20 + 1d4`) rolls a 1 even though the d20
+            // did not.
+            let d20_pole = roll.kept_rolls.first().copied();
+            let nat_max = d20_pole == Some(20) && base.trim_start().starts_with("1d20");
+            let nat_min = d20_pole == Some(1) && base.trim_start().starts_with("1d20");
 
             let target_value = if resolution.resolution_type == ResolutionType::OpposedRoll {
                 // Defender contests with the action's primary attribute
@@ -508,9 +515,9 @@ pub fn execute_attack(
             attack_detail = Some(roll.detail.clone());
             let dc = resolve_defense(action, target)?;
 
-            let nat_max = roll.kept_rolls.iter().filter(|r| **r == 20).count() > 0
-                && base.trim_start().starts_with("1d20");
-            let nat_min = roll.kept_rolls.contains(&1) && base.trim_start().starts_with("1d20");
+            let d20_pole = roll.kept_rolls.first().copied();
+            let nat_max = d20_pole == Some(20) && base.trim_start().starts_with("1d20");
+            let nat_min = d20_pole == Some(1) && base.trim_start().starts_with("1d20");
 
             let hit = if nat_min {
                 false
@@ -838,6 +845,44 @@ mod tests {
     }
 
     #[test]
+    fn natural_one_on_bonus_die_does_not_force_a_miss() {
+        // An attack formula with a bonus die (1d20 + mod + 1d4): a 1 on the
+        // d4 must NOT force an auto-miss. Only a natural-1 on the base d20 does.
+        // Regression: `kept_rolls.contains(&1)` checked every kept die, so a
+        // d4 that rolled 1 forced a miss even when the d20 was not a 1.
+        let mut action = longsword();
+        action.resolution.roll_formula =
+            Some("1d20 + @attributes.STR.derived_modifier + 1d4".to_string());
+        let attacker = Combatant::from(&profile_with_str("Hero", 16, 14, 20));
+        let mut target = Combatant::from(&goblin());
+        target.armor_class = 0; // any positive total hits unless forced-missed
+
+        let mut d4_one_count = 0;
+        let mut hits_when_d4_is_one = 0;
+        for seed in 0..2000u64 {
+            let mut dice = DiceEngine::with_seed(seed);
+            let mut t = target.clone();
+            let outcome = execute_attack(&mut dice, &attacker, &mut t, &action, None).unwrap();
+            let detail = outcome.attack_detail.clone().unwrap_or_default();
+            if detail.contains("1d4[1]") {
+                d4_one_count += 1;
+                if outcome.attack_result == "HIT" {
+                    hits_when_d4_is_one += 1;
+                }
+            }
+        }
+        assert!(d4_one_count > 0, "no deterministic seed hit the d4=1 path");
+        // With the old bug every d4=1 attack MISSed (only true d20-nat-1 is
+        // legit). With the fix, only genuine d20-nat-1 (~1/20 of the subset)
+        // still misses, so the hit fraction must be far above 0.5.
+        let hit_fraction = hits_when_d4_is_one as f64 / d4_one_count as f64;
+        assert!(
+            hit_fraction > 0.5,
+            "d4=1 rolls mostly forced-missed (nat-1 bug): hit_fraction={hit_fraction:.2} over {d4_one_count} samples"
+        );
+    }
+
+    #[test]
     fn attack_misses_against_high_ac() {
         let mut dice = DiceEngine::with_seed(1);
         let attacker = Combatant::from(&profile_with_str("Hero", 16, 14, 20));
@@ -1061,6 +1106,21 @@ mod tests {
         let healed = apply_healing(&mut target, 20);
         assert_eq!(target.hit_points, 7);
         assert_eq!(healed, 5);
+    }
+
+    #[test]
+    fn healing_does_not_clear_conditions() {
+        // 5e: healing restores HP but does not cure Poisoned/Stunned/Prone etc.
+        let mut target = Combatant::from(&goblin());
+        target.hit_points = 2;
+        target.status = Some("DEFEATED".to_string());
+        target.conditions = vec!["Poisoned".to_string(), "Prone".to_string()];
+        let healed = apply_healing(&mut target, 20);
+        assert_eq!(target.hit_points, 7);
+        assert_eq!(healed, 5);
+        // Revives from 0 HP (clears defeated status) but keeps conditions.
+        assert_eq!(target.status, None);
+        assert_eq!(target.conditions, vec!["Poisoned".to_string(), "Prone".to_string()]);
     }
 
     #[test]

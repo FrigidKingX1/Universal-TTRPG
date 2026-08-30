@@ -284,10 +284,17 @@ pub async fn handle_call(name: &str, args: Value) -> Result<CallToolResult, McpS
         }
         "lore_recall" => {
             let a: RecallArgs = parse_args(args)?;
-            let hits: Vec<Value> = hybrid_recall(&a.query, &a.docs, a.k.max(1))
+            // Hardening: cap the working set and top-k so a hostile client
+            // can't force O(N) tokenization over an unbounded docs array or
+            // ask for an unbounded result list.
+            const MAX_DOCS: usize = 2000;
+            const MAX_K: usize = 20;
+            let docs: Vec<String> = a.docs.into_iter().take(MAX_DOCS).collect();
+            let k = a.k.clamp(1, MAX_K);
+            let hits: Vec<Value> = hybrid_recall(&a.query, &docs, k)
                 .into_iter()
                 .filter_map(|(i, s)| {
-                    a.docs.get(i).map(|doc| json!({ "index": i, "score": s, "doc": doc }))
+                    docs.get(i).map(|doc| json!({ "index": i, "score": s, "doc": doc }))
                 })
                 .collect();
             json_result(Value::Array(hits))

@@ -491,6 +491,7 @@ export const useMultiplayerStore = create<MultiplayerState>()((set, get) => ({
           id: p.id,
           name: p.name,
           connected: p.connected,
+          character_id: p.character_id ?? null,
         })),
       });
     }
